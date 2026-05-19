@@ -39,7 +39,7 @@ interface NavigationItem {
 const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
   agent: [
     { href: "/agent", icon: Gauge, label: "Dashboard" },
-    { href: "/agent/cases", icon: Inbox, label: "Cases" },
+    { href: "/agent/tickets", icon: Inbox, label: "Tickets" },
     { href: "/agent/messages", icon: MessageSquareText, label: "Messages" },
     { href: "/agent/knowledge", icon: BookOpen, label: "Knowledge" },
     { href: "/agent/reports", icon: BarChart3, label: "Reports" },
