@@ -1,4 +1,4 @@
-import { AgentPerformanceDashboard } from "@/core/dashboard/agent/agent-performance-dashboard";
+import { AgentPerformanceDashboard } from "@/core/dashboard/ui/AgentsDashboard";
 import { agentPerformanceSnapshots } from "@/core/dashboard/service/agent-performance.mock";
 
 export default function AgentPage() {

@@ -135,13 +135,13 @@ function IconButton({
   return (
     <button
       aria-label={label}
-      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
+      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-(--rail-border) bg-(--surface-panel) text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
       onClick={onClick}
       type="button"
     >
       {children}
       {notification ? (
-        <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[var(--signal-red)]" />
+        <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-(--signal-red)" />
       ) : null}
     </button>
   );
