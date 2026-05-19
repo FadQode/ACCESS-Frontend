@@ -1,8 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #eef1ee;
+  --foreground: #17201c;
+  --rail-ink: #13231f;
+  --rail-border: #c7d0c8;
+  --surface-panel: #fbfcf7;
+  --surface-muted: #e4e9e2;
+  --text-muted: #617069;
+  --text-tertiary: #91a098;
+  --text-on-dark: #cedbd3;
+  --signal-blue: #175f8a;
+  --signal-blue-soft: #dce9f3;
+  --signal-green: #15734f;
+  --signal-green-dark: #065f46;
+  --signal-green-soft: #d7f3e5;
+  --signal-amber: #d99a18;
+  --signal-amber-dark: #9a5b05;
+  --signal-amber-soft: #f7e8bd;
+  --signal-red: #bf3a2b;
+  --signal-red-dark: #8f2419;
+  --signal-red-soft: #f5d7d1;
+  --shadow-ops: 0 14px 36px rgba(19, 35, 31, 0.1);
+  --shadow-soft: 0 10px 26px rgba(19, 35, 31, 0.07);
 }
 
 @theme inline {
@@ -12,15 +32,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Helvetica, sans-serif;
+}
+
+button,
+a {
+  outline-color: var(--signal-blue);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--signal-amber);
+  color: var(--rail-ink);
 }
