@@ -1,3 +1,5 @@
-export default function Home() {
-  return <h1>Rail Support</h1>;
+import { LoginPage } from "@/core/auth/ui/LoginPage";
+
+export default function LoginRoute() {
+  return <LoginPage />;
 }

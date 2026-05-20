@@ -7,6 +7,7 @@ import {
   Gauge,
   Inbox,
   LineChart,
+  LogOut,
   MessageSquareText,
   Route,
   ShieldCheck,
@@ -14,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ComponentType } from "react";
 import type { DashboardRole } from "@/core/components/navbar";
 
@@ -65,7 +66,16 @@ export function DashboardSidebar({
   stats = [],
 }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const navigationItems = NAVIGATION[dashboardRole];
+  const closeMobileSidebar = () => {
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      onClose?.();
+    }
+  };
+  const handleSignOut = () => {
+    router.push("/login");
+  };
 
   return (
     <>
@@ -129,7 +139,7 @@ export function DashboardSidebar({
                         : "border-transparent text-[var(--text-muted)] hover:border-[var(--rail-border)] hover:bg-[var(--background)] hover:text-[var(--rail-ink)]"
                     }`}
                     href={item.href}
-                    onClick={onClose}
+                    onClick={closeMobileSidebar}
                   >
                     <Icon aria-hidden={true} size={16} />
                     <span>{item.label}</span>
@@ -151,6 +161,17 @@ export function DashboardSidebar({
             ))}
           </div>
         ) : null}
+
+        <div className="mt-auto border-t border-[var(--rail-border)] pt-3">
+          <button
+            className="flex h-11 w-full items-center gap-2 rounded-xl border border-transparent px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-red-soft)] hover:bg-[var(--signal-red-soft)] hover:text-[var(--signal-red-dark)]"
+            onClick={handleSignOut}
+            type="button"
+          >
+            <LogOut aria-hidden="true" size={16} />
+            <span>Sign out</span>
+          </button>
+        </div>
       </aside>
     </>
   );
