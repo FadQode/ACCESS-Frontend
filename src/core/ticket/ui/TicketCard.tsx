@@ -16,8 +16,8 @@ export function TicketCard({ onSelect, selected, ticket }: TicketCardProps) {
       aria-pressed={selected}
       className={`w-full rounded-lg border p-3 text-left transition hover:border-[var(--signal-blue)] ${
         selected
-          ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)]"
-          : "border-[var(--rail-border)] bg-[var(--surface-panel)]"
+          ? "border-(--signal-blue) bg-(--signal-blue-soft)"
+          : "border-(--rail-border) bg-(--surface-panel)"
       }`}
       onClick={onSelect}
       type="button"
