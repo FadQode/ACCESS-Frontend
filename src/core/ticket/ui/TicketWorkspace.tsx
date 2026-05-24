@@ -18,11 +18,9 @@ export function TicketWorkspace() {
     return null;
   }
 
-  const activeTicketCount = workspace.tickets.filter(
-    (ticket) => ticket.status !== "closed",
-  ).length;
+  const activeTicketCount = workspace.openTicketCount;
   const escalatedCount = workspace.tickets.filter(
-    (ticket) => ticket.escalated,
+    (ticket) => ticket.status === "escalated",
   ).length;
 
   return (
@@ -39,7 +37,7 @@ export function TicketWorkspace() {
           ]}
         />
 
-        <section className="relative flex h-[calc(100vh-40px)] min-h-[700px] min-w-0 flex-1 flex-col rounded-[22px] bg-[var(--surface-muted)] p-3 sm:p-5">
+        <section className="relative flex min-h-[700px] min-w-0 flex-1 flex-col rounded-[22px] bg-[var(--surface-muted)] p-3 sm:p-5 xl:h-[calc(100vh-40px)]">
           {navbarVisible ? (
             <DashboardNavbar
               controls={
@@ -69,25 +67,29 @@ export function TicketWorkspace() {
             </button>
           )}
 
-          <section className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-muted)] shadow-[var(--shadow-soft)]">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-muted)] shadow-[var(--shadow-soft)] xl:flex-row">
             <TicketQueue
               filter={workspace.filter}
               onFilterChange={workspace.setFilter}
               onSearchChange={workspace.setSearchQuery}
               onSelectTicket={workspace.setSelectedTicketId}
+              openTicketCount={workspace.openTicketCount}
               searchQuery={workspace.searchQuery}
               selectedTicketId={workspace.selectedTicketId}
               tickets={workspace.tickets}
             />
             <TicketDetail
-              onReplyModeChange={workspace.setReplyMode}
-              onReplyTextChange={workspace.setReplyText}
-              replyMode={workspace.replyMode}
-              replyText={workspace.replyText}
+              hasSentResponse={workspace.hasSentResponse}
+              onEscalate={workspace.escalateTicket}
+              onResolve={workspace.resolveTicket}
+              onResponseDraftChange={workspace.setResponseDraft}
+              onSendResponse={workspace.sendResponse}
+              responseDraft={workspace.responseDraft}
               ticket={workspace.selectedTicket}
             />
             <TicketAssistPanel
               onUseSuggestedResponse={workspace.useSuggestedResponse}
+              suggestionApplied={workspace.suggestionApplied}
               ticket={workspace.selectedTicket}
             />
           </section>

@@ -1,100 +1,84 @@
-import { FileText, Languages, Paperclip, Send } from "lucide-react";
-import type { ComposerMode } from "../model/ticket.types";
+import { CheckCircle2, Send } from "lucide-react";
+import type { ResponseChannel } from "../model/ticket.types";
 
 interface TicketResponseProps {
-  replyMode: ComposerMode;
-  replyText: string;
-  onReplyModeChange: (mode: ComposerMode) => void;
-  onReplyTextChange: (value: string) => void;
+  responseDraft: string;
+  responseChannel: ResponseChannel;
+  hasSentResponse: boolean;
+  onResponseDraftChange: (value: string) => void;
+  onSendResponse: () => void;
 }
 
-const MODES: Array<{ label: string; value: ComposerMode }> = [
-  { label: "Reply", value: "reply" },
-  { label: "Internal note", value: "internal-note" },
-];
-
 export function TicketResponse({
-  onReplyModeChange,
-  onReplyTextChange,
-  replyMode,
-  replyText,
+  hasSentResponse,
+  onResponseDraftChange,
+  onSendResponse,
+  responseChannel,
+  responseDraft,
 }: TicketResponseProps) {
+  const characterCount = responseDraft.length;
+  const canSend = responseDraft.trim().length > 0;
+
   return (
-    <section className="shrink-0 border-t border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3">
-      <div className="mb-2 flex gap-1">
-        {MODES.map((mode) => (
-          <button
-            className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
-              replyMode === mode.value
-                ? "border-[var(--signal-blue)] bg-[var(--signal-blue)] text-white"
-                : "border-[var(--rail-border)] text-[var(--text-muted)] hover:border-[var(--signal-blue)]"
-            }`}
-            key={mode.value}
-            onClick={() => onReplyModeChange(mode.value)}
-            type="button"
+    <section className="p-4">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+            Your response
+          </h3>
+          <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+            This official response will be sent to the customer.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-[11px] font-semibold text-[var(--text-muted)]">
+          Channel
+          <select
+            className="h-8 rounded-md border border-[var(--rail-border)] bg-[var(--background)] px-2 text-[11px] text-[var(--rail-ink)] outline-none focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
+            defaultValue={responseChannel}
           >
-            {mode.label}
-          </button>
-        ))}
+            <option value="email">Email</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="phone">Phone follow-up</option>
+          </select>
+        </label>
       </div>
 
       <textarea
-        className="h-[76px] w-full resize-none rounded-md border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 py-2 text-xs leading-5 text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
-        onChange={(event) => onReplyTextChange(event.target.value)}
-        placeholder={
-          replyMode === "reply"
-            ? "Write your reply to the customer..."
-            : "Add an internal note for the support team..."
-        }
-        value={replyText}
+        className="h-[170px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 py-2 text-sm leading-6 text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
+        onChange={(event) => onResponseDraftChange(event.target.value)}
+        placeholder="Write the official response for this complaint..."
+        value={responseDraft}
       />
 
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          <IconButton label="Attach file">
-            <Paperclip aria-hidden="true" size={16} />
-          </IconButton>
-          <IconButton label="Use template">
-            <FileText aria-hidden="true" size={16} />
-          </IconButton>
-          <IconButton label="Translate">
-            <Languages aria-hidden="true" size={16} />
-          </IconButton>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
+          <span>{characterCount} characters</span>
+          <span aria-hidden="true">.</span>
+          <span>Will be sent via {CHANNEL_LABELS[responseChannel]}</span>
+          {hasSentResponse ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--signal-green-soft)] px-2 py-1 font-semibold text-[var(--signal-green-dark)]">
+              <CheckCircle2 aria-hidden="true" size={12} />
+              Sent
+            </span>
+          ) : null}
         </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            className="h-8 rounded-md border border-[var(--rail-border)] px-3 text-xs font-semibold text-[var(--rail-ink)] transition hover:border-[var(--signal-blue)]"
-            type="button"
-          >
-            Draft
-          </button>
-          <button
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--signal-blue)] bg-[var(--signal-blue)] px-3 text-xs font-semibold text-white transition hover:bg-[#12486b]"
-            type="button"
-          >
-            <Send aria-hidden="true" size={13} />
-            Send
-          </button>
-        </div>
+
+        <button
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-[var(--signal-blue)] bg-[var(--signal-blue)] px-4 text-xs font-semibold text-white transition hover:bg-[#12486b] disabled:cursor-not-allowed disabled:border-[var(--rail-border)] disabled:bg-[var(--surface-muted)] disabled:text-[var(--text-tertiary)]"
+          disabled={!canSend}
+          onClick={onSendResponse}
+          type="button"
+        >
+          <Send aria-hidden="true" size={14} />
+          {hasSentResponse ? "Sent" : "Send response"}
+        </button>
       </div>
     </section>
   );
 }
 
-function IconButton({
-  children,
-  label,
-}: {
-  children: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      aria-label={label}
-      className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--background)] hover:text-[var(--signal-blue)]"
-      type="button"
-    >
-      {children}
-    </button>
-  );
-}
+const CHANNEL_LABELS: Record<ResponseChannel, string> = {
+  email: "email",
+  phone: "phone follow-up",
+  whatsapp: "WhatsApp",
+};

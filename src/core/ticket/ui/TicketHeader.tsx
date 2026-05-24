@@ -61,6 +61,7 @@ const CATEGORY_LABELS: Record<TicketCategory, string> = {
   facility: "Facility",
   refund: "Refund",
   "lost-item": "Lost item",
+  other: "Other",
   "seat-issue": "Seat issue",
 };
 
@@ -71,6 +72,7 @@ function categoryBadgeClass(category: TicketCategory) {
     facility: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
     refund: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
     "lost-item": "bg-[#ede9fe] text-[#5b21b6]",
+    other: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
     "seat-issue": "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
   };
 

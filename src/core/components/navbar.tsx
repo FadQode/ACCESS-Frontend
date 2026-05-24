@@ -67,7 +67,9 @@ export function DashboardNavbar({
   }, [lastScrollY]);
 
   return (
-    <header className={`sticky top-3 z-50 mb-4 flex min-h-14 flex-col gap-3 rounded-[18px] border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3 shadow-lg backdrop-blur-sm transition-transform duration-300 lg:flex-row lg:items-center lg:justify-between ${isVisible ? "translate-y-0" : "-translate-y-[calc(100%+1rem)]"}`}>
+    <header
+      className={`sticky top-3 z-50 mb-4 flex min-h-14 flex-col gap-3 rounded-[18px] border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3 shadow-lg backdrop-blur-sm transition-transform duration-300 lg:flex-row lg:items-center lg:justify-between ${isVisible ? "translate-y-0" : "-translate-y-[calc(100%+1rem)]"}`}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <IconButton
           label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
@@ -135,13 +137,13 @@ function IconButton({
   return (
     <button
       aria-label={label}
-      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-(--rail-border) bg-(--surface-panel) text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
+      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
       onClick={onClick}
       type="button"
     >
       {children}
       {notification ? (
-        <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-(--signal-red)" />
+        <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[var(--signal-red)]" />
       ) : null}
     </button>
   );
