@@ -41,7 +41,11 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
   agent: [
     { href: "/agent", icon: Gauge, label: "Dashboard" },
     { href: "/agent/tickets", icon: Inbox, label: "Tickets" },
-    { href: "/agent/quick-response", icon: MessageSquareText, label: "Quick Response", },
+    {
+      href: "/agent/quick-response",
+      icon: MessageSquareText,
+      label: "Quick Response",
+    },
     { href: "/agent/knowledge", icon: BookOpen, label: "Knowledge" },
     { href: "/agent/reports", icon: BarChart3, label: "Reports" },
   ],

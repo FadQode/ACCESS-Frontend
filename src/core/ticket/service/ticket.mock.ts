@@ -1,142 +1,96 @@
-import type { TicketDetailData } from "../model/ticket.types";
+import type { Ticket } from "../model/ticket.types";
 
-export const mockTickets: TicketDetailData[] = [
+export const mockTickets: Ticket[] = [
   {
-    id: "#0831",
+    id: "ticket-0831",
+    referenceNumber: "ACC-2026-0831",
     customerName: "Siti Nuraini",
-    preview: "Kereta saya delay lebih dari 3 jam dari Surabaya...",
+    customerInitials: "SN",
+    contact: "siti.n@mail.com",
+    channel: "web-form",
     category: "delay",
-    status: "open",
-    priority: "high",
+    status: "new",
+    submittedAt: "17 May 2026, 08:14",
     relativeTime: "2h ago",
-    openedAt: "2h ago",
+    complaintText:
+      "Selamat pagi. Kereta saya hari ini delay lebih dari 3 jam dari Surabaya ke Jakarta. Saya ada meeting penting dan tidak ada pemberitahuan sama sekali. Ini sangat mengecewakan dan merugikan saya. Tolong segera ditangani dan berikan kompensasi yang sesuai.",
     assignedAgent: "Rizky A.",
-    escalated: true,
-    customer: {
-      name: "Siti Nuraini",
-      initials: "SN",
-      contact: "+62 812-3456-7890",
-      channel: "Web chat",
-      pastComplaints: "2 resolved",
-      lastContact: "3 months ago",
-    },
-    messages: [
-      {
-        id: "msg-0831-1",
-        senderType: "customer",
-        senderName: "Siti Nuraini",
-        content:
-          "Selamat pagi. Kereta saya hari ini delay lebih dari 3 jam dari Surabaya ke Jakarta. Saya ada meeting penting dan tidak ada pemberitahuan sama sekali dari KAI. Tolong segera ditangani.",
-        time: "08:14",
-      },
-      {
-        id: "msg-0831-2",
-        senderType: "agent",
-        senderName: "Rizky A.",
-        content:
-          "Selamat pagi Ibu Siti. Saya memahami betapa tidak nyamannya situasi ini. Izinkan saya segera mengecek status kereta Anda dan mencari solusi terbaik untuk Ibu.",
-        time: "08:51",
-      },
-      {
-        id: "msg-0831-3",
-        senderType: "system",
-        content: "Escalated to supervisory team",
-        time: "09:30",
-      },
-      {
-        id: "msg-0831-4",
-        senderType: "customer",
-        senderName: "Siti Nuraini",
-        content:
-          "Sudah hampir 2 jam tidak ada update lagi. Ini sangat mengecewakan. Apakah bisa diproses refund atau dijadwalkan ulang ke kereta berikutnya?",
-        time: "10:03",
-      },
-      {
-        id: "msg-0831-5",
-        senderType: "system",
-        content: "Rizky A. is drafting a reply...",
-        time: "10:08",
-      },
-    ],
-    serviceContext: {
-      reportedIssue: "Train delay >3h",
-      route: "Sby -> Jkt",
-      knownDisruption: "Yes - track maintenance",
-      refundPolicy: "Refund eligible",
-    },
-    suggestedResponse: {
-      title: "Draft - delay + refund",
-      content:
-        "Ibu Siti, kami mohon maaf atas ketidaknyamanan ini. Delay disebabkan oleh pekerjaan perawatan jalur yang tidak terduga. Karena delay melebihi 2 jam, Ibu berhak mengajukan refund penuh. Kami siap memproses ini sekarang atau menawarkan jadwal ulang ke kereta berikutnya.",
+    pastComplaints: "2 resolved",
+    responseChannel: "email",
+    responseDraft: "",
+    suggestedResponse:
+      "Halo Ibu Siti, kami sangat memahami kekecewaan yang dirasakan akibat keterlambatan kereta hari ini, apalagi dengan meeting penting yang sudah direncanakan. Keterlambatan ini disebabkan oleh pekerjaan perawatan jalur yang tidak terduga. Karena delay melebihi 2 jam, Ibu berhak atas refund penuh atau penjadwalan ulang ke kereta berikutnya. Silakan balas email ini untuk memilih opsi yang diinginkan.",
+    sopContext: {
+      title: "SOP - delay handling",
+      issue: "Delay > 3h",
+      disruptionKnown: "Yes - track maintenance",
+      eligibility: "Refund / reschedule",
+      policyNote:
+        "Delay above 2 hours is eligible for refund review or next-train reschedule.",
     },
     activityLog: [
       {
-        id: "act-0831-1",
-        label: "Escalated to supervisor",
-        time: "09:30",
-        actor: "Rizky A.",
-        tone: "danger",
+        id: "act-0831-3",
+        label: "Assigned to Rizky A.",
+        time: "08:16",
+        actor: "System",
+        tone: "primary",
       },
       {
         id: "act-0831-2",
-        label: "First reply sent",
-        time: "08:51",
+        label: "Priority marked high from delay duration",
+        time: "08:15",
+        actor: "System",
+        tone: "warning",
+      },
+      {
+        id: "act-0831-1",
+        label: "Ticket created from web form",
+        time: "08:14",
+        actor: "System",
+        tone: "muted",
+      },
+    ],
+  },
+  {
+    id: "ticket-0829",
+    referenceNumber: "ACC-2026-0829",
+    customerName: "Budi Santoso",
+    customerInitials: "BS",
+    contact: "budi.santoso@mail.com",
+    channel: "web-form",
+    category: "refund",
+    status: "open",
+    submittedAt: "17 May 2026, 06:22",
+    relativeTime: "4h ago",
+    complaintText:
+      "Saya ingin mengajukan refund untuk tiket yang sudah saya bayar, tetapi jadwal keberangkatan berubah dan tidak cocok dengan agenda saya.",
+    assignedAgent: "Rizky A.",
+    pastComplaints: "1 resolved",
+    responseChannel: "email",
+    responseDraft:
+      "Halo Pak Budi, kami sedang memeriksa detail tiket dan perubahan jadwal pada pemesanan Bapak.",
+    suggestedResponse:
+      "Halo Pak Budi, kami akan bantu cek kelayakan refund berdasarkan perubahan jadwal pada tiket Bapak. Mohon tunggu sebentar sementara kami validasi detail pemesanan dan opsi pengembalian dana yang tersedia.",
+    sopContext: {
+      title: "SOP - refund review",
+      issue: "Schedule changed by operator",
+      disruptionKnown: "Schedule adjustment confirmed",
+      eligibility: "Partial or full refund review",
+      policyNote:
+        "Refund amount depends on departure time, ticket class, and cancellation window.",
+    },
+    activityLog: [
+      {
+        id: "act-0829-2",
+        label: "Agent started refund review",
+        time: "06:48",
         actor: "Rizky A.",
         tone: "primary",
       },
       {
-        id: "act-0831-3",
-        label: "Ticket opened, assigned",
-        time: "08:14",
-        actor: "System",
-        tone: "muted",
-      },
-    ],
-  },
-  {
-    id: "#0829",
-    customerName: "Budi Santoso",
-    preview: "Saya ingin mengajukan refund untuk tiket yang sudah...",
-    category: "refund",
-    status: "new",
-    priority: "medium",
-    relativeTime: "4h ago",
-    openedAt: "4h ago",
-    assignedAgent: "Rizky A.",
-    escalated: false,
-    customer: {
-      name: "Budi Santoso",
-      initials: "BS",
-      contact: "+62 813-2211-4900",
-      channel: "Mobile app",
-      pastComplaints: "1 resolved",
-      lastContact: "6 weeks ago",
-    },
-    messages: [
-      {
-        id: "msg-0829-1",
-        senderType: "customer",
-        senderName: "Budi Santoso",
-        content:
-          "Saya ingin mengajukan refund untuk tiket yang sudah saya bayar, tetapi jadwal keberangkatan berubah dan tidak cocok dengan agenda saya.",
-        time: "06:22",
-      },
-    ],
-    serviceContext: {
-      reportedIssue: "Refund request",
-      route: "Bdg -> Slo",
-      knownDisruption: "Schedule adjustment",
-      refundPolicy: "Partial refund review",
-    },
-    suggestedResponse: {
-      title: "Draft - refund review",
-      content:
-        "Pak Budi, kami akan bantu cek kelayakan refund berdasarkan perubahan jadwal pada tiket Bapak. Mohon tunggu sebentar sementara kami validasi detail pemesanan dan opsi pengembalian dana yang tersedia.",
-    },
-    activityLog: [
-      {
         id: "act-0829-1",
-        label: "Ticket opened",
+        label: "Ticket created from web form",
         time: "06:22",
         actor: "System",
         tone: "muted",
@@ -144,49 +98,36 @@ export const mockTickets: TicketDetailData[] = [
     ],
   },
   {
-    id: "#0827",
+    id: "ticket-0827",
+    referenceNumber: "ACC-2026-0827",
     customerName: "Dewi Rahayu",
-    preview: "Saya ingin membatalkan karena ada keperluan mendadak...",
+    customerInitials: "DR",
+    contact: "+62 817-6500-1120",
+    channel: "quick-response",
     category: "cancellation",
     status: "new",
-    priority: "medium",
+    submittedAt: "17 May 2026, 09:42",
     relativeTime: "30m ago",
-    openedAt: "30m ago",
+    complaintText:
+      "Saya ingin membatalkan tiket karena ada keperluan mendadak. Apakah pembatalan masih bisa diproses hari ini?",
     assignedAgent: "Rizky A.",
-    escalated: false,
-    customer: {
-      name: "Dewi Rahayu",
-      initials: "DR",
-      contact: "+62 817-6500-1120",
-      channel: "Web chat",
-      pastComplaints: "No history",
-      lastContact: "First contact",
-    },
-    messages: [
-      {
-        id: "msg-0827-1",
-        senderType: "customer",
-        senderName: "Dewi Rahayu",
-        content:
-          "Saya ingin membatalkan karena ada keperluan mendadak. Apakah masih bisa diproses hari ini?",
-        time: "09:42",
-      },
-    ],
-    serviceContext: {
-      reportedIssue: "Cancellation request",
-      route: "Jkt -> Yk",
-      knownDisruption: "No active disruption",
-      refundPolicy: "Admin fee applies",
-    },
-    suggestedResponse: {
-      title: "Draft - cancellation",
-      content:
-        "Ibu Dewi, pembatalan masih dapat kami bantu proses sesuai ketentuan tiket. Kami akan cek batas waktu pembatalan dan estimasi dana yang dapat dikembalikan sebelum Ibu mengonfirmasi.",
+    pastComplaints: "No history",
+    responseChannel: "whatsapp",
+    responseDraft: "",
+    suggestedResponse:
+      "Halo Ibu Dewi, pembatalan masih dapat kami bantu proses sesuai ketentuan tiket. Kami akan cek batas waktu pembatalan dan estimasi dana yang dapat dikembalikan sebelum Ibu mengonfirmasi.",
+    sopContext: {
+      title: "SOP - cancellation",
+      issue: "Customer-initiated cancellation",
+      disruptionKnown: "No active disruption",
+      eligibility: "Cancellation with admin fee",
+      policyNote:
+        "Confirm refund estimate before finalizing cancellation request.",
     },
     activityLog: [
       {
         id: "act-0827-1",
-        label: "Ticket opened",
+        label: "Ticket created from quick response form",
         time: "09:42",
         actor: "System",
         tone: "muted",
@@ -194,64 +135,44 @@ export const mockTickets: TicketDetailData[] = [
     ],
   },
   {
-    id: "#0825",
+    id: "ticket-0825",
+    referenceNumber: "ACC-2026-0825",
     customerName: "Ahmad Fauzi",
-    preview: "Barang bawaan tertinggal di kereta eksekutif tujuan...",
+    customerInitials: "AF",
+    contact: "+62 811-9007-2440",
+    channel: "manual",
     category: "lost-item",
     status: "open",
-    priority: "low",
+    submittedAt: "17 May 2026, 09:05",
     relativeTime: "1h ago",
-    openedAt: "1h ago",
+    complaintText:
+      "Barang bawaan saya tertinggal di kereta eksekutif tujuan Semarang. Tas berwarna hitam dan ada dokumen kerja di dalamnya.",
     assignedAgent: "Rizky A.",
-    escalated: false,
-    customer: {
-      name: "Ahmad Fauzi",
-      initials: "AF",
-      contact: "+62 811-9007-2440",
-      channel: "Call center",
-      pastComplaints: "No history",
-      lastContact: "1h ago",
-    },
-    messages: [
-      {
-        id: "msg-0825-1",
-        senderType: "customer",
-        senderName: "Ahmad Fauzi",
-        content:
-          "Barang bawaan tertinggal di kereta eksekutif tujuan Semarang. Tas berwarna hitam ada dokumen kerja di dalamnya.",
-        time: "09:05",
-      },
-      {
-        id: "msg-0825-2",
-        senderType: "agent",
-        senderName: "Rizky A.",
-        content:
-          "Pak Ahmad, kami akan bantu koordinasikan dengan petugas stasiun tujuan. Mohon informasikan nomor kursi dan gerbong.",
-        time: "09:18",
-      },
-    ],
-    serviceContext: {
-      reportedIssue: "Lost item",
-      route: "Jkt -> Smg",
-      knownDisruption: "No active disruption",
-      refundPolicy: "Lost item SOP active",
-    },
-    suggestedResponse: {
-      title: "Draft - lost item",
-      content:
-        "Pak Ahmad, laporan barang tertinggal sudah kami teruskan ke tim stasiun tujuan. Mohon kirimkan nomor kursi, gerbong, dan ciri detail tas agar pencarian dapat diprioritaskan.",
+    pastComplaints: "No history",
+    responseChannel: "phone",
+    responseDraft:
+      "Pak Ahmad, kami akan bantu koordinasikan dengan petugas stasiun tujuan.",
+    suggestedResponse:
+      "Pak Ahmad, laporan barang tertinggal sudah kami teruskan ke tim stasiun tujuan. Mohon kirimkan nomor kursi, gerbong, dan ciri detail tas agar pencarian dapat diprioritaskan.",
+    sopContext: {
+      title: "SOP - lost item",
+      issue: "Passenger item left onboard",
+      disruptionKnown: "No service disruption",
+      eligibility: "Station follow-up required",
+      policyNote:
+        "Collect seat, coach number, item photo, and destination station before follow-up.",
     },
     activityLog: [
       {
-        id: "act-0825-1",
-        label: "Agent requested seat details",
+        id: "act-0825-2",
+        label: "Seat details requested",
         time: "09:18",
         actor: "Rizky A.",
         tone: "primary",
       },
       {
-        id: "act-0825-2",
-        label: "Ticket opened",
+        id: "act-0825-1",
+        label: "Ticket created manually from call",
         time: "09:05",
         actor: "System",
         tone: "muted",
@@ -259,105 +180,95 @@ export const mockTickets: TicketDetailData[] = [
     ],
   },
   {
-    id: "#0822",
+    id: "ticket-0822",
+    referenceNumber: "ACC-2026-0822",
     customerName: "Rina Marlina",
-    preview: "Kursi yang saya pesan tidak sesuai dengan nomor tiket...",
+    customerInitials: "RM",
+    contact: "rina.marlina@mail.com",
+    channel: "email",
     category: "seat-issue",
-    status: "closed",
-    priority: "low",
+    status: "resolved",
+    submittedAt: "17 May 2026, 07:10",
     relativeTime: "3h ago",
-    openedAt: "3h ago",
+    complaintText:
+      "Kursi yang saya pesan tidak sesuai dengan nomor tiket. Petugas sudah membantu pindah, tetapi saya ingin memastikan catatan tiketnya benar.",
     assignedAgent: "Rizky A.",
-    escalated: false,
-    customer: {
-      name: "Rina Marlina",
-      initials: "RM",
-      contact: "+62 812-1000-7766",
-      channel: "Station desk",
-      pastComplaints: "1 resolved",
-      lastContact: "Today",
-    },
-    messages: [
-      {
-        id: "msg-0822-1",
-        senderType: "customer",
-        senderName: "Rina Marlina",
-        content:
-          "Kursi yang saya pesan tidak sesuai dengan nomor tiket. Petugas sudah membantu pindah, tetapi saya ingin memastikan catatan tiketnya benar.",
-        time: "07:10",
-      },
-      {
-        id: "msg-0822-2",
-        senderType: "system",
-        content: "Ticket resolved at station desk",
-        time: "07:40",
-      },
-    ],
-    serviceContext: {
-      reportedIssue: "Seat mismatch",
-      route: "Bgr -> Cn",
-      knownDisruption: "Coach reseating",
-      refundPolicy: "No refund needed",
-    },
-    suggestedResponse: {
-      title: "Draft - seat issue",
-      content:
-        "Ibu Rina, catatan penyesuaian kursi sudah tersimpan pada tiket Ibu. Terima kasih sudah melaporkan agar data perjalanan tetap akurat.",
+    pastComplaints: "1 resolved",
+    responseChannel: "email",
+    responseDraft:
+      "Ibu Rina, catatan penyesuaian kursi sudah tersimpan pada tiket Ibu. Terima kasih sudah melaporkan agar data perjalanan tetap akurat.",
+    suggestedResponse:
+      "Ibu Rina, catatan penyesuaian kursi sudah tersimpan pada tiket Ibu. Terima kasih sudah melaporkan agar data perjalanan tetap akurat.",
+    sopContext: {
+      title: "SOP - seat issue",
+      issue: "Seat mismatch",
+      disruptionKnown: "Coach reseating",
+      eligibility: "No refund required",
+      policyNote:
+        "Confirm corrected seat record and close if passenger was reseated successfully.",
     },
     activityLog: [
       {
-        id: "act-0822-1",
-        label: "Resolved at station desk",
+        id: "act-0822-3",
+        label: "Ticket resolved",
         time: "07:40",
-        actor: "Station staff",
+        actor: "Rizky A.",
+        tone: "success",
+      },
+      {
+        id: "act-0822-2",
+        label: "Response sent",
+        time: "07:36",
+        actor: "Rizky A.",
         tone: "primary",
+      },
+      {
+        id: "act-0822-1",
+        label: "Ticket created from email",
+        time: "07:10",
+        actor: "System",
+        tone: "muted",
       },
     ],
   },
   {
-    id: "#0819",
+    id: "ticket-0819",
+    referenceNumber: "ACC-2026-0819",
     customerName: "Hendra Putra",
-    preview: "AC gerbong tidak berfungsi selama perjalanan dari Malang...",
+    customerInitials: "HP",
+    contact: "hendra.p@mail.com",
+    channel: "web-form",
     category: "facility",
-    status: "open",
-    priority: "low",
+    status: "escalated",
+    submittedAt: "17 May 2026, 05:31",
     relativeTime: "5h ago",
-    openedAt: "5h ago",
+    complaintText:
+      "AC gerbong tidak berfungsi selama perjalanan dari Malang. Penumpang lain juga mengeluh karena sangat panas.",
     assignedAgent: "Rizky A.",
-    escalated: false,
-    customer: {
-      name: "Hendra Putra",
-      initials: "HP",
-      contact: "+62 821-7755-1200",
-      channel: "Email",
-      pastComplaints: "3 resolved",
-      lastContact: "2 months ago",
-    },
-    messages: [
-      {
-        id: "msg-0819-1",
-        senderType: "customer",
-        senderName: "Hendra Putra",
-        content:
-          "AC gerbong tidak berfungsi selama perjalanan dari Malang. Penumpang lain juga mengeluh karena sangat panas.",
-        time: "05:31",
-      },
-    ],
-    serviceContext: {
-      reportedIssue: "Facility complaint",
-      route: "Mlg -> Sby",
-      knownDisruption: "Coach AC maintenance needed",
-      refundPolicy: "Service recovery voucher",
-    },
-    suggestedResponse: {
-      title: "Draft - facility complaint",
-      content:
-        "Pak Hendra, kami mohon maaf atas kondisi AC gerbong yang tidak nyaman. Laporan ini akan diteruskan ke tim sarana, dan kami akan cek opsi kompensasi layanan yang tersedia.",
+    pastComplaints: "3 resolved",
+    responseChannel: "email",
+    responseDraft: "",
+    suggestedResponse:
+      "Pak Hendra, kami mohon maaf atas kondisi AC gerbong yang tidak nyaman. Laporan ini sudah diteruskan ke tim sarana, dan kami akan mengabari Bapak setelah ada hasil pengecekan unit gerbong terkait.",
+    sopContext: {
+      title: "SOP - facility complaint",
+      issue: "Coach AC failure",
+      disruptionKnown: "Maintenance follow-up required",
+      eligibility: "Service recovery voucher review",
+      policyNote:
+        "Escalate to operations if complaint involves multiple passengers or safety risk.",
     },
     activityLog: [
       {
+        id: "act-0819-2",
+        label: "Escalated to operations",
+        time: "05:47",
+        actor: "Rizky A.",
+        tone: "danger",
+      },
+      {
         id: "act-0819-1",
-        label: "Ticket opened",
+        label: "Ticket created from web form",
         time: "05:31",
         actor: "System",
         tone: "muted",

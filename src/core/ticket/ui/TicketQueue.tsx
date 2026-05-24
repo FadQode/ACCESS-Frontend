@@ -1,11 +1,12 @@
 import { Search } from "lucide-react";
-import type { TicketDetailData, TicketFilter } from "../model/ticket.types";
+import type { Ticket, TicketFilter } from "../model/ticket.types";
 import { TicketCard } from "./TicketCard";
 
 interface TicketQueueProps {
-  tickets: TicketDetailData[];
+  tickets: Ticket[];
   selectedTicketId: string;
   filter: TicketFilter;
+  openTicketCount: number;
   searchQuery: string;
   onFilterChange: (filter: TicketFilter) => void;
   onSearchChange: (value: string) => void;
@@ -16,7 +17,8 @@ const FILTERS: Array<{ label: string; value: TicketFilter }> = [
   { label: "All", value: "all" },
   { label: "New", value: "new" },
   { label: "Open", value: "open" },
-  { label: "Closed", value: "closed" },
+  { label: "Resolved", value: "resolved" },
+  { label: "Escalated", value: "escalated" },
 ];
 
 export function TicketQueue({
@@ -24,23 +26,25 @@ export function TicketQueue({
   onFilterChange,
   onSearchChange,
   onSelectTicket,
+  openTicketCount,
   searchQuery,
   selectedTicketId,
   tickets,
 }: TicketQueueProps) {
-  const openTicketCount = tickets.filter(
-    (ticket) => ticket.status !== "closed",
-  ).length;
-
   return (
-    <aside className="flex min-h-0 w-[264px] shrink-0 flex-col overflow-hidden border-r border-[var(--rail-border)] bg-[var(--surface-panel)]">
+    <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[var(--rail-border)] bg-[var(--surface-panel)] xl:w-[280px] xl:border-b-0 xl:border-r">
       <div className="border-b border-[var(--rail-border)] p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
-            Tickets
-          </h2>
-          <span className="text-[11px] text-[var(--text-muted)]">
-            {openTicketCount} open
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
+              Tickets
+            </h2>
+            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+              Complaint review queue
+            </p>
+          </div>
+          <span className="rounded-full bg-[var(--signal-blue-soft)] px-2 py-1 text-[11px] font-semibold text-[var(--signal-blue)]">
+            {openTicketCount} active
           </span>
         </div>
 
@@ -54,7 +58,7 @@ export function TicketQueue({
           <input
             className="h-8 w-full rounded-md border border-[var(--rail-border)] bg-[var(--background)] pl-8 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search..."
+            placeholder="Search name, ref, issue..."
             type="search"
             value={searchQuery}
           />
@@ -90,7 +94,7 @@ export function TicketQueue({
           ))
         ) : (
           <p className="rounded-lg border border-dashed border-[var(--rail-border)] p-3 text-xs leading-5 text-[var(--text-muted)]">
-            No tickets match this search.
+            No complaints match this search.
           </p>
         )}
       </div>
