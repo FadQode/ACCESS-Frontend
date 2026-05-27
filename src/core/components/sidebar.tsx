@@ -154,17 +154,6 @@ export function DashboardSidebar({
           </ul>
         </nav>
 
-        {stats.length > 0 ? (
-          <div className="mt-6 grid grid-cols-1 gap-2">
-            {stats.map((stat) => (
-              <SidebarStat
-                key={stat.label}
-                label={stat.label}
-                value={stat.value}
-              />
-            ))}
-          </div>
-        ) : null}
 
         <div className="mt-auto border-t border-[var(--rail-border)] pt-3">
           <button
