@@ -30,9 +30,21 @@ interface ComplaintInsight {
   recommendedAction: string;
 }
 
+type ResponseStepKey = "hear" | "empathize" | "apologise" | "takeAction";
+
+interface ResponseOption {
+  id: string;
+  text: string;
+}
+
+type ResponseBuilderOptions = Record<ResponseStepKey, ResponseOption[]>;
+
+type SelectedResponseOptions = Record<ResponseStepKey, string>;
+
 interface HardcodedResponse {
   insight: ComplaintInsight;
   responseDraft: string;
+  builderOptions: ResponseBuilderOptions;
 }
 
 const emptyInsight: ComplaintInsight = {
@@ -92,6 +104,64 @@ const delayResponse: HardcodedResponse = {
   },
   responseDraft:
     "Halo Kak, kami memahami kekecewaan Kakak atas keterlambatan perjalanan dan kurangnya informasi yang diterima. Mohon maaf atas ketidaknyamanan ini. Agar kami dapat membantu pengecekan lebih lanjut dan memberikan opsi penanganan yang sesuai, silakan kirim detail kode booking atau nomor tiket melalui DM. Tim kami akan bantu tindak lanjuti.",
+  builderOptions: {
+    hear: [
+      {
+        id: "hear-delay-1",
+        text: "Kami menerima keluhan Kakak terkait keterlambatan perjalanan.",
+      },
+      {
+        id: "hear-delay-2",
+        text: "Kami memahami bahwa perjalanan Kakak mengalami keterlambatan yang cukup lama.",
+      },
+      {
+        id: "hear-delay-3",
+        text: "Terima kasih sudah menyampaikan kendala perjalanan ini kepada kami.",
+      },
+    ],
+    empathize: [
+      {
+        id: "empathy-delay-1",
+        text: "Kami mengerti situasi ini sangat mengganggu, apalagi jika Kakak memiliki agenda penting.",
+      },
+      {
+        id: "empathy-delay-2",
+        text: "Kami paham pengalaman ini membuat Kakak kecewa dan merasa dirugikan.",
+      },
+      {
+        id: "empathy-delay-3",
+        text: "Kami memahami bahwa kurangnya informasi selama menunggu dapat membuat situasi terasa semakin tidak nyaman.",
+      },
+    ],
+    apologise: [
+      {
+        id: "apology-delay-1",
+        text: "Mohon maaf atas ketidaknyamanan yang terjadi.",
+      },
+      {
+        id: "apology-delay-2",
+        text: "Kami meminta maaf atas keterlambatan dan kurangnya informasi yang Kakak terima.",
+      },
+      {
+        id: "apology-delay-3",
+        text: "Maaf atas pengalaman perjalanan yang tidak sesuai harapan ini.",
+      },
+    ],
+    takeAction: [
+      {
+        id: "action-delay-1",
+        text: "Silakan kirim nomor booking melalui DM agar tim kami dapat membantu pengecekan lebih lanjut.",
+      },
+      {
+        id: "action-delay-2",
+        text: "Tim kami akan meninjau laporan ini dan membantu memberikan opsi penanganan yang sesuai.",
+      },
+      {
+        id: "action-delay-3",
+        text: "Untuk keterlambatan lebih dari 2 jam, Kakak dapat mengajukan refund atau penjadwalan ulang sesuai ketentuan.",
+      },
+    ],
+  },
 };
 
 const refundResponse: HardcodedResponse = {
@@ -107,6 +177,64 @@ const refundResponse: HardcodedResponse = {
   },
   responseDraft:
     "Halo Kak, kami memahami kekhawatiran Kakak karena proses refund belum diterima setelah menunggu cukup lama. Mohon maaf atas ketidaknyamanan ini. Agar dapat kami cek statusnya secara spesifik, silakan kirim nomor booking dan tanggal pengajuan refund melalui DM. Kami akan bantu tindak lanjuti ke tim terkait.",
+  builderOptions: {
+    hear: [
+      {
+        id: "hear-refund-1",
+        text: "Kami menerima keluhan Kakak terkait proses refund yang belum diterima.",
+      },
+      {
+        id: "hear-refund-2",
+        text: "Terima kasih sudah menghubungi kami mengenai status pengembalian dana Kakak.",
+      },
+      {
+        id: "hear-refund-3",
+        text: "Kami memahami bahwa Kakak ingin mendapatkan kejelasan terkait proses refund.",
+      },
+    ],
+    empathize: [
+      {
+        id: "empathy-refund-1",
+        text: "Kami paham menunggu refund tanpa kepastian bisa membuat Kakak khawatir.",
+      },
+      {
+        id: "empathy-refund-2",
+        text: "Kami mengerti bahwa keterlambatan pengembalian dana dapat terasa sangat merugikan.",
+      },
+      {
+        id: "empathy-refund-3",
+        text: "Kami memahami rasa tidak nyaman karena Kakak sudah menunggu cukup lama.",
+      },
+    ],
+    apologise: [
+      {
+        id: "apology-refund-1",
+        text: "Mohon maaf atas ketidaknyamanan dalam proses refund ini.",
+      },
+      {
+        id: "apology-refund-2",
+        text: "Kami meminta maaf jika proses pengembalian dana belum berjalan sesuai harapan.",
+      },
+      {
+        id: "apology-refund-3",
+        text: "Maaf atas keterlambatan dan kurangnya kejelasan yang Kakak alami.",
+      },
+    ],
+    takeAction: [
+      {
+        id: "action-refund-1",
+        text: "Silakan kirim nomor booking dan tanggal pengajuan refund melalui DM agar tim kami dapat mengecek statusnya.",
+      },
+      {
+        id: "action-refund-2",
+        text: "Kami akan bantu teruskan laporan ini ke tim terkait untuk pengecekan lebih lanjut.",
+      },
+      {
+        id: "action-refund-3",
+        text: "Tim kami akan memeriksa status refund dan memberikan pembaruan melalui kanal bantuan resmi.",
+      },
+    ],
+  },
 };
 
 const loginResponse: HardcodedResponse = {
@@ -122,6 +250,64 @@ const loginResponse: HardcodedResponse = {
   },
   responseDraft:
     "Halo Kak, mohon maaf atas kendala login yang dialami. Silakan coba tutup aplikasi sepenuhnya, bersihkan cache, lalu masuk kembali. Jika masih belum berhasil, mohon hubungi kanal bantuan resmi kami dengan menyertakan detail perangkat dan email akun agar tim kami dapat melakukan pengecekan lebih lanjut.",
+  builderOptions: {
+    hear: [
+      {
+        id: "hear-login-1",
+        text: "Kami menerima keluhan Kakak terkait kendala login pada aplikasi.",
+      },
+      {
+        id: "hear-login-2",
+        text: "Terima kasih sudah melaporkan kendala yang terjadi setelah pembaruan aplikasi.",
+      },
+      {
+        id: "hear-login-3",
+        text: "Kami memahami bahwa Kakak mengalami kesulitan untuk masuk ke aplikasi.",
+      },
+    ],
+    empathize: [
+      {
+        id: "empathy-login-1",
+        text: "Kami paham kendala login bisa sangat mengganggu, terutama saat Kakak perlu mengakses layanan dengan cepat.",
+      },
+      {
+        id: "empathy-login-2",
+        text: "Kami mengerti situasi ini membuat Kakak tidak nyaman karena aplikasi belum dapat digunakan seperti biasa.",
+      },
+      {
+        id: "empathy-login-3",
+        text: "Kami memahami rasa frustrasi ketika sudah mencoba beberapa langkah tetapi kendala masih terjadi.",
+      },
+    ],
+    apologise: [
+      {
+        id: "apology-login-1",
+        text: "Mohon maaf atas kendala yang Kakak alami.",
+      },
+      {
+        id: "apology-login-2",
+        text: "Kami meminta maaf atas ketidaknyamanan setelah pembaruan aplikasi.",
+      },
+      {
+        id: "apology-login-3",
+        text: "Maaf karena pengalaman menggunakan aplikasi belum berjalan lancar.",
+      },
+    ],
+    takeAction: [
+      {
+        id: "action-login-1",
+        text: "Silakan coba tutup aplikasi sepenuhnya, bersihkan cache, lalu masuk kembali.",
+      },
+      {
+        id: "action-login-2",
+        text: "Jika masih belum berhasil, mohon hubungi kanal bantuan resmi dengan menyertakan detail perangkat dan email akun.",
+      },
+      {
+        id: "action-login-3",
+        text: "Tim kami akan membantu pengecekan lebih lanjut jika Kakak mengirimkan detail kendala melalui kanal bantuan resmi.",
+      },
+    ],
+  },
 };
 
 const genericResponse: HardcodedResponse = {
@@ -137,6 +323,64 @@ const genericResponse: HardcodedResponse = {
   },
   responseDraft:
     "Halo Kak, terima kasih sudah menyampaikan keluhan ini. Kami memahami bahwa pengalaman tersebut tidak sesuai harapan dan mohon maaf atas ketidaknyamanan yang terjadi. Agar kami dapat membantu lebih lanjut, silakan kirim detail kendala melalui DM atau kanal bantuan resmi kami. Tim kami akan bantu menindaklanjuti secepatnya.",
+  builderOptions: {
+    hear: [
+      {
+        id: "hear-generic-1",
+        text: "Terima kasih sudah menyampaikan keluhan ini kepada kami.",
+      },
+      {
+        id: "hear-generic-2",
+        text: "Kami menerima laporan Kakak dan akan meninjau kendala yang disampaikan.",
+      },
+      {
+        id: "hear-generic-3",
+        text: "Kami memahami bahwa Kakak mengalami kendala pada layanan kami.",
+      },
+    ],
+    empathize: [
+      {
+        id: "empathy-generic-1",
+        text: "Kami memahami bahwa pengalaman ini tidak sesuai dengan harapan Kakak.",
+      },
+      {
+        id: "empathy-generic-2",
+        text: "Kami paham situasi seperti ini dapat membuat Kakak merasa tidak nyaman.",
+      },
+      {
+        id: "empathy-generic-3",
+        text: "Kami mengerti keluhan ini penting untuk segera ditindaklanjuti.",
+      },
+    ],
+    apologise: [
+      {
+        id: "apology-generic-1",
+        text: "Mohon maaf atas ketidaknyamanan yang terjadi.",
+      },
+      {
+        id: "apology-generic-2",
+        text: "Kami meminta maaf atas pengalaman yang belum sesuai harapan.",
+      },
+      {
+        id: "apology-generic-3",
+        text: "Maaf atas kendala yang Kakak alami.",
+      },
+    ],
+    takeAction: [
+      {
+        id: "action-generic-1",
+        text: "Silakan kirim detail lebih lanjut melalui DM atau kanal bantuan resmi agar tim kami dapat membantu pengecekan.",
+      },
+      {
+        id: "action-generic-2",
+        text: "Tim kami akan meninjau laporan ini dan membantu memberikan tindak lanjut yang sesuai.",
+      },
+      {
+        id: "action-generic-3",
+        text: "Kami akan bantu arahkan laporan ini ke tim terkait untuk pengecekan lebih lanjut.",
+      },
+    ],
+  },
 };
 
 export function QuickResponse() {
@@ -155,6 +399,15 @@ export function QuickResponse() {
   const [copied, setCopied] = useState(false);
   const [savedTicketId, setSavedTicketId] = useState<string | null>(null);
   const [insight, setInsight] = useState<ComplaintInsight>(emptyInsight);
+  const [responseOptions, setResponseOptions] =
+    useState<ResponseBuilderOptions | null>(null);
+  const [selectedResponseOptions, setSelectedResponseOptions] =
+    useState<SelectedResponseOptions>({
+      hear: "",
+      empathize: "",
+      apologise: "",
+      takeAction: "",
+    });
 
   const isReviewSource = source === "google-play" || source === "app-store";
   const canGenerate = complaintText.trim().length > 0;
@@ -189,8 +442,13 @@ export function QuickResponse() {
       const result = getHardcodedResponse(complaintText);
 
       setInsight(result.insight);
+      setResponseOptions(result.builderOptions);
+      
+      const defaultSelected = getDefaultSelectedOptions(result.builderOptions);
+      setSelectedResponseOptions(defaultSelected);
+      
       setResponseDraft(
-        adaptDraftForTarget(result.responseDraft, responseTarget),
+        buildResponseDraft(result.builderOptions, defaultSelected),
       );
       setIsGenerating(false);
       setIsGenerated(true);
@@ -198,7 +456,7 @@ export function QuickResponse() {
   };
 
   const handleRegenerate = () => {
-    if (!responseDraft) {
+    if (!responseOptions) {
       return;
     }
 
@@ -207,20 +465,10 @@ export function QuickResponse() {
     setCopied(false);
 
     window.setTimeout(() => {
-      setResponseDraft((previous) => {
-        if (tone === "concise") {
-          return "Halo Kak, mohon maaf atas kendala yang dialami. Silakan kirim detail keluhan melalui DM atau kanal bantuan resmi agar tim kami dapat membantu pengecekan lebih lanjut.";
-        }
-
-        if (tone === "friendly") {
-          return `${previous}\n\nTerima kasih sudah bersabar ya, Kak. Kami akan bantu semaksimal mungkin.`;
-        }
-
-        return `${previous}\n\nTerima kasih atas kesabaran dan pengertian Kakak.`;
-      });
-
+      const defaultSelected = getDefaultSelectedOptions(responseOptions);
+      setSelectedResponseOptions(defaultSelected);
+      setResponseDraft(buildResponseDraft(responseOptions, defaultSelected));
       setIsGenerating(false);
-      setIsGenerated(true);
     }, 500);
   };
 
@@ -261,6 +509,28 @@ export function QuickResponse() {
     setCopied(false);
     setSavedTicketId(null);
     setInsight(emptyInsight);
+    setResponseOptions(null);
+    setSelectedResponseOptions({
+      hear: "",
+      empathize: "",
+      apologise: "",
+      takeAction: "",
+    });
+  };
+
+  const handleSelectResponseOption = (
+    step: ResponseStepKey,
+    optionId: string,
+  ) => {
+    if (!responseOptions) return;
+
+    const nextSelected = {
+      ...selectedResponseOptions,
+      [step]: optionId,
+    };
+
+    setSelectedResponseOptions(nextSelected);
+    setResponseDraft(buildResponseDraft(responseOptions, nextSelected));
   };
 
   return (
@@ -561,9 +831,52 @@ export function QuickResponse() {
                       </p>
                     </section>
 
+                    {responseOptions ? (
+                      <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4">
+                        <div className="mb-3">
+                          <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+                            Response builder
+                          </h3>
+                          <p className="mt-1 text-xs text-[var(--text-muted)]">
+                            Pick one sentence for each step. The response draft will update automatically.
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          <ResponseBuilderStep
+                            label="Hear"
+                            description="Recognise what the customer is complaining about."
+                            options={responseOptions.hear}
+                            selectedId={selectedResponseOptions.hear}
+                            onSelect={(id) => handleSelectResponseOption("hear", id)}
+                          />
+                          <ResponseBuilderStep
+                            label="Empathize"
+                            description="Show that the situation is understood."
+                            options={responseOptions.empathize}
+                            selectedId={selectedResponseOptions.empathize}
+                            onSelect={(id) => handleSelectResponseOption("empathize", id)}
+                          />
+                          <ResponseBuilderStep
+                            label="Apologise"
+                            description="Say sorry clearly without over-explaining."
+                            options={responseOptions.apologise}
+                            selectedId={selectedResponseOptions.apologise}
+                            onSelect={(id) => handleSelectResponseOption("apologise", id)}
+                          />
+                          <ResponseBuilderStep
+                            label="Take action"
+                            description="Tell the customer what they can do next."
+                            options={responseOptions.takeAction}
+                            selectedId={selectedResponseOptions.takeAction}
+                            onSelect={(id) => handleSelectResponseOption("takeAction", id)}
+                          />
+                        </div>
+                      </section>
+                    ) : null}
+
                     <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4">
                       <h3 className="mb-3 text-sm font-semibold text-[var(--rail-ink)]">
-                        Draf respons
+                        Final response
                       </h3>
                       <textarea
                         className="min-h-[220px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 py-3 text-sm leading-6 text-[var(--rail-ink)] outline-none transition focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
@@ -787,6 +1100,79 @@ function ActionButton({
       <span>{label}</span>
     </button>
   );
+}
+
+function ResponseBuilderStep({
+  label,
+  description,
+  options,
+  selectedId,
+  onSelect,
+}: {
+  label: string;
+  description: string;
+  options: ResponseOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <h4 className="text-xs font-semibold text-[var(--rail-ink)]">
+          {label}
+        </h4>
+        <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+          {description}
+        </p>
+      </div>
+      <div className="space-y-2">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onSelect(option.id)}
+            className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm leading-6 transition ${
+              selectedId === option.id
+                ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--rail-ink)] shadow-sm"
+                : "border-[var(--rail-border)] bg-[var(--background)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
+            }`}
+          >
+            {option.text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getDefaultSelectedOptions(
+  options: ResponseBuilderOptions,
+): SelectedResponseOptions {
+  return {
+    hear: options.hear[0]?.id ?? "",
+    empathize: options.empathize[0]?.id ?? "",
+    apologise: options.apologise[0]?.id ?? "",
+    takeAction: options.takeAction[0]?.id ?? "",
+  };
+}
+
+function buildResponseDraft(
+  options: ResponseBuilderOptions,
+  selected: SelectedResponseOptions,
+) {
+  const steps: ResponseStepKey[] = [
+    "hear",
+    "empathize",
+    "apologise",
+    "takeAction",
+  ];
+
+  return steps
+    .map((step) => {
+      return options[step].find((option) => option.id === selected[step])?.text;
+    })
+    .filter(Boolean)
+    .join(" ");
 }
 
 function inputClassName(extraClassName = "") {
