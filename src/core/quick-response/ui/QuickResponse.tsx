@@ -1,425 +1,487 @@
 "use client";
 
 import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Check,
   CheckCircle2,
-  ClipboardList,
+  ClipboardCheck,
   Copy,
   ExternalLink,
+  FileText,
+  Flag,
+  Headphones,
   Link2,
-  Loader2,
+  Lock,
   MessageSquareText,
   RefreshCcw,
-  Save,
-  Send,
+  ShieldCheck,
   Sparkles,
   Star,
-  Trash2,
+  TicketCheck,
   UserRound,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 
-interface ComplaintInsight {
-  topic: string;
-  sentiment: string;
-  urgency: string;
-  reputationRisk: string;
-  recommendedChannel: string;
-  requiresFollowUp: string;
-  recommendedAction: string;
+type StepId = 1 | 2 | 3 | 4;
+type ResponseTarget =
+  | "public-reply"
+  | "direct-message"
+  | "app-review"
+  | "internal-note";
+type Tone = "formal" | "friendly" | "concise";
+type OutcomeId = "resolved" | "ticket" | "escalated";
+type CompletionState = "resolved" | "ticket-created" | "manager-escalated";
+type BuilderKey = "hear" | "empathize" | "apologize" | "takeAction";
+
+interface Option {
+  value: string;
+  label: string;
 }
 
-type ResponseStepKey = "hear" | "empathize" | "apologise" | "takeAction";
-
-interface ResponseOption {
+interface SentenceOption {
   id: string;
   text: string;
 }
 
-type ResponseBuilderOptions = Record<ResponseStepKey, ResponseOption[]>;
-
-type SelectedResponseOptions = Record<ResponseStepKey, string>;
-
-interface HardcodedResponse {
-  insight: ComplaintInsight;
-  responseDraft: string;
-  builderOptions: ResponseBuilderOptions;
+interface BuilderOptions {
+  hear: SentenceOption[];
+  empathize: SentenceOption[];
+  apologize: SentenceOption[];
+  takeAction: SentenceOption[];
 }
 
-const emptyInsight: ComplaintInsight = {
-  topic: "",
-  sentiment: "",
-  urgency: "",
-  reputationRisk: "",
-  recommendedChannel: "",
-  requiresFollowUp: "",
-  recommendedAction: "",
-};
+interface Scenario {
+  key: string;
+  label: string;
+  insight: string;
+  managerApprovalRequired: boolean;
+  similarCase: {
+    title: string;
+    detail: string;
+  };
+  references: ReferenceItem[];
+  builderOptions: BuilderOptions;
+}
 
-const sourceOptions = [
-  { value: "twitter", label: "X / Twitter" },
+interface ReferenceItem {
+  title: string;
+  meta: string;
+  linkLabel: string;
+  tone: "green" | "amber" | "blue";
+}
+
+const sourceOptions: Option[] = [
+  { value: "twitter", label: "Twitter / X" },
   { value: "instagram", label: "Instagram" },
   { value: "facebook", label: "Facebook" },
   { value: "google-play", label: "Google Play" },
   { value: "app-store", label: "App Store" },
-  { value: "other", label: "Lainnya" },
+  { value: "other", label: "Other" },
 ];
 
-const serviceContextOptions = [
-  { value: "train-ticket", label: "Tiket kereta" },
-  { value: "refund", label: "Refund" },
-  { value: "cancellation", label: "Pembatalan" },
-  { value: "reschedule", label: "Jadwal ulang" },
-  { value: "app-login", label: "Aplikasi / login" },
-  { value: "payment", label: "Pembayaran" },
-  { value: "travel-facility", label: "Fasilitas perjalanan" },
-  { value: "lost-item", label: "Barang tertinggal" },
-  { value: "other", label: "Lainnya" },
+const targetOptions: { value: ResponseTarget; label: string }[] = [
+  { value: "public-reply", label: "Public reply" },
+  { value: "direct-message", label: "DM / private message" },
+  { value: "app-review", label: "App review" },
+  { value: "internal-note", label: "Internal note" },
 ];
 
-const toneOptions = [
+const toneOptions: { value: Tone; label: string }[] = [
   { value: "formal", label: "Formal" },
-  { value: "friendly", label: "Ramah" },
-  { value: "concise", label: "Ringkas" },
+  { value: "friendly", label: "Friendly" },
+  { value: "concise", label: "Concise" },
 ];
 
-const responseTargetOptions = [
-  { value: "public-reply", label: "Balasan publik" },
-  { value: "direct-message", label: "Pesan pribadi / DM" },
-  { value: "app-review", label: "Ulasan aplikasi" },
-  { value: "internal-note", label: "Catatan internal" },
+const defaultComplaint =
+  "Kereta saya delay lebih dari 3 jam dari Surabaya ke Jakarta. Saya ada meeting penting dan tidak ada pemberitahuan sama sekali. Ini sangat mengecewakan!";
+
+const genericOptions: BuilderOptions = {
+  hear: [
+    {
+      id: "hear-generic-1",
+      text: "Terima kasih sudah menyampaikan keluhan ini kepada kami.",
+    },
+    {
+      id: "hear-generic-2",
+      text: "Kami menerima laporan Kakak dan akan meninjau kendala yang disampaikan.",
+    },
+    {
+      id: "hear-generic-3",
+      text: "Kami memahami bahwa Kakak mengalami kendala pada layanan kami.",
+    },
+  ],
+  empathize: [
+    {
+      id: "empathize-generic-1",
+      text: "Kami memahami bahwa pengalaman ini tidak sesuai dengan harapan Kakak.",
+    },
+    {
+      id: "empathize-generic-2",
+      text: "Kami paham situasi seperti ini dapat membuat Kakak merasa tidak nyaman.",
+    },
+    {
+      id: "empathize-generic-3",
+      text: "Kami mengerti keluhan ini penting untuk segera ditindaklanjuti.",
+    },
+  ],
+  apologize: [
+    {
+      id: "apologize-generic-1",
+      text: "Mohon maaf atas ketidaknyamanan yang terjadi.",
+    },
+    {
+      id: "apologize-generic-2",
+      text: "Kami meminta maaf atas pengalaman yang belum sesuai harapan.",
+    },
+    {
+      id: "apologize-generic-3",
+      text: "Maaf atas kendala yang Kakak alami hari ini.",
+    },
+  ],
+  takeAction: [
+    {
+      id: "action-generic-1",
+      text: "Tim kami akan meninjau laporan ini dan memberikan tindak lanjut sesuai kebijakan yang berlaku.",
+    },
+    {
+      id: "action-generic-2",
+      text: "Kami akan bantu arahkan laporan ini ke tim terkait untuk pengecekan lebih lanjut.",
+    },
+    {
+      id: "action-generic-3",
+      text: "Silakan kirim detail melalui DM agar tim kami dapat membantu pengecekan lebih lanjut.",
+    },
+  ],
+};
+
+const scenarios: Record<string, Scenario> = {
+  delay: {
+    key: "delay",
+    label: "Long delay / no notification",
+    insight:
+      "Likely operational complaint. Public reply should acknowledge the issue without confirming compensation.",
+    managerApprovalRequired: true,
+    similarCase: {
+      title: "Similar complaint resolved - March 2026, Surabaya-Jakarta",
+      detail:
+        "Full refund approved after operations review. Resolved in 2 days.",
+    },
+    references: [
+      {
+        title: "SOP - delay handling v2.1",
+        meta: "Delay above 120 minutes may qualify for refund or reschedule after manager approval.",
+        linkLabel: "View SOP",
+        tone: "green",
+      },
+      {
+        title: "Past resolution - Sby-Jkt delay, Mar 2026",
+        meta: "Same route. Full refund approved by manager after incident confirmation.",
+        linkLabel: "View ticket #0712",
+        tone: "amber",
+      },
+      {
+        title: "Refund policy v3.2 - Section 4.2",
+        meta: "Refund or reschedule decision must be verified before customer confirmation.",
+        linkLabel: "View policy",
+        tone: "blue",
+      },
+    ],
+    builderOptions: {
+      ...genericOptions,
+      hear: [
+        {
+          id: "hear-delay-1",
+          text: "Kami menerima keluhan Kakak terkait keterlambatan perjalanan.",
+        },
+        {
+          id: "hear-delay-2",
+          text: "Terima kasih sudah menyampaikan kendala perjalanan ini kepada kami.",
+        },
+        {
+          id: "hear-delay-3",
+          text: "Kami memahami bahwa perjalanan Kakak mengalami keterlambatan yang cukup lama.",
+        },
+      ],
+      takeAction: [
+        {
+          id: "action-delay-safe",
+          text: "Berdasarkan kebijakan keterlambatan, kasus seperti ini perlu kami teruskan ke tim terkait untuk pengecekan dan persetujuan lebih lanjut.",
+        },
+        {
+          id: "action-delay-team",
+          text: "Kami akan bantu arahkan laporan ini ke tim operasional agar dapat ditinjau sesuai ketentuan yang berlaku.",
+        },
+        {
+          id: "action-delay-dm",
+          text: "Silakan lanjutkan melalui DM agar tim kami dapat membantu pengecekan tanpa membuka data pribadi di ruang publik.",
+        },
+      ],
+    },
+  },
+  refund: {
+    key: "refund",
+    label: "Refund follow-up",
+    insight:
+      "Refund complaints need internal status checking. Use safe acknowledgement and create a ticket.",
+    managerApprovalRequired: true,
+    similarCase: {
+      title: "Similar refund batch - April 2026",
+      detail:
+        "Resolved after finance team confirmed gateway settlement status.",
+    },
+    references: [
+      {
+        title: "Refund policy v3.2",
+        meta: "Refund status must be verified before sharing a timeline.",
+        linkLabel: "View policy",
+        tone: "blue",
+      },
+      {
+        title: "Payment settlement SOP",
+        meta: "Gateway issues require finance team confirmation.",
+        linkLabel: "View SOP",
+        tone: "amber",
+      },
+    ],
+    builderOptions: {
+      ...genericOptions,
+      hear: [
+        {
+          id: "hear-refund-1",
+          text: "Kami menerima keluhan Kakak terkait proses refund yang belum diterima.",
+        },
+        {
+          id: "hear-refund-2",
+          text: "Terima kasih sudah menghubungi kami mengenai status pengembalian dana Kakak.",
+        },
+        {
+          id: "hear-refund-3",
+          text: "Kami memahami bahwa Kakak membutuhkan kejelasan terkait proses refund.",
+        },
+      ],
+      takeAction: [
+        {
+          id: "action-refund-safe",
+          text: "Kami akan teruskan laporan ini ke tim terkait untuk pengecekan status refund dan tindak lanjut sesuai ketentuan.",
+        },
+        {
+          id: "action-refund-dm",
+          text: "Silakan lanjutkan melalui DM agar data pengajuan dapat dicek dengan aman oleh tim kami.",
+        },
+        {
+          id: "action-refund-support",
+          text: "Tim kami akan membantu pengecekan melalui kanal bantuan resmi tanpa meminta data pribadi di ruang publik.",
+        },
+      ],
+    },
+  },
+  app: {
+    key: "app",
+    label: "Application access issue",
+    insight:
+      "Likely resolvable with safe troubleshooting steps unless the customer reports payment or booking loss.",
+    managerApprovalRequired: false,
+    similarCase: {
+      title: "Similar app login issue - May 2026",
+      detail:
+        "Resolved with cache refresh, app update, and official support contact.",
+    },
+    references: [
+      {
+        title: "App troubleshooting SOP",
+        meta: "Use safe steps first; route persistent account issues to support.",
+        linkLabel: "View SOP",
+        tone: "green",
+      },
+    ],
+    builderOptions: {
+      ...genericOptions,
+      hear: [
+        {
+          id: "hear-app-1",
+          text: "Kami menerima keluhan Kakak terkait kendala pada aplikasi.",
+        },
+        {
+          id: "hear-app-2",
+          text: "Terima kasih sudah melaporkan kendala akses aplikasi ini.",
+        },
+        {
+          id: "hear-app-3",
+          text: "Kami memahami bahwa Kakak mengalami kesulitan menggunakan layanan aplikasi.",
+        },
+      ],
+      takeAction: [
+        {
+          id: "action-app-safe",
+          text: "Silakan coba tutup aplikasi sepenuhnya, bersihkan cache, lalu masuk kembali.",
+        },
+        {
+          id: "action-app-support",
+          text: "Jika masih belum berhasil, mohon hubungi kanal bantuan resmi dengan menyertakan detail perangkat dan akun.",
+        },
+        {
+          id: "action-app-team",
+          text: "Tim kami akan membantu pengecekan lebih lanjut jika kendala masih terjadi setelah langkah awal dicoba.",
+        },
+      ],
+    },
+  },
+};
+
+const genericScenario: Scenario = {
+  key: "generic",
+  label: "External customer complaint",
+  insight:
+    "General complaint. Acknowledge safely and avoid requesting sensitive data publicly.",
+  managerApprovalRequired: false,
+  similarCase: {
+    title: "Similar complaint pattern found",
+    detail:
+      "Use safe acknowledgement and move private details to official support.",
+  },
+  references: [
+    {
+      title: "External response safety guide",
+      meta: "Do not ask for private data in public replies.",
+      linkLabel: "View guide",
+      tone: "blue",
+    },
+  ],
+  builderOptions: genericOptions,
+};
+
+const builderSections: {
+  key: BuilderKey;
+  label: string;
+  description: string;
+}[] = [
+  {
+    key: "hear",
+    label: "Hear",
+    description: "Recognise what the customer is complaining about.",
+  },
+  {
+    key: "empathize",
+    label: "Empathize",
+    description: "Show that the situation is understood.",
+  },
+  {
+    key: "apologize",
+    label: "Apologize",
+    description: "Say sorry clearly without over-explaining.",
+  },
+  {
+    key: "takeAction",
+    label: "Take Action",
+    description: "Use safe customer-facing next steps only.",
+  },
 ];
-
-const delayResponse: HardcodedResponse = {
-  insight: {
-    topic: "Keterlambatan perjalanan",
-    sentiment: "Frustrasi",
-    urgency: "Tinggi",
-    reputationRisk: "Sedang",
-    recommendedChannel: "Balas publik, lalu arahkan ke DM",
-    requiresFollowUp: "Ya",
-    recommendedAction:
-      "Balas secara publik untuk menunjukkan respons cepat, lalu arahkan pelanggan ke DM agar detail tiket dapat dicek tanpa membuka data pribadi.",
-  },
-  responseDraft:
-    "Halo Kak, kami memahami kekecewaan Kakak atas keterlambatan perjalanan dan kurangnya informasi yang diterima. Mohon maaf atas ketidaknyamanan ini. Agar kami dapat membantu pengecekan lebih lanjut dan memberikan opsi penanganan yang sesuai, silakan kirim detail kode booking atau nomor tiket melalui DM. Tim kami akan bantu tindak lanjuti.",
-  builderOptions: {
-    hear: [
-      {
-        id: "hear-delay-1",
-        text: "Kami menerima keluhan Kakak terkait keterlambatan perjalanan.",
-      },
-      {
-        id: "hear-delay-2",
-        text: "Kami memahami bahwa perjalanan Kakak mengalami keterlambatan yang cukup lama.",
-      },
-      {
-        id: "hear-delay-3",
-        text: "Terima kasih sudah menyampaikan kendala perjalanan ini kepada kami.",
-      },
-    ],
-    empathize: [
-      {
-        id: "empathy-delay-1",
-        text: "Kami mengerti situasi ini sangat mengganggu, apalagi jika Kakak memiliki agenda penting.",
-      },
-      {
-        id: "empathy-delay-2",
-        text: "Kami paham pengalaman ini membuat Kakak kecewa dan merasa dirugikan.",
-      },
-      {
-        id: "empathy-delay-3",
-        text: "Kami memahami bahwa kurangnya informasi selama menunggu dapat membuat situasi terasa semakin tidak nyaman.",
-      },
-    ],
-    apologise: [
-      {
-        id: "apology-delay-1",
-        text: "Mohon maaf atas ketidaknyamanan yang terjadi.",
-      },
-      {
-        id: "apology-delay-2",
-        text: "Kami meminta maaf atas keterlambatan dan kurangnya informasi yang Kakak terima.",
-      },
-      {
-        id: "apology-delay-3",
-        text: "Maaf atas pengalaman perjalanan yang tidak sesuai harapan ini.",
-      },
-    ],
-    takeAction: [
-      {
-        id: "action-delay-1",
-        text: "Silakan kirim nomor booking melalui DM agar tim kami dapat membantu pengecekan lebih lanjut.",
-      },
-      {
-        id: "action-delay-2",
-        text: "Tim kami akan meninjau laporan ini dan membantu memberikan opsi penanganan yang sesuai.",
-      },
-      {
-        id: "action-delay-3",
-        text: "Untuk keterlambatan lebih dari 2 jam, Kakak dapat mengajukan refund atau penjadwalan ulang sesuai ketentuan.",
-      },
-    ],
-  },
-};
-
-const refundResponse: HardcodedResponse = {
-  insight: {
-    topic: "Refund belum diterima",
-    sentiment: "Tidak puas",
-    urgency: "Tinggi",
-    reputationRisk: "Sedang",
-    recommendedChannel: "Arahkan ke DM untuk pengecekan data",
-    requiresFollowUp: "Ya",
-    recommendedAction:
-      "Simpan keluhan sebagai tiket karena pelanggan membutuhkan pengecekan status refund dan kemungkinan eskalasi ke tim terkait.",
-  },
-  responseDraft:
-    "Halo Kak, kami memahami kekhawatiran Kakak karena proses refund belum diterima setelah menunggu cukup lama. Mohon maaf atas ketidaknyamanan ini. Agar dapat kami cek statusnya secara spesifik, silakan kirim nomor booking dan tanggal pengajuan refund melalui DM. Kami akan bantu tindak lanjuti ke tim terkait.",
-  builderOptions: {
-    hear: [
-      {
-        id: "hear-refund-1",
-        text: "Kami menerima keluhan Kakak terkait proses refund yang belum diterima.",
-      },
-      {
-        id: "hear-refund-2",
-        text: "Terima kasih sudah menghubungi kami mengenai status pengembalian dana Kakak.",
-      },
-      {
-        id: "hear-refund-3",
-        text: "Kami memahami bahwa Kakak ingin mendapatkan kejelasan terkait proses refund.",
-      },
-    ],
-    empathize: [
-      {
-        id: "empathy-refund-1",
-        text: "Kami paham menunggu refund tanpa kepastian bisa membuat Kakak khawatir.",
-      },
-      {
-        id: "empathy-refund-2",
-        text: "Kami mengerti bahwa keterlambatan pengembalian dana dapat terasa sangat merugikan.",
-      },
-      {
-        id: "empathy-refund-3",
-        text: "Kami memahami rasa tidak nyaman karena Kakak sudah menunggu cukup lama.",
-      },
-    ],
-    apologise: [
-      {
-        id: "apology-refund-1",
-        text: "Mohon maaf atas ketidaknyamanan dalam proses refund ini.",
-      },
-      {
-        id: "apology-refund-2",
-        text: "Kami meminta maaf jika proses pengembalian dana belum berjalan sesuai harapan.",
-      },
-      {
-        id: "apology-refund-3",
-        text: "Maaf atas keterlambatan dan kurangnya kejelasan yang Kakak alami.",
-      },
-    ],
-    takeAction: [
-      {
-        id: "action-refund-1",
-        text: "Silakan kirim nomor booking dan tanggal pengajuan refund melalui DM agar tim kami dapat mengecek statusnya.",
-      },
-      {
-        id: "action-refund-2",
-        text: "Kami akan bantu teruskan laporan ini ke tim terkait untuk pengecekan lebih lanjut.",
-      },
-      {
-        id: "action-refund-3",
-        text: "Tim kami akan memeriksa status refund dan memberikan pembaruan melalui kanal bantuan resmi.",
-      },
-    ],
-  },
-};
-
-const loginResponse: HardcodedResponse = {
-  insight: {
-    topic: "Kendala login aplikasi",
-    sentiment: "Bingung / kecewa",
-    urgency: "Sedang",
-    reputationRisk: "Rendah",
-    recommendedChannel: "Berikan langkah awal dan arahkan ke bantuan teknis",
-    requiresFollowUp: "Mungkin",
-    recommendedAction:
-      "Berikan langkah awal yang aman untuk dicoba pelanggan, lalu arahkan ke kanal bantuan resmi jika kendala masih terjadi.",
-  },
-  responseDraft:
-    "Halo Kak, mohon maaf atas kendala login yang dialami. Silakan coba tutup aplikasi sepenuhnya, bersihkan cache, lalu masuk kembali. Jika masih belum berhasil, mohon hubungi kanal bantuan resmi kami dengan menyertakan detail perangkat dan email akun agar tim kami dapat melakukan pengecekan lebih lanjut.",
-  builderOptions: {
-    hear: [
-      {
-        id: "hear-login-1",
-        text: "Kami menerima keluhan Kakak terkait kendala login pada aplikasi.",
-      },
-      {
-        id: "hear-login-2",
-        text: "Terima kasih sudah melaporkan kendala yang terjadi setelah pembaruan aplikasi.",
-      },
-      {
-        id: "hear-login-3",
-        text: "Kami memahami bahwa Kakak mengalami kesulitan untuk masuk ke aplikasi.",
-      },
-    ],
-    empathize: [
-      {
-        id: "empathy-login-1",
-        text: "Kami paham kendala login bisa sangat mengganggu, terutama saat Kakak perlu mengakses layanan dengan cepat.",
-      },
-      {
-        id: "empathy-login-2",
-        text: "Kami mengerti situasi ini membuat Kakak tidak nyaman karena aplikasi belum dapat digunakan seperti biasa.",
-      },
-      {
-        id: "empathy-login-3",
-        text: "Kami memahami rasa frustrasi ketika sudah mencoba beberapa langkah tetapi kendala masih terjadi.",
-      },
-    ],
-    apologise: [
-      {
-        id: "apology-login-1",
-        text: "Mohon maaf atas kendala yang Kakak alami.",
-      },
-      {
-        id: "apology-login-2",
-        text: "Kami meminta maaf atas ketidaknyamanan setelah pembaruan aplikasi.",
-      },
-      {
-        id: "apology-login-3",
-        text: "Maaf karena pengalaman menggunakan aplikasi belum berjalan lancar.",
-      },
-    ],
-    takeAction: [
-      {
-        id: "action-login-1",
-        text: "Silakan coba tutup aplikasi sepenuhnya, bersihkan cache, lalu masuk kembali.",
-      },
-      {
-        id: "action-login-2",
-        text: "Jika masih belum berhasil, mohon hubungi kanal bantuan resmi dengan menyertakan detail perangkat dan email akun.",
-      },
-      {
-        id: "action-login-3",
-        text: "Tim kami akan membantu pengecekan lebih lanjut jika Kakak mengirimkan detail kendala melalui kanal bantuan resmi.",
-      },
-    ],
-  },
-};
-
-const genericResponse: HardcodedResponse = {
-  insight: {
-    topic: "Keluhan pelanggan",
-    sentiment: "Perlu ditinjau",
-    urgency: "Sedang",
-    reputationRisk: "Sedang",
-    recommendedChannel: "Tanggapi dengan sopan dan arahkan ke kanal bantuan",
-    requiresFollowUp: "Mungkin",
-    recommendedAction:
-      "Berikan respons awal yang menunjukkan bahwa keluhan telah diterima, lalu minta pelanggan melanjutkan ke kanal bantuan resmi agar tim dapat menindaklanjuti.",
-  },
-  responseDraft:
-    "Halo Kak, terima kasih sudah menyampaikan keluhan ini. Kami memahami bahwa pengalaman tersebut tidak sesuai harapan dan mohon maaf atas ketidaknyamanan yang terjadi. Agar kami dapat membantu lebih lanjut, silakan kirim detail kendala melalui DM atau kanal bantuan resmi kami. Tim kami akan bantu menindaklanjuti secepatnya.",
-  builderOptions: {
-    hear: [
-      {
-        id: "hear-generic-1",
-        text: "Terima kasih sudah menyampaikan keluhan ini kepada kami.",
-      },
-      {
-        id: "hear-generic-2",
-        text: "Kami menerima laporan Kakak dan akan meninjau kendala yang disampaikan.",
-      },
-      {
-        id: "hear-generic-3",
-        text: "Kami memahami bahwa Kakak mengalami kendala pada layanan kami.",
-      },
-    ],
-    empathize: [
-      {
-        id: "empathy-generic-1",
-        text: "Kami memahami bahwa pengalaman ini tidak sesuai dengan harapan Kakak.",
-      },
-      {
-        id: "empathy-generic-2",
-        text: "Kami paham situasi seperti ini dapat membuat Kakak merasa tidak nyaman.",
-      },
-      {
-        id: "empathy-generic-3",
-        text: "Kami mengerti keluhan ini penting untuk segera ditindaklanjuti.",
-      },
-    ],
-    apologise: [
-      {
-        id: "apology-generic-1",
-        text: "Mohon maaf atas ketidaknyamanan yang terjadi.",
-      },
-      {
-        id: "apology-generic-2",
-        text: "Kami meminta maaf atas pengalaman yang belum sesuai harapan.",
-      },
-      {
-        id: "apology-generic-3",
-        text: "Maaf atas kendala yang Kakak alami.",
-      },
-    ],
-    takeAction: [
-      {
-        id: "action-generic-1",
-        text: "Silakan kirim detail lebih lanjut melalui DM atau kanal bantuan resmi agar tim kami dapat membantu pengecekan.",
-      },
-      {
-        id: "action-generic-2",
-        text: "Tim kami akan meninjau laporan ini dan membantu memberikan tindak lanjut yang sesuai.",
-      },
-      {
-        id: "action-generic-3",
-        text: "Kami akan bantu arahkan laporan ini ke tim terkait untuk pengecekan lebih lanjut.",
-      },
-    ],
-  },
-};
 
 export function QuickResponse() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentStep, setCurrentStep] = useState<StepId>(1);
   const [source, setSource] = useState("twitter");
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState("@sitinuraini");
   const [externalUrl, setExternalUrl] = useState("");
   const [rating, setRating] = useState("1");
-  const [complaintText, setComplaintText] = useState("");
-  const [serviceContext, setServiceContext] = useState("train-ticket");
-  const [tone, setTone] = useState("formal");
-  const [responseTarget, setResponseTarget] = useState("public-reply");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isGenerated, setIsGenerated] = useState(false);
-  const [responseDraft, setResponseDraft] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [savedTicketId, setSavedTicketId] = useState<string | null>(null);
-  const [insight, setInsight] = useState<ComplaintInsight>(emptyInsight);
-  const [responseOptions, setResponseOptions] =
-    useState<ResponseBuilderOptions | null>(null);
-  const [selectedResponseOptions, setSelectedResponseOptions] =
-    useState<SelectedResponseOptions>({
-      hear: "",
-      empathize: "",
-      apologise: "",
-      takeAction: "",
-    });
+  const [complaintText, setComplaintText] = useState(defaultComplaint);
+  const [responseTarget, setResponseTarget] =
+    useState<ResponseTarget>("public-reply");
+  const [tone, setTone] = useState<Tone>("formal");
+  const [inputExpanded, setInputExpanded] = useState(true);
+  const [inputDirty, setInputDirty] = useState(false);
+  const [isBuildingResponse, setIsBuildingResponse] = useState(false);
+  const [selectedHear, setSelectedHear] = useState("hear-delay-1");
+  const [selectedEmpathize, setSelectedEmpathize] = useState(
+    "empathize-generic-1",
+  );
+  const [selectedApologize, setSelectedApologize] = useState(
+    "apologize-generic-1",
+  );
+  const [selectedTakeAction, setSelectedTakeAction] =
+    useState("action-delay-safe");
+  const [finalResponse, setFinalResponse] = useState(() =>
+    buildResponseDraft(scenarios.delay.builderOptions, {
+      hear: "hear-delay-1",
+      empathize: "empathize-generic-1",
+      apologize: "apologize-generic-1",
+      takeAction: "action-delay-safe",
+    }),
+  );
+  const [safeReply, setSafeReply] = useState(() =>
+    buildSafeReply(scenarios.delay.builderOptions, {
+      hear: "hear-delay-1",
+      empathize: "empathize-generic-1",
+      apologize: "apologize-generic-1",
+    }),
+  );
+  const [managerApprovalRequired, setManagerApprovalRequired] = useState(true);
+  const [selectedOutcome, setSelectedOutcome] = useState<OutcomeId | null>(
+    null,
+  );
+  const [completionState, setCompletionState] =
+    useState<CompletionState | null>(null);
+  const [copiedLabel, setCopiedLabel] = useState("");
+  const [recordId, setRecordId] = useState("QR-2026-0831");
+  const [ticketId, setTicketId] = useState("EXT-2026-0832");
+  const [activeScenario, setActiveScenario] = useState<Scenario>(
+    scenarios.delay,
+  );
 
+  const sourceLabel = labelFor(sourceOptions, source);
+  const targetLabel = labelFor(targetOptions, responseTarget);
+  const toneLabel = labelFor(toneOptions, tone);
   const isReviewSource = source === "google-play" || source === "app-store";
   const canGenerate = complaintText.trim().length > 0;
-  const activeSourceLabel = useMemo(() => {
-    return (
-      sourceOptions.find((option) => option.value === source)?.label ??
-      "Kanal eksternal"
-    );
-  }, [source]);
+  const flowLocked = inputDirty;
+
+  const selectedMap = useMemo(
+    () => ({
+      hear: selectedHear,
+      empathize: selectedEmpathize,
+      apologize: selectedApologize,
+      takeAction: selectedTakeAction,
+    }),
+    [selectedApologize, selectedEmpathize, selectedHear, selectedTakeAction],
+  );
+
+  const outcomeOptions = useMemo(
+    () => [
+      {
+        id: "resolved" as const,
+        title: "Copy and Resolve",
+        description:
+          "Copy the full response and close this external complaint internally.",
+        recommended: !managerApprovalRequired,
+        icon: <CheckCircle2 aria-hidden="true" size={18} />,
+      },
+      {
+        id: "ticket" as const,
+        title: "Copy Safe Reply + Create Ticket",
+        description:
+          "Copy a safe reply now, then create a ticket for unresolved follow-up.",
+        recommended: managerApprovalRequired,
+        icon: <TicketCheck aria-hidden="true" size={18} />,
+      },
+      {
+        id: "escalated" as const,
+        title: "Escalate to Manager",
+        description:
+          "Create a ticket and send the full case directly to manager review.",
+        recommended: false,
+        icon: <Flag aria-hidden="true" size={18} />,
+      },
+    ],
+    [managerApprovalRequired],
+  );
 
   const handleSourceChange = (nextSource: string) => {
     setSource(nextSource);
+    markInputDirty();
 
     if (nextSource === "google-play" || nextSource === "app-store") {
       setResponseTarget("app-review");
@@ -428,109 +490,126 @@ export function QuickResponse() {
     }
   };
 
+  const markInputDirty = () => {
+    if (currentStep > 1) {
+      setInputDirty(true);
+      setCompletionState(null);
+    }
+  };
+
   const handleGenerate = () => {
-    if (!complaintText.trim()) {
+    if (!canGenerate) {
       return;
     }
 
-    setIsGenerating(true);
-    setIsGenerated(false);
-    setSavedTicketId(null);
-    setCopied(false);
+    setInputDirty(false);
+    setInputExpanded(false);
+    setCompletionState(null);
+    setCopiedLabel("");
+    setCurrentStep(2);
+    setIsBuildingResponse(true);
 
     window.setTimeout(() => {
-      const result = getHardcodedResponse(complaintText);
+      const scenario = getScenario(complaintText);
+      const defaults = getDefaultSelections(scenario.builderOptions);
+      const nextDraft = buildResponseDraft(scenario.builderOptions, defaults);
+      const nextSafeReply = buildSafeReply(scenario.builderOptions, defaults);
 
-      setInsight(result.insight);
-      setResponseOptions(result.builderOptions);
-      
-      const defaultSelected = getDefaultSelectedOptions(result.builderOptions);
-      setSelectedResponseOptions(defaultSelected);
-      
-      setResponseDraft(
-        buildResponseDraft(result.builderOptions, defaultSelected),
-      );
-      setIsGenerating(false);
-      setIsGenerated(true);
-    }, 700);
+      setActiveScenario(scenario);
+      setManagerApprovalRequired(scenario.managerApprovalRequired);
+      setSelectedHear(defaults.hear);
+      setSelectedEmpathize(defaults.empathize);
+      setSelectedApologize(defaults.apologize);
+      setSelectedTakeAction(defaults.takeAction);
+      setFinalResponse(applyTone(nextDraft, tone));
+      setSafeReply(applyTone(nextSafeReply, tone));
+      setIsBuildingResponse(false);
+    }, 850);
   };
 
-  const handleRegenerate = () => {
-    if (!responseOptions) {
+  const handleSelectSentence = (key: BuilderKey, optionId: string) => {
+    const nextSelected = {
+      ...selectedMap,
+      [key]: optionId,
+    };
+
+    if (key === "hear") {
+      setSelectedHear(optionId);
+    }
+    if (key === "empathize") {
+      setSelectedEmpathize(optionId);
+    }
+    if (key === "apologize") {
+      setSelectedApologize(optionId);
+    }
+    if (key === "takeAction") {
+      setSelectedTakeAction(optionId);
+    }
+
+    const nextDraft = buildResponseDraft(
+      activeScenario.builderOptions,
+      nextSelected,
+    );
+    const nextSafeReply = buildSafeReply(
+      activeScenario.builderOptions,
+      nextSelected,
+    );
+
+    setFinalResponse(applyTone(nextDraft, tone));
+    setSafeReply(applyTone(nextSafeReply, tone));
+    setCompletionState(null);
+  };
+
+  const handleToneChange = (nextTone: Tone) => {
+    setTone(nextTone);
+    markInputDirty();
+  };
+
+  const handleCopyReview = async () => {
+    await copyText(finalResponse);
+    setCopiedLabel("Response copied");
+  };
+
+  const handleOutcome = async (outcome: OutcomeId) => {
+    setSelectedOutcome(outcome);
+    setCopiedLabel("");
+
+    if (outcome === "resolved") {
+      await copyText(finalResponse);
+      setRecordId(`QR-2026-${randomId()}`);
+      setCompletionState("resolved");
       return;
     }
 
-    setIsGenerating(true);
-    setSavedTicketId(null);
-    setCopied(false);
-
-    window.setTimeout(() => {
-      const defaultSelected = getDefaultSelectedOptions(responseOptions);
-      setSelectedResponseOptions(defaultSelected);
-      setResponseDraft(buildResponseDraft(responseOptions, defaultSelected));
-      setIsGenerating(false);
-    }, 500);
-  };
-
-  const handleCopy = async () => {
-    if (!responseDraft) {
+    if (outcome === "ticket") {
+      await copyText(safeReply);
+      setTicketId(`EXT-2026-${randomId()}`);
+      setCompletionState("ticket-created");
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(responseDraft);
-      setCopied(true);
-
-      window.setTimeout(() => {
-        setCopied(false);
-      }, 1500);
-    } catch {
-      setCopied(false);
-    }
+    setTicketId(`EXT-2026-${randomId()}`);
+    setCompletionState("manager-escalated");
   };
 
-  const handleSaveAsTicket = () => {
-    const ticketId = `EXT-${Math.floor(1000 + Math.random() * 9000)}`;
-    setSavedTicketId(ticketId);
-  };
-
-  const handleClear = () => {
+  const handleReset = () => {
+    setCurrentStep(1);
     setSource("twitter");
     setUsername("");
     setExternalUrl("");
     setRating("1");
     setComplaintText("");
-    setServiceContext("train-ticket");
-    setTone("formal");
     setResponseTarget("public-reply");
-    setIsGenerating(false);
-    setIsGenerated(false);
-    setResponseDraft("");
-    setCopied(false);
-    setSavedTicketId(null);
-    setInsight(emptyInsight);
-    setResponseOptions(null);
-    setSelectedResponseOptions({
-      hear: "",
-      empathize: "",
-      apologise: "",
-      takeAction: "",
-    });
-  };
-
-  const handleSelectResponseOption = (
-    step: ResponseStepKey,
-    optionId: string,
-  ) => {
-    if (!responseOptions) return;
-
-    const nextSelected = {
-      ...selectedResponseOptions,
-      [step]: optionId,
-    };
-
-    setSelectedResponseOptions(nextSelected);
-    setResponseDraft(buildResponseDraft(responseOptions, nextSelected));
+    setTone("formal");
+    setInputExpanded(true);
+    setInputDirty(false);
+    setSelectedOutcome(null);
+    setCompletionState(null);
+    setCopiedLabel("");
+    setFinalResponse("");
+    setSafeReply("");
+    setActiveScenario(genericScenario);
+    setManagerApprovalRequired(false);
   };
 
   return (
@@ -541,9 +620,15 @@ export function QuickResponse() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           stats={[
-            { label: "External", value: "6 kanal" },
-            { label: "Draft", value: isGenerated ? "Siap" : "Baru" },
-            { label: "Follow up", value: savedTicketId ? "Tiket" : "Opsional" },
+            { label: "Flow", value: `Step ${currentStep}` },
+            {
+              label: "Ticket",
+              value: completionState === "resolved" ? "No" : "If needed",
+            },
+            {
+              label: "Risk",
+              value: managerApprovalRequired ? "Approval" : "Low",
+            },
           ]}
         />
 
@@ -556,7 +641,7 @@ export function QuickResponse() {
                   className="text-[var(--signal-amber)]"
                   size={15}
                 />
-                Mode prototipe
+                Flow prototype
               </span>
             }
             dashboardRole="agent"
@@ -568,387 +653,199 @@ export function QuickResponse() {
 
           <section className="overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] shadow-[var(--shadow-soft)]">
             <header className="border-b border-[var(--rail-border)] bg-[linear-gradient(135deg,#fbfcf7_0%,#edf4ef_52%,#dce9f3_100%)] p-4 sm:p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-3xl">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--signal-blue)]">
-                    Kanal eksternal
+                    External complaint handler
                   </p>
                   <h1 className="mt-2 text-2xl font-semibold text-[var(--rail-ink)] sm:text-3xl">
                     Quick Response
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-                    Bantu tanggapi keluhan dari media sosial, ulasan aplikasi,
-                    dan kanal publik lainnya.
+                    Build a safe external reply, review it for platform risk,
+                    then decide whether the case is resolved or needs internal
+                    follow-up.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
-                  <SignalPill label="Sumber" value={activeSourceLabel} />
-                  <SignalPill
-                    label="Teks"
-                    value={`${complaintText.length} karakter`}
-                  />
-                  <SignalPill
-                    label="Status"
+                <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[420px]">
+                  <MetricPill label="Platform" value={sourceLabel} />
+                  <MetricPill label="Target" value={targetLabel} />
+                  <MetricPill
+                    label="Outcome rule"
                     value={
-                      isGenerating ? "Proses" : isGenerated ? "Draft" : "Input"
+                      completionState === "resolved"
+                        ? "No ticket"
+                        : "Ticket only if unresolved"
                     }
                   />
                 </div>
               </div>
             </header>
 
-            <div className="grid min-h-[720px] grid-cols-1 lg:grid-cols-[minmax(360px,0.86fr)_minmax(0,1.14fr)]">
-              <section className="border-b border-[var(--rail-border)] bg-[var(--surface-panel)] p-4 lg:border-b-0 lg:border-r sm:p-5">
-                <div className="mb-5 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--rail-ink)] text-white">
-                    <ClipboardList aria-hidden="true" size={19} />
-                  </span>
-                  <div>
-                    <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
-                      Detail keluhan
-                    </h2>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      Lengkapi konteks sebelum membuat draf.
-                    </p>
-                  </div>
-                </div>
+            <div className="flex w-full flex-col gap-3 p-4 sm:p-5 lg:p-6">
+              <Stepper currentStep={currentStep} />
 
-                <div className="space-y-5">
-                  <FieldGroup
-                    description="Dari mana keluhan ini berasal?"
-                    label="Sumber keluhan"
-                  >
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {sourceOptions.map((option) => (
-                        <button
-                          className={`min-h-10 rounded-lg border px-3 text-left text-xs font-semibold transition ${
-                            source === option.value
-                              ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]"
-                              : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
-                          }`}
-                          key={option.value}
-                          onClick={() => handleSourceChange(option.value)}
-                          type="button"
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </FieldGroup>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <FieldGroup label="Username / handle">
-                      <div className="relative">
-                        <UserRound
-                          aria-hidden="true"
-                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
-                          size={15}
-                        />
-                        <input
-                          className={inputClassName("pl-9")}
-                          onChange={(event) => setUsername(event.target.value)}
-                          placeholder="Opsional"
-                          type="text"
-                          value={username}
-                        />
-                      </div>
-                    </FieldGroup>
-
-                    <FieldGroup label="Link keluhan">
-                      <div className="relative">
-                        <Link2
-                          aria-hidden="true"
-                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
-                          size={15}
-                        />
-                        <input
-                          className={inputClassName("pl-9")}
-                          onChange={(event) =>
-                            setExternalUrl(event.target.value)
-                          }
-                          placeholder="Opsional, untuk pelacakan internal"
-                          type="url"
-                          value={externalUrl}
-                        />
-                      </div>
-                    </FieldGroup>
-                  </div>
-
-                  {isReviewSource ? (
-                    <FieldGroup label="Rating ulasan">
-                      <div className="relative">
-                        <Star
-                          aria-hidden="true"
-                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--signal-amber)]"
-                          size={15}
-                        />
-                        <select
-                          className={inputClassName("pl-9")}
-                          onChange={(event) => setRating(event.target.value)}
-                          value={rating}
-                        >
-                          <option value="1">1 bintang</option>
-                          <option value="2">2 bintang</option>
-                          <option value="3">3 bintang</option>
-                          <option value="4">4 bintang</option>
-                          <option value="5">5 bintang</option>
-                        </select>
-                      </div>
-                    </FieldGroup>
-                  ) : null}
-
-                  <FieldGroup label="Isi keluhan">
-                    <textarea
-                      className="min-h-[172px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 py-3 text-sm leading-6 text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
-                      onChange={(event) => setComplaintText(event.target.value)}
-                      placeholder="Tempel keluhan pelanggan di sini"
-                      value={complaintText}
-                    />
-                    <p className="mt-2 text-right text-[11px] font-medium text-[var(--text-muted)]">
-                      {complaintText.length} karakter
-                    </p>
-                  </FieldGroup>
-
-                  <FieldGroup label="Konteks layanan">
-                    <select
-                      className={inputClassName()}
-                      onChange={(event) =>
-                        setServiceContext(event.target.value)
-                      }
-                      value={serviceContext}
+              <StepCard
+                isActive={currentStep === 1 || inputExpanded}
+                isComplete={!inputExpanded && complaintText.trim().length > 0}
+                meta={
+                  complaintText.trim()
+                    ? `${sourceLabel} - ${targetLabel} - ${toneLabel}`
+                    : "Waiting for complaint input"
+                }
+                number={1}
+                title="Complaint input"
+                action={
+                  !inputExpanded && complaintText.trim().length > 0 ? (
+                    <button
+                      className={secondaryButtonClass}
+                      onClick={() => setInputExpanded(true)}
+                      type="button"
                     >
-                      {serviceContextOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </FieldGroup>
+                      <RefreshCcw aria-hidden="true" size={13} />
+                      Edit
+                    </button>
+                  ) : null
+                }
+              >
+                {inputExpanded || currentStep === 1 ? (
+                  <ComplaintInputForm
+                    canGenerate={canGenerate}
+                    complaintText={complaintText}
+                    externalUrl={externalUrl}
+                    inputDirty={inputDirty}
+                    isReviewSource={isReviewSource}
+                    onCancel={() => {
+                      setInputExpanded(false);
+                      setInputDirty(false);
+                    }}
+                    onComplaintTextChange={(value) => {
+                      setComplaintText(value);
+                      markInputDirty();
+                    }}
+                    onExternalUrlChange={(value) => {
+                      setExternalUrl(value);
+                      markInputDirty();
+                    }}
+                    onGenerate={handleGenerate}
+                    onRatingChange={(value) => {
+                      setRating(value);
+                      markInputDirty();
+                    }}
+                    onResponseTargetChange={(value) => {
+                      setResponseTarget(value);
+                      markInputDirty();
+                    }}
+                    onSourceChange={handleSourceChange}
+                    onToneChange={handleToneChange}
+                    onUsernameChange={(value) => {
+                      setUsername(value);
+                      markInputDirty();
+                    }}
+                    rating={rating}
+                    responseTarget={responseTarget}
+                    source={source}
+                    tone={tone}
+                    username={username}
+                  />
+                ) : (
+                  <InputSummary
+                    complaintText={complaintText}
+                    responseTarget={targetLabel}
+                    source={sourceLabel}
+                    tone={toneLabel}
+                    username={username}
+                  />
+                )}
+              </StepCard>
 
-                  <FieldGroup label="Gaya respons">
-                    <SegmentedControl
-                      options={toneOptions}
-                      value={tone}
-                      onChange={setTone}
-                    />
-                  </FieldGroup>
+              <StepCard
+                isActive={currentStep === 2 && !flowLocked}
+                isComplete={currentStep > 2 && !flowLocked}
+                isLocked={flowLocked || currentStep < 2}
+                meta={
+                  isBuildingResponse
+                    ? "Processing recommendations"
+                    : currentStep > 2
+                      ? activeScenario.label
+                      : "Generate from complaint input"
+                }
+                number={2}
+                title="Build response"
+                action={
+                  currentStep >= 2 && !flowLocked ? (
+                    <ContextBadge>
+                      {isBuildingResponse ? "Processing" : "Similar case found"}
+                    </ContextBadge>
+                  ) : null
+                }
+              >
+                {isBuildingResponse ? (
+                  <BuildResponseSkeleton />
+                ) : (
+                  <ResponseBuilder
+                    flowLocked={flowLocked}
+                    managerApprovalRequired={managerApprovalRequired}
+                    onContinue={() => setCurrentStep(3)}
+                    onSelectSentence={handleSelectSentence}
+                    references={activeScenario.references}
+                    scenario={activeScenario}
+                    selectedMap={selectedMap}
+                  />
+                )}
+              </StepCard>
 
-                  <FieldGroup label="Tujuan respons">
-                    <SegmentedControl
-                      options={responseTargetOptions}
-                      value={responseTarget}
-                      onChange={setResponseTarget}
-                    />
-                  </FieldGroup>
+              <StepCard
+                isActive={currentStep === 3}
+                isComplete={currentStep > 3 && !flowLocked}
+                isLocked={currentStep < 3 || flowLocked}
+                meta={
+                  currentStep > 3 ? "Response reviewed" : "Review before copy"
+                }
+                number={3}
+                title="Review final response"
+              >
+                <ReviewStep
+                  copiedLabel={copiedLabel}
+                  finalResponse={finalResponse}
+                  managerApprovalRequired={managerApprovalRequired}
+                  onBack={() => setCurrentStep(2)}
+                  onChangeFinalResponse={setFinalResponse}
+                  onContinue={() => setCurrentStep(4)}
+                  onCopy={handleCopyReview}
+                  source={sourceLabel}
+                  target={targetLabel}
+                />
+              </StepCard>
 
-                  <button
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
-                    disabled={!canGenerate || isGenerating}
-                    onClick={handleGenerate}
-                    type="button"
-                  >
-                    {isGenerating ? (
-                      <Loader2
-                        aria-hidden="true"
-                        className="animate-spin"
-                        size={17}
-                      />
-                    ) : (
-                      <Send aria-hidden="true" size={17} />
-                    )}
-                    Buat draf respons
-                  </button>
-                </div>
-              </section>
-
-              <section className="bg-[linear-gradient(180deg,#f8faf5_0%,#edf2ef_100%)] p-4 sm:p-5">
-                <div className="mb-5 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]">
-                    <MessageSquareText aria-hidden="true" size={19} />
-                  </span>
-                  <div>
-                    <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
-                      Draf dan rekomendasi
-                    </h2>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      Edit sebelum disalin ke kanal eksternal.
-                    </p>
-                  </div>
-                </div>
-
-                {!isGenerated && !isGenerating ? <EmptyState /> : null}
-
-                {isGenerating ? <LoadingState /> : null}
-
-                {isGenerated && !isGenerating ? (
-                  <div className="space-y-4">
-                    <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-                          Ringkasan keluhan
-                        </h3>
-                        <span className="rounded-full bg-[var(--signal-amber-soft)] px-3 py-1 text-[10px] font-semibold text-[var(--signal-amber-dark)]">
-                          {insight.urgency}
-                        </span>
-                      </div>
-                      <dl className="grid gap-2 sm:grid-cols-2">
-                        <InsightItem
-                          label="Topik utama"
-                          value={insight.topic}
-                        />
-                        <InsightItem
-                          label="Sentimen"
-                          value={insight.sentiment}
-                        />
-                        <InsightItem
-                          label="Risiko reputasi"
-                          value={insight.reputationRisk}
-                        />
-                        <InsightItem
-                          label="Butuh tindak lanjut"
-                          value={insight.requiresFollowUp}
-                        />
-                      </dl>
-                    </section>
-
-                    <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4">
-                      <div className="mb-3 flex items-center gap-2">
-                        <ExternalLink
-                          aria-hidden="true"
-                          className="text-[var(--signal-blue)]"
-                          size={16}
-                        />
-                        <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-                          Rekomendasi tindak lanjut
-                        </h3>
-                      </div>
-                      <p className="text-sm leading-6 text-[var(--rail-ink)]">
-                        {insight.recommendedAction}
-                      </p>
-                      <p className="mt-3 rounded-lg bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-muted)]">
-                        Kanal rekomendasi: {insight.recommendedChannel}
-                      </p>
-                    </section>
-
-                    {responseOptions ? (
-                      <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4">
-                        <div className="mb-3">
-                          <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-                            Response builder
-                          </h3>
-                          <p className="mt-1 text-xs text-[var(--text-muted)]">
-                            Pick one sentence for each step. The response draft will update automatically.
-                          </p>
-                        </div>
-                        <div className="space-y-4">
-                          <ResponseBuilderStep
-                            label="Hear"
-                            description="Recognise what the customer is complaining about."
-                            options={responseOptions.hear}
-                            selectedId={selectedResponseOptions.hear}
-                            onSelect={(id) => handleSelectResponseOption("hear", id)}
-                          />
-                          <ResponseBuilderStep
-                            label="Empathize"
-                            description="Show that the situation is understood."
-                            options={responseOptions.empathize}
-                            selectedId={selectedResponseOptions.empathize}
-                            onSelect={(id) => handleSelectResponseOption("empathize", id)}
-                          />
-                          <ResponseBuilderStep
-                            label="Apologise"
-                            description="Say sorry clearly without over-explaining."
-                            options={responseOptions.apologise}
-                            selectedId={selectedResponseOptions.apologise}
-                            onSelect={(id) => handleSelectResponseOption("apologise", id)}
-                          />
-                          <ResponseBuilderStep
-                            label="Take action"
-                            description="Tell the customer what they can do next."
-                            options={responseOptions.takeAction}
-                            selectedId={selectedResponseOptions.takeAction}
-                            onSelect={(id) => handleSelectResponseOption("takeAction", id)}
-                          />
-                        </div>
-                      </section>
-                    ) : null}
-
-                    <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4">
-                      <h3 className="mb-3 text-sm font-semibold text-[var(--rail-ink)]">
-                        Final response
-                      </h3>
-                      <textarea
-                        className="min-h-[220px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 py-3 text-sm leading-6 text-[var(--rail-ink)] outline-none transition focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
-                        onChange={(event) =>
-                          setResponseDraft(event.target.value)
-                        }
-                        value={responseDraft}
-                      />
-
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        <ActionButton
-                          icon={<RefreshCcw aria-hidden="true" size={15} />}
-                          label="Buat ulang"
-                          onClick={handleRegenerate}
-                        />
-                        <ActionButton
-                          icon={
-                            copied ? (
-                              <CheckCircle2 aria-hidden="true" size={15} />
-                            ) : (
-                              <Copy aria-hidden="true" size={15} />
-                            )
-                          }
-                          label={copied ? "Tersalin" : "Salin respons"}
-                          onClick={handleCopy}
-                        />
-                        <ActionButton
-                          icon={<Save aria-hidden="true" size={15} />}
-                          label="Simpan sebagai tiket"
-                          onClick={handleSaveAsTicket}
-                        />
-                        <ActionButton
-                          icon={<Trash2 aria-hidden="true" size={15} />}
-                          label="Bersihkan"
-                          onClick={handleClear}
-                          tone="danger"
-                        />
-                      </div>
-                    </section>
-
-                    <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4">
-                      <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-                        Tindak lanjut internal
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-                        Simpan keluhan sebagai tiket bila membutuhkan pengecekan
-                        refund, pembayaran, barang tertinggal, atau isu booking.
-                      </p>
-                    </section>
-
-                    {savedTicketId ? (
-                      <section className="rounded-lg border border-[var(--signal-green)] bg-[var(--signal-green-soft)] p-4 text-[var(--signal-green-dark)]">
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2
-                            aria-hidden="true"
-                            className="mt-0.5 shrink-0"
-                            size={18}
-                          />
-                          <div>
-                            <h3 className="text-sm font-semibold">
-                              Tersimpan sebagai tiket #{savedTicketId}
-                            </h3>
-                            <p className="mt-1 text-xs leading-5">
-                              Keluhan ini sekarang dapat dipantau oleh tim.
-                            </p>
-                          </div>
-                        </div>
-                      </section>
-                    ) : null}
-                  </div>
-                ) : null}
-              </section>
+              <StepCard
+                isActive={currentStep === 4}
+                isLocked={currentStep < 4 || flowLocked}
+                isComplete={completionState !== null}
+                meta={
+                  completionState
+                    ? "Outcome completed"
+                    : "Resolve, create ticket, or escalate"
+                }
+                number={4}
+                title="Choose outcome"
+              >
+                <OutcomeStep
+                  completionState={completionState}
+                  finalResponse={finalResponse}
+                  managerApprovalRequired={managerApprovalRequired}
+                  onBack={() => setCurrentStep(3)}
+                  onOutcome={handleOutcome}
+                  onReset={handleReset}
+                  options={outcomeOptions}
+                  recordId={recordId}
+                  safeReply={safeReply}
+                  selectedOutcome={selectedOutcome}
+                  ticketId={ticketId}
+                  username={username}
+                />
+              </StepCard>
             </div>
           </section>
         </section>
@@ -957,44 +854,937 @@ export function QuickResponse() {
   );
 }
 
-function FieldGroup({
-  children,
-  description,
-  label,
+function ComplaintInputForm({
+  canGenerate,
+  complaintText,
+  externalUrl,
+  inputDirty,
+  isReviewSource,
+  onCancel,
+  onComplaintTextChange,
+  onExternalUrlChange,
+  onGenerate,
+  onRatingChange,
+  onResponseTargetChange,
+  onSourceChange,
+  onToneChange,
+  onUsernameChange,
+  rating,
+  responseTarget,
+  source,
+  tone,
+  username,
 }: {
-  children: React.ReactNode;
-  description?: string;
-  label: string;
+  canGenerate: boolean;
+  complaintText: string;
+  externalUrl: string;
+  inputDirty: boolean;
+  isReviewSource: boolean;
+  onCancel: () => void;
+  onComplaintTextChange: (value: string) => void;
+  onExternalUrlChange: (value: string) => void;
+  onGenerate: () => void;
+  onRatingChange: (value: string) => void;
+  onResponseTargetChange: (value: ResponseTarget) => void;
+  onSourceChange: (value: string) => void;
+  onToneChange: (value: Tone) => void;
+  onUsernameChange: (value: string) => void;
+  rating: string;
+  responseTarget: ResponseTarget;
+  source: string;
+  tone: Tone;
+  username: string;
 }) {
   return (
-    <div className="block">
-      <span className="block text-xs font-semibold text-[var(--rail-ink)]">
-        {label}
-      </span>
-      {description ? (
-        <span className="mt-1 block text-[11px] text-[var(--text-muted)]">
-          {description}
-        </span>
+    <div className="space-y-4">
+      {inputDirty ? (
+        <WarningBanner>
+          Complaint changed. Regenerate response to update recommendations.
+        </WarningBanner>
       ) : null}
+
+      <FieldLabel label="Source channel">
+        <SegmentedButtons
+          options={sourceOptions}
+          value={source}
+          onChange={onSourceChange}
+        />
+      </FieldLabel>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FieldLabel label="Username / handle" note="optional">
+          <div className="relative">
+            <UserRound
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+              size={15}
+            />
+            <input
+              className={`${inputClass} pl-9`}
+              onChange={(event) => onUsernameChange(event.target.value)}
+              placeholder="@customer"
+              type="text"
+              value={username}
+            />
+          </div>
+        </FieldLabel>
+        <FieldLabel label="External link" note="optional">
+          <div className="relative">
+            <Link2
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+              size={15}
+            />
+            <input
+              className={`${inputClass} pl-9`}
+              onChange={(event) => onExternalUrlChange(event.target.value)}
+              placeholder="https://..."
+              type="url"
+              value={externalUrl}
+            />
+          </div>
+        </FieldLabel>
+      </div>
+
+      {isReviewSource ? (
+        <FieldLabel label="Review rating">
+          <select
+            className={inputClass}
+            onChange={(event) => onRatingChange(event.target.value)}
+            value={rating}
+          >
+            <option value="1">1 star</option>
+            <option value="2">2 stars</option>
+            <option value="3">3 stars</option>
+            <option value="4">4 stars</option>
+            <option value="5">5 stars</option>
+          </select>
+        </FieldLabel>
+      ) : null}
+
+      <FieldLabel label="Complaint text">
+        <textarea
+          className={`${textareaClass} min-h-[132px]`}
+          onChange={(event) => onComplaintTextChange(event.target.value)}
+          placeholder="Paste the external complaint here"
+          value={complaintText}
+        />
+        <p className="mt-2 text-right text-[11px] font-medium text-[var(--text-muted)]">
+          {complaintText.length} characters
+        </p>
+      </FieldLabel>
+
+      <FieldLabel label="Response target">
+        <SegmentedButtons
+          options={targetOptions}
+          value={responseTarget}
+          onChange={(value) => onResponseTargetChange(value as ResponseTarget)}
+        />
+      </FieldLabel>
+
+      <FieldLabel label="Response tone">
+        <SegmentedButtons
+          options={toneOptions}
+          value={tone}
+          onChange={(value) => onToneChange(value as Tone)}
+        />
+      </FieldLabel>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          className={secondaryButtonClass}
+          onClick={onCancel}
+          type="button"
+        >
+          <ArrowLeft aria-hidden="true" size={13} />
+          Cancel
+        </button>
+        <button
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
+          disabled={!canGenerate}
+          onClick={onGenerate}
+          type="button"
+        >
+          <Sparkles aria-hidden="true" size={15} />
+          Regenerate response
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InputSummary({
+  complaintText,
+  responseTarget,
+  source,
+  tone,
+  username,
+}: {
+  complaintText: string;
+  responseTarget: string;
+  source: string;
+  tone: string;
+  username: string;
+}) {
+  return (
+    <div>
+      <p className="text-sm italic leading-6 text-[var(--text-muted)]">
+        "{complaintText}"
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <ContextBadge>{source}</ContextBadge>
+        {username ? <ContextBadge>{username}</ContextBadge> : null}
+        <ContextBadge>{responseTarget}</ContextBadge>
+        <ContextBadge>{tone}</ContextBadge>
+      </div>
+    </div>
+  );
+}
+
+function ResponseBuilder({
+  flowLocked,
+  managerApprovalRequired,
+  onContinue,
+  onSelectSentence,
+  references,
+  scenario,
+  selectedMap,
+}: {
+  flowLocked: boolean;
+  managerApprovalRequired: boolean;
+  onContinue: () => void;
+  onSelectSentence: (key: BuilderKey, optionId: string) => void;
+  references: ReferenceItem[];
+  scenario: Scenario;
+  selectedMap: Record<BuilderKey, string>;
+}) {
+  return (
+    <div className="space-y-4">
+      {flowLocked ? (
+        <WarningBanner>
+          Recommendations are stale. Regenerate from Step 1 before continuing.
+        </WarningBanner>
+      ) : null}
+
+      <div className="flex items-start gap-3 rounded-lg border border-[var(--signal-green)] bg-[var(--signal-green-soft)] p-3">
+        <SearchGlyph />
+        <div>
+          <p className="text-sm font-semibold text-[var(--signal-green-dark)]">
+            {scenario.similarCase.title}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--signal-green-dark)]">
+            {scenario.similarCase.detail}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {references.map((reference) => (
+          <ReferenceChip key={reference.title}>{reference.title}</ReferenceChip>
+        ))}
+      </div>
+
+      <section>
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+          Response builder - pick one per section
+        </p>
+        <div className="space-y-4">
+          {builderSections.map((section) =>
+            section.key === "takeAction" ? (
+              <TakeActionBlock
+                disabled={flowLocked}
+                key={section.key}
+                managerApprovalRequired={managerApprovalRequired}
+                onSelect={(optionId) =>
+                  onSelectSentence("takeAction", optionId)
+                }
+                options={scenario.builderOptions.takeAction}
+                references={references}
+                selectedId={selectedMap.takeAction}
+              />
+            ) : (
+              <SentenceChoiceGroup
+                description={section.description}
+                disabled={flowLocked}
+                key={section.key}
+                label={section.label}
+                onSelect={(optionId) => onSelectSentence(section.key, optionId)}
+                options={scenario.builderOptions[section.key]}
+                selectedId={selectedMap[section.key]}
+              />
+            ),
+          )}
+        </div>
+      </section>
+
+      <button
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
+        disabled={flowLocked}
+        onClick={onContinue}
+        type="button"
+      >
+        Review final response
+        <ArrowRight aria-hidden="true" size={15} />
+      </button>
+    </div>
+  );
+}
+
+function ReviewStep({
+  copiedLabel,
+  finalResponse,
+  managerApprovalRequired,
+  onBack,
+  onChangeFinalResponse,
+  onContinue,
+  onCopy,
+  source,
+  target,
+}: {
+  copiedLabel: string;
+  finalResponse: string;
+  managerApprovalRequired: boolean;
+  onBack: () => void;
+  onChangeFinalResponse: (value: string) => void;
+  onContinue: () => void;
+  onCopy: () => void;
+  source: string;
+  target: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <span className="inline-flex min-h-8 w-fit items-center gap-2 rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 text-xs font-semibold text-[var(--signal-blue)]">
+          <MessageSquareText aria-hidden="true" size={14} />
+          Optimized for {source} - {target}
+        </span>
+        <button className={secondaryButtonClass} onClick={onBack} type="button">
+          <ArrowLeft aria-hidden="true" size={13} />
+          Back to builder
+        </button>
+      </div>
+
+      <section className="rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3">
+        <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--signal-amber-dark)]">
+          <ShieldCheck aria-hidden="true" size={14} />
+          Safety check
+        </div>
+        <div className="space-y-2">
+          <SafetyItem>
+            Avoid asking for booking code in public replies - move private data
+            to DM or official support.
+          </SafetyItem>
+          {managerApprovalRequired ? (
+            <SafetyItem>
+              Do not confirm refund, reschedule, or compensation directly -
+              approval is required first.
+            </SafetyItem>
+          ) : null}
+          <SafetyItem>
+            Do not mention internal SOP names, past ticket IDs, or approval
+            workflow to the customer.
+          </SafetyItem>
+        </div>
+      </section>
+
+      <FieldLabel label="Final response" note="edit as needed">
+        <textarea
+          className={`${textareaClass} min-h-[180px] border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]`}
+          onChange={(event) => onChangeFinalResponse(event.target.value)}
+          value={finalResponse}
+        />
+      </FieldLabel>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <button className={secondaryButtonClass} onClick={onCopy} type="button">
+          <Copy aria-hidden="true" size={13} />
+          {copiedLabel || "Copy response"}
+        </button>
+        <button
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)]"
+          onClick={onContinue}
+          type="button"
+        >
+          Choose outcome
+          <ArrowRight aria-hidden="true" size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function OutcomeStep({
+  completionState,
+  finalResponse,
+  managerApprovalRequired,
+  onBack,
+  onOutcome,
+  onReset,
+  options,
+  recordId,
+  safeReply,
+  selectedOutcome,
+  ticketId,
+  username,
+}: {
+  completionState: CompletionState | null;
+  finalResponse: string;
+  managerApprovalRequired: boolean;
+  onBack: () => void;
+  onOutcome: (outcome: OutcomeId) => void;
+  onReset: () => void;
+  options: {
+    id: OutcomeId;
+    title: string;
+    description: string;
+    recommended: boolean;
+    icon: ReactNode;
+  }[];
+  recordId: string;
+  safeReply: string;
+  selectedOutcome: OutcomeId | null;
+  ticketId: string;
+  username: string;
+}) {
+  if (completionState) {
+    return (
+      <CompletionStateView
+        completionState={completionState}
+        recordId={recordId}
+        ticketId={ticketId}
+        username={username}
+        onReset={onReset}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-semibold text-[var(--rail-ink)]">
+          Choose outcome
+        </h3>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
+          Can this complaint be resolved now, or does it need internal
+          follow-up?
+        </p>
+      </div>
+
+      {managerApprovalRequired ? (
+        <WarningBanner>
+          Manager approval is required for this case. Recommended: Copy Safe
+          Reply + Create Ticket.
+        </WarningBanner>
+      ) : null}
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        {options.map((option) => (
+          <button
+            className={`min-h-[154px] rounded-lg border p-4 text-left transition ${
+              selectedOutcome === option.id
+                ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)]"
+                : option.recommended
+                  ? "border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] hover:border-[var(--signal-blue)]"
+                  : "border-[var(--rail-border)] bg-[var(--surface-panel)] hover:border-[var(--signal-blue)] hover:bg-[var(--background)]"
+            }`}
+            key={option.id}
+            onClick={() => onOutcome(option.id)}
+            type="button"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--background)] text-[var(--signal-blue)]">
+              {option.icon}
+            </span>
+            <span className="mt-3 block text-sm font-semibold text-[var(--rail-ink)]">
+              {option.title}
+            </span>
+            <span className="mt-2 block text-xs leading-5 text-[var(--text-muted)]">
+              {option.description}
+            </span>
+            {option.recommended ? (
+              <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--signal-green-dark)]">
+                <Star aria-hidden="true" size={12} />
+                Recommended
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <PreviewBox title="Full final response" value={finalResponse} />
+        <PreviewBox title="Safe reply for unresolved cases" value={safeReply} />
+      </div>
+
+      <div className="text-center">
+        <button className={secondaryButtonClass} onClick={onBack} type="button">
+          <ArrowLeft aria-hidden="true" size={13} />
+          Back to review
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CompletionStateView({
+  completionState,
+  onReset,
+  recordId,
+  ticketId,
+  username,
+}: {
+  completionState: CompletionState;
+  onReset: () => void;
+  recordId: string;
+  ticketId: string;
+  username: string;
+}) {
+  const content = {
+    resolved: {
+      icon: <ClipboardCheck aria-hidden="true" size={25} />,
+      title: "Response copied - complaint resolved",
+      body: "The final response has been copied. Paste it on the external platform. This complaint has been closed internally.",
+      reference: `Handled response #${recordId}`,
+      tone: "green",
+    },
+    "ticket-created": {
+      icon: <TicketCheck aria-hidden="true" size={25} />,
+      title: "Safe reply copied - ticket created",
+      body: "A safe response has been copied for the external platform. The ticket includes the original complaint, selected action, references, and draft response.",
+      reference: `Ticket #${ticketId} created for internal follow-up`,
+      tone: "blue",
+    },
+    "manager-escalated": {
+      icon: <Flag aria-hidden="true" size={25} />,
+      title: "Escalated to manager",
+      body: "The full case, draft response, and references are attached. No external response was copied by default.",
+      reference: `Ticket #${ticketId} sent to manager queue`,
+      tone: "red",
+    },
+  }[completionState];
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-6 text-center">
+      <span
+        className={`flex h-14 w-14 items-center justify-center rounded-full ${
+          content.tone === "green"
+            ? "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]"
+            : content.tone === "red"
+              ? "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]"
+              : "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]"
+        }`}
+      >
+        {content.icon}
+      </span>
+      <h3 className="text-base font-semibold text-[var(--rail-ink)]">
+        {content.title}
+      </h3>
+      <p className="max-w-lg text-sm leading-6 text-[var(--text-muted)]">
+        {content.body}
+      </p>
+      {username ? (
+        <p className="text-xs text-[var(--text-tertiary)]">
+          External handle: {username}
+        </p>
+      ) : null}
+      <span className="rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-4 py-2 text-xs font-semibold text-[var(--signal-blue)]">
+        {content.reference}
+      </span>
+      <button className={secondaryButtonClass} onClick={onReset} type="button">
+        Start new complaint
+      </button>
+    </div>
+  );
+}
+
+function Stepper({ currentStep }: { currentStep: StepId }) {
+  const steps = [
+    { id: 1, label: "Input" },
+    { id: 2, label: "Build Response" },
+    { id: 3, label: "Review" },
+    { id: 4, label: "Outcome" },
+  ];
+
+  return (
+    <nav
+      aria-label="Quick response workflow"
+      className="mb-2 flex items-center overflow-x-auto pb-1"
+    >
+      {steps.map((step, index) => {
+        const isDone = step.id < currentStep;
+        const isActive = step.id === currentStep;
+
+        return (
+          <div className="flex min-w-fit flex-1 items-center" key={step.id}>
+            <div className="flex items-center gap-2">
+              <span
+                className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold ${
+                  isDone
+                    ? "border-[var(--signal-blue)] bg-[var(--signal-blue)] text-white"
+                    : isActive
+                      ? "border-[var(--signal-blue)] bg-[var(--surface-panel)] text-[var(--signal-blue)]"
+                      : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-tertiary)]"
+                }`}
+              >
+                {isDone ? <Check aria-hidden="true" size={13} /> : step.id}
+              </span>
+              <span
+                className={`text-xs font-semibold ${
+                  isActive
+                    ? "text-[var(--signal-blue)]"
+                    : isDone
+                      ? "text-[var(--text-muted)]"
+                      : "text-[var(--text-tertiary)]"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {index < steps.length - 1 ? (
+              <span
+                className={`mx-3 h-px flex-1 ${
+                  isDone ? "bg-[var(--signal-blue)]" : "bg-[var(--rail-border)]"
+                }`}
+              />
+            ) : null}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
+
+function StepCard({
+  action,
+  children,
+  isActive,
+  isComplete = false,
+  isLocked = false,
+  meta,
+  number,
+  title,
+}: {
+  action?: ReactNode;
+  children: ReactNode;
+  isActive: boolean;
+  isComplete?: boolean;
+  isLocked?: boolean;
+  meta?: string;
+  number: StepId;
+  title: string;
+}) {
+  return (
+    <section
+      className={`overflow-hidden rounded-xl border bg-[var(--surface-panel)] transition ${
+        isActive
+          ? "border-[var(--signal-blue)] shadow-[var(--shadow-soft)]"
+          : "border-[var(--rail-border)]"
+      } ${isLocked ? "opacity-50" : ""}`}
+    >
+      <header
+        className={`flex min-h-12 items-center gap-3 px-4 py-3 ${
+          isActive ? "border-b border-[var(--rail-border)]" : ""
+        }`}
+      >
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+            isComplete
+              ? "bg-[var(--signal-blue)] text-white"
+              : "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]"
+          }`}
+        >
+          {isComplete ? <Check aria-hidden="true" size={13} /> : number}
+        </span>
+        <h2 className="min-w-0 flex-1 text-sm font-semibold text-[var(--rail-ink)]">
+          {title}
+        </h2>
+        {meta ? (
+          <span className="hidden max-w-[320px] truncate text-right text-xs font-medium text-[var(--text-muted)] md:block">
+            {meta}
+          </span>
+        ) : null}
+        {action}
+      </header>
+      {isActive ? (
+        <div className={isLocked ? "pointer-events-none p-4" : "p-4"}>
+          {children}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+const skeletonRows = ["hear", "empathize", "apologize", "take-action"];
+const skeletonReferences = ["sop", "past-resolution", "policy"];
+
+function BuildResponseSkeleton() {
+  return (
+    <output
+      aria-busy="true"
+      aria-label="Processing response recommendations"
+      className="space-y-4"
+    >
+      <div className="flex items-start gap-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+        <span className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-[var(--surface-muted)]" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="h-3 w-1/2 animate-pulse rounded-full bg-[var(--surface-muted)]" />
+          <div className="h-3 w-4/5 animate-pulse rounded-full bg-[var(--surface-muted)]" />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {skeletonReferences.map((item) => (
+          <span
+            className="h-7 w-36 animate-pulse rounded-full bg-[var(--signal-blue-soft)]"
+            key={item}
+          />
+        ))}
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-2">
+        {skeletonRows.map((item) => (
+          <section
+            className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3"
+            key={item}
+          >
+            <div className="mb-3 h-4 w-32 animate-pulse rounded-full bg-[var(--surface-muted)]" />
+            <div className="space-y-2">
+              <div className="h-10 animate-pulse rounded-lg bg-[var(--surface-muted)]" />
+              <div className="h-10 animate-pulse rounded-lg bg-[var(--surface-muted)]" />
+              <div className="h-10 animate-pulse rounded-lg bg-[var(--surface-muted)]" />
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3 text-xs font-semibold text-[var(--signal-amber-dark)]">
+        Checking similar complaints, SOP references, policy warnings, and safe
+        response options...
+      </div>
+    </output>
+  );
+}
+
+function SentenceChoiceGroup({
+  description,
+  disabled,
+  label,
+  onSelect,
+  options,
+  selectedId,
+}: {
+  description: string;
+  disabled: boolean;
+  label: string;
+  onSelect: (optionId: string) => void;
+  options: SentenceOption[];
+  selectedId: string;
+}) {
+  return (
+    <section>
+      <h3 className="text-sm font-semibold text-[var(--rail-ink)]">{label}</h3>
+      <p className="mt-1 text-xs text-[var(--text-muted)]">{description}</p>
+      <div className="mt-3 space-y-2">
+        {options.map((option) => (
+          <button
+            className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm leading-6 transition ${
+              selectedId === option.id
+                ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--rail-ink)]"
+                : "border-[var(--rail-border)] bg-[var(--background)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
+            }`}
+            disabled={disabled}
+            key={option.id}
+            onClick={() => onSelect(option.id)}
+            type="button"
+          >
+            {option.text}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TakeActionBlock({
+  disabled,
+  managerApprovalRequired,
+  onSelect,
+  options,
+  references,
+  selectedId,
+}: {
+  disabled: boolean;
+  managerApprovalRequired: boolean;
+  onSelect: (optionId: string) => void;
+  options: SentenceOption[];
+  references: ReferenceItem[];
+  selectedId: string;
+}) {
+  return (
+    <section>
+      <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+        Take Action
+      </h3>
+      <p className="mt-1 text-xs text-[var(--text-muted)]">
+        Separate the customer-facing line from internal action needed.
+      </p>
+      <div className="mt-3 overflow-hidden rounded-xl border border-[var(--signal-amber)]">
+        <div className="flex items-center gap-2 border-b border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-3 py-2">
+          <Sparkles
+            aria-hidden="true"
+            className="text-[var(--signal-amber-dark)]"
+            size={15}
+          />
+          <p className="flex-1 text-xs font-semibold text-[var(--signal-amber-dark)]">
+            Customer-facing action
+          </p>
+          {managerApprovalRequired ? (
+            <span className="rounded-full border border-[var(--signal-amber)] bg-[var(--surface-panel)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-amber-dark)]">
+              Approval required
+            </span>
+          ) : null}
+        </div>
+        <div className="space-y-3 p-3">
+          <div className="space-y-2">
+            {options.map((option) => (
+              <button
+                className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm leading-6 transition ${
+                  selectedId === option.id
+                    ? "border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]"
+                    : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] hover:border-[var(--signal-amber)] hover:text-[var(--rail-ink)]"
+                }`}
+                disabled={disabled}
+                key={option.id}
+                onClick={() => onSelect(option.id)}
+                type="button"
+              >
+                {option.text}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+              <Lock aria-hidden="true" size={13} />
+              Internal - not shown to customer
+            </div>
+            <div className="space-y-3">
+              {references.map((reference) => (
+                <ReferenceRow key={reference.title} reference={reference} />
+              ))}
+            </div>
+            {managerApprovalRequired ? (
+              <div className="mt-3 flex gap-2 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3 text-xs leading-5 text-[var(--signal-amber-dark)]">
+                <AlertTriangle
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0"
+                  size={14}
+                />
+                <span>
+                  Manager approval required. Do not confirm refund,
+                  compensation, or reschedule directly. Create a ticket or
+                  escalate when the case remains unresolved.
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReferenceRow({ reference }: { reference: ReferenceItem }) {
+  const toneClass = {
+    amber: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
+    blue: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
+    green: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
+  }[reference.tone];
+
+  return (
+    <div className="flex items-start gap-3 border-b border-[var(--rail-border)] pb-3 last:border-b-0 last:pb-0">
+      <span
+        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneClass}`}
+      >
+        <FileText aria-hidden="true" size={14} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-[var(--rail-ink)]">
+          {reference.title}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+          {reference.meta}
+        </p>
+        <button
+          className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[var(--signal-blue)]"
+          type="button"
+        >
+          <ExternalLink aria-hidden="true" size={12} />
+          {reference.linkLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PreviewBox({ title, value }: { title: string; value: string }) {
+  return (
+    <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+      <h4 className="text-xs font-semibold text-[var(--rail-ink)]">{title}</h4>
+      <p className="mt-2 line-clamp-5 text-xs leading-5 text-[var(--text-muted)]">
+        {value}
+      </p>
+    </section>
+  );
+}
+
+function SafetyItem({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex gap-2 text-xs leading-5 text-[var(--signal-amber-dark)]">
+      <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0" size={13} />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+function FieldLabel({
+  children,
+  label,
+  note,
+}: {
+  children: ReactNode;
+  label: string;
+  note?: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-[var(--rail-ink)]">
+        {label}
+        {note ? (
+          <span className="font-normal text-[var(--text-tertiary)]">
+            {" "}
+            ({note})
+          </span>
+        ) : null}
+      </p>
       <div className="mt-2">{children}</div>
     </div>
   );
 }
 
-function SegmentedControl({
+function SegmentedButtons({
   onChange,
   options,
   value,
 }: {
   onChange: (value: string) => void;
-  options: { value: string; label: string }[];
+  options: Option[];
   value: string;
 }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="flex flex-wrap gap-2">
       {options.map((option) => (
         <button
-          className={`min-h-10 rounded-lg border px-3 text-left text-xs font-semibold transition ${
+          className={`inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-semibold transition ${
             value === option.value
               ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]"
               : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
@@ -1010,7 +1800,7 @@ function SegmentedControl({
   );
 }
 
-function SignalPill({ label, value }: { label: string; value: string }) {
+function MetricPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-lg border border-[var(--rail-border)] bg-[rgba(251,252,247,0.72)] p-3">
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
@@ -1023,163 +1813,50 @@ function SignalPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState() {
+function ContextBadge({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-[520px] items-center justify-center rounded-lg border border-dashed border-[var(--rail-border)] bg-[rgba(251,252,247,0.64)] p-8 text-center">
-      <div className="max-w-sm">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]">
-          <MessageSquareText aria-hidden="true" size={22} />
-        </span>
-        <h3 className="mt-4 text-lg font-semibold text-[var(--rail-ink)]">
-          Tempel keluhan pelanggan untuk membuat draf respons.
-        </h3>
-        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-          Cocok untuk media sosial, ulasan aplikasi, dan kanal eksternal
-          lainnya.
-        </p>
-      </div>
+    <span className="inline-flex min-h-6 items-center rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-2.5 py-1 text-[10px] font-semibold text-[var(--signal-blue)]">
+      {children}
+    </span>
+  );
+}
+
+function ReferenceChip({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex min-h-6 items-center gap-1 rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-2.5 py-1 text-[10px] font-semibold text-[var(--signal-blue)]">
+      <FileText aria-hidden="true" size={12} />
+      {children}
+    </span>
+  );
+}
+
+function WarningBanner({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3 text-xs leading-5 text-[var(--signal-amber-dark)]">
+      <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0" size={14} />
+      <span>{children}</span>
     </div>
   );
 }
 
-function LoadingState() {
+function SearchGlyph() {
   return (
-    <div className="flex min-h-[520px] items-center justify-center rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-8 text-center">
-      <div>
-        <Loader2
-          aria-hidden="true"
-          className="mx-auto animate-spin text-[var(--signal-blue)]"
-          size={30}
-        />
-        <h3 className="mt-4 text-lg font-semibold text-[var(--rail-ink)]">
-          Menganalisis keluhan...
-        </h3>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Menyusun draf respons...
-        </p>
-      </div>
-    </div>
+    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-panel)] text-[var(--signal-green-dark)]">
+      <Headphones aria-hidden="true" size={18} />
+    </span>
   );
 }
 
-function InsightItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-[var(--background)] px-3 py-2">
-      <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm font-semibold text-[var(--rail-ink)]">
-        {value}
-      </dd>
-    </div>
-  );
-}
+const inputClass =
+  "h-11 w-full rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 text-sm text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]";
 
-function ActionButton({
-  icon,
-  label,
-  onClick,
-  tone = "default",
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  tone?: "default" | "danger";
-}) {
-  return (
-    <button
-      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold transition ${
-        tone === "danger"
-          ? "border-[var(--signal-red-soft)] bg-[var(--surface-panel)] text-[var(--signal-red-dark)] hover:bg-[var(--signal-red-soft)]"
-          : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--rail-ink)] hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
-      }`}
-      onClick={onClick}
-      type="button"
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
-}
+const textareaClass =
+  "w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 py-3 text-sm leading-6 text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]";
 
-function ResponseBuilderStep({
-  label,
-  description,
-  options,
-  selectedId,
-  onSelect,
-}: {
-  label: string;
-  description: string;
-  options: ResponseOption[];
-  selectedId: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div>
-        <h4 className="text-xs font-semibold text-[var(--rail-ink)]">
-          {label}
-        </h4>
-        <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
-          {description}
-        </p>
-      </div>
-      <div className="space-y-2">
-        {options.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            onClick={() => onSelect(option.id)}
-            className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm leading-6 transition ${
-              selectedId === option.id
-                ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--rail-ink)] shadow-sm"
-                : "border-[var(--rail-border)] bg-[var(--background)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
-            }`}
-          >
-            {option.text}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+const secondaryButtonClass =
+  "inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]";
 
-function getDefaultSelectedOptions(
-  options: ResponseBuilderOptions,
-): SelectedResponseOptions {
-  return {
-    hear: options.hear[0]?.id ?? "",
-    empathize: options.empathize[0]?.id ?? "",
-    apologise: options.apologise[0]?.id ?? "",
-    takeAction: options.takeAction[0]?.id ?? "",
-  };
-}
-
-function buildResponseDraft(
-  options: ResponseBuilderOptions,
-  selected: SelectedResponseOptions,
-) {
-  const steps: ResponseStepKey[] = [
-    "hear",
-    "empathize",
-    "apologise",
-    "takeAction",
-  ];
-
-  return steps
-    .map((step) => {
-      return options[step].find((option) => option.id === selected[step])?.text;
-    })
-    .filter(Boolean)
-    .join(" ");
-}
-
-function inputClassName(extraClassName = "") {
-  return `h-11 w-full rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 text-sm text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)] ${extraClassName}`;
-}
-
-function getHardcodedResponse(text: string) {
+function getScenario(text: string) {
   const lowerText = text.toLowerCase();
 
   if (
@@ -1187,7 +1864,7 @@ function getHardcodedResponse(text: string) {
     lowerText.includes("terlambat") ||
     lowerText.includes("keterlambatan")
   ) {
-    return delayResponse;
+    return scenarios.delay;
   }
 
   if (
@@ -1195,32 +1872,90 @@ function getHardcodedResponse(text: string) {
     lowerText.includes("pengembalian dana") ||
     lowerText.includes("uang kembali")
   ) {
-    return refundResponse;
+    return scenarios.refund;
   }
 
   if (
     lowerText.includes("login") ||
     lowerText.includes("masuk") ||
     lowerText.includes("aplikasi") ||
-    lowerText.includes("password")
+    lowerText.includes("password") ||
+    lowerText.includes("otp")
   ) {
-    return loginResponse;
+    return scenarios.app;
   }
 
-  return genericResponse;
+  return genericScenario;
 }
 
-function adaptDraftForTarget(draft: string, responseTarget: string) {
-  if (responseTarget === "internal-note") {
-    return `Catatan internal: pelanggan perlu ditangani dengan respons empatik dan pengecekan lanjutan.\n\nDraf eksternal:\n${draft}`;
+function getDefaultSelections(options: BuilderOptions) {
+  return {
+    hear: options.hear[0]?.id ?? "",
+    empathize: options.empathize[0]?.id ?? "",
+    apologize: options.apologize[0]?.id ?? "",
+    takeAction: options.takeAction[0]?.id ?? "",
+  };
+}
+
+function buildResponseDraft(
+  options: BuilderOptions,
+  selected: Record<BuilderKey, string>,
+) {
+  return builderSections
+    .map((section) => {
+      return options[section.key].find(
+        (option) => option.id === selected[section.key],
+      )?.text;
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
+function buildSafeReply(
+  options: BuilderOptions,
+  selected: Partial<Record<BuilderKey, string>>,
+) {
+  const safeAction =
+    "Laporan Kakak akan kami teruskan ke tim terkait untuk pengecekan dan tindak lanjut lebih lanjut.";
+  const parts = (["hear", "empathize", "apologize"] as BuilderKey[])
+    .map((section) => {
+      return options[section].find((option) => option.id === selected[section])
+        ?.text;
+    })
+    .filter(Boolean);
+
+  return [...parts, safeAction].join(" ");
+}
+
+function applyTone(draft: string, tone: Tone) {
+  if (tone === "concise") {
+    return draft
+      .replace("Terima kasih sudah menyampaikan keluhan ini kepada kami. ", "")
+      .replace(
+        "Kami menerima keluhan Kakak terkait ",
+        "Kami terima laporan terkait ",
+      );
   }
 
-  if (responseTarget === "app-review") {
-    return draft.replace(
-      "silakan kirim detail kode booking atau nomor tiket melalui DM",
-      "silakan hubungi kanal bantuan resmi kami dengan detail kendala",
-    );
+  if (tone === "friendly") {
+    return `${draft} Terima kasih sudah bersabar ya, Kak.`;
   }
 
   return draft;
+}
+
+function labelFor(options: { value: string; label: string }[], value: string) {
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Clipboard can fail in insecure browser contexts; the UI still records the intended outcome.
+  }
+}
+
+function randomId() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
