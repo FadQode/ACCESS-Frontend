@@ -51,6 +51,11 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
   ],
   manager: [
     { href: "/manager", icon: LineChart, label: "Overview" },
+    {
+      href: "/manager/action-queue",
+      icon: ClipboardCheck,
+      label: "Action Queue",
+    },
     { href: "/manager/agents", icon: Users, label: "Agents" },
     { href: "/manager/compliance", icon: ClipboardCheck, label: "Compliance" },
     { href: "/manager/analytics", icon: BarChart3, label: "Analytics" },
@@ -154,6 +159,17 @@ export function DashboardSidebar({
           </ul>
         </nav>
 
+        {stats.length > 0 ? (
+          <div className="mt-6 grid grid-cols-1 gap-2">
+            {stats.map((stat) => (
+              <SidebarStat
+                key={stat.label}
+                label={stat.label}
+                value={stat.value}
+              />
+            ))}
+          </div>
+        ) : null}
 
         <div className="mt-auto border-t border-[var(--rail-border)] pt-3">
           <button
