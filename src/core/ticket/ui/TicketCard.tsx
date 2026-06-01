@@ -1,11 +1,11 @@
 import type {
-  Ticket,
-  TicketCategory,
-  TicketStatus,
+  FollowUpTicket,
+  FollowUpTicketCategory,
+  FollowUpTicketStatus,
 } from "../model/ticket.types";
 
 interface TicketCardProps {
-  ticket: Ticket;
+  ticket: FollowUpTicket;
   selected: boolean;
   onSelect: () => void;
 }
@@ -22,82 +22,120 @@ export function TicketCard({ onSelect, selected, ticket }: TicketCardProps) {
       onClick={onSelect}
       type="button"
     >
-      <div className="mb-1 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDotClass(
-              ticket.status,
-            )}`}
-          />
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          {ticket.status === "ready_to_notify" ? (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--signal-green)]" />
+          ) : null}
           <span className="truncate text-xs font-semibold text-[var(--rail-ink)]">
             {ticket.customerName}
           </span>
         </div>
-        <span className="shrink-0 text-[10px] text-[var(--text-tertiary)]">
-          {ticket.referenceNumber.replace("ACC-2026-", "#")}
+        <span className="shrink-0 text-[10px] font-semibold text-[var(--text-tertiary)]">
+          {ticket.displayId.replace("EXT-2026-", "#")}
         </span>
       </div>
+
       <p className="mb-2 line-clamp-2 text-[11px] leading-5 text-[var(--text-muted)]">
-        {ticket.complaintText}
+        {actionSummary(ticket)}
       </p>
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(
-            ticket.category,
-          )}`}
-        >
-          {CATEGORY_LABELS[ticket.category]}
-        </span>
-        <span className="text-[10px] text-[var(--text-tertiary)]">
-          {ticket.relativeTime}
-        </span>
+
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        <StatusBadge status={ticket.status} />
+        <CategoryBadge category={ticket.category} />
+      </div>
+
+      <div className="flex items-center justify-between gap-2 text-[10px] text-[var(--text-tertiary)]">
+        <span>{ticket.sourceLabel}</span>
+        <span>{ticket.relativeTime}</span>
       </div>
     </button>
   );
 }
 
-export const CATEGORY_LABELS: Record<TicketCategory, string> = {
-  cancellation: "Cancellation",
-  delay: "Delay",
-  facility: "Facility",
-  refund: "Refund",
-  "lost-item": "Lost item",
-  other: "Other",
-  "seat-issue": "Seat issue",
+export function StatusBadge({ status }: { status: FollowUpTicketStatus }) {
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadgeClass(
+        status,
+      )}`}
+    >
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function CategoryBadge({
+  category,
+}: {
+  category: FollowUpTicketCategory;
+}) {
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(
+        category,
+      )}`}
+    >
+      {CATEGORY_LABELS[category]}
+    </span>
+  );
+}
+
+export const STATUS_LABELS: Record<FollowUpTicketStatus, string> = {
+  closed: "Ditutup",
+  escalated: "Dieskalasi",
+  ready_to_notify: "Siap Dikabari",
+  waiting_manager: "Tunggu Manajer",
 };
 
-export function categoryBadgeClass(category: TicketCategory) {
-  const classes: Record<TicketCategory, string> = {
+export const CATEGORY_LABELS: Record<FollowUpTicketCategory, string> = {
+  app_issue: "Kendala Aplikasi",
+  cancellation: "Pembatalan",
+  delay: "Keterlambatan",
+  facility: "Fasilitas",
+  lost_item: "Barang Tertinggal",
+  other: "Lainnya",
+  payment: "Pembayaran",
+  refund: "Pengembalian Dana",
+};
+
+export function statusBadgeClass(status: FollowUpTicketStatus) {
+  const classes: Record<FollowUpTicketStatus, string> = {
+    closed: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
+    escalated: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
+    ready_to_notify: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
+    waiting_manager:
+      "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
+  };
+
+  return classes[status];
+}
+
+export function categoryBadgeClass(category: FollowUpTicketCategory) {
+  const classes: Record<FollowUpTicketCategory, string> = {
+    app_issue: "bg-[#ede9fe] text-[#5b21b6]",
     cancellation: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
     delay: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
     facility: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
-    refund: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
-    "lost-item": "bg-[#ede9fe] text-[#5b21b6]",
+    lost_item: "bg-[#ede9fe] text-[#5b21b6]",
     other: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
-    "seat-issue": "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
+    payment: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
+    refund: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
   };
 
   return classes[category];
 }
 
-export function statusBadgeClass(status: TicketStatus) {
-  const classes: Record<TicketStatus, string> = {
-    escalated: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
-    new: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
-    open: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
-    resolved: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
-  };
+function actionSummary(ticket: FollowUpTicket) {
+  if (ticket.status === "ready_to_notify") {
+    return ticket.managerAction.actionTaken ?? "Arahan manajer sudah selesai.";
+  }
 
-  return classes[status];
-}
+  if (ticket.status === "waiting_manager" || ticket.status === "escalated") {
+    return "Menunggu arahan manajer atau tim internal sebelum pelanggan dikabari.";
+  }
 
-function statusDotClass(status: TicketStatus) {
-  const classes: Record<TicketStatus, string> = {
-    escalated: "bg-[var(--signal-red)]",
-    new: "bg-[var(--signal-amber)]",
-    open: "bg-[var(--signal-blue)]",
-    resolved: "bg-[var(--signal-green)]",
-  };
-
-  return classes[status];
+  return ticket.closureCopiedAt
+    ? `Balasan akhir disalin ${ticket.closureCopiedAt}.`
+    : "Tiket ditutup secara internal.";
 }

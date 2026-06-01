@@ -17,12 +17,12 @@ export function ComplaintTrendChart({ data }: ComplaintTrendChartProps) {
   return (
     <div className="h-[280px] w-full">
       <svg
-        aria-label="Complaint trend chart"
+        aria-label="Grafik tren keluhan"
         className="h-full w-full overflow-visible"
         role="img"
         viewBox="0 0 640 260"
       >
-        <title>Complaint trend chart</title>
+        <title>Grafik tren keluhan</title>
         {[48, 96, 144, 192].map((y) => (
           <line
             key={y}

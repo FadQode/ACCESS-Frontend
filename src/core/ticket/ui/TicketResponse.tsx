@@ -24,21 +24,21 @@ export function TicketResponse({
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-            Your response
+            Balasan Anda
           </h3>
           <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
-            This official response will be sent to the customer.
+            Balasan resmi ini akan dikirim kepada pelanggan.
           </p>
         </div>
         <label className="flex items-center gap-2 text-[11px] font-semibold text-[var(--text-muted)]">
-          Channel
+          Kanal
           <select
             className="h-8 rounded-md border border-[var(--rail-border)] bg-[var(--background)] px-2 text-[11px] text-[var(--rail-ink)] outline-none focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
             defaultValue={responseChannel}
           >
             <option value="email">Email</option>
             <option value="whatsapp">WhatsApp</option>
-            <option value="phone">Phone follow-up</option>
+            <option value="phone">Tindak lanjut telepon</option>
           </select>
         </label>
       </div>
@@ -46,19 +46,19 @@ export function TicketResponse({
       <textarea
         className="h-[170px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 py-2 text-sm leading-6 text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
         onChange={(event) => onResponseDraftChange(event.target.value)}
-        placeholder="Write the official response for this complaint..."
+        placeholder="Tulis balasan resmi untuk keluhan ini..."
         value={responseDraft}
       />
 
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
-          <span>{characterCount} characters</span>
+          <span>{characterCount} karakter</span>
           <span aria-hidden="true">.</span>
-          <span>Will be sent via {CHANNEL_LABELS[responseChannel]}</span>
+          <span>Akan dikirim melalui {CHANNEL_LABELS[responseChannel]}</span>
           {hasSentResponse ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-[var(--signal-green-soft)] px-2 py-1 font-semibold text-[var(--signal-green-dark)]">
               <CheckCircle2 aria-hidden="true" size={12} />
-              Sent
+              Terkirim
             </span>
           ) : null}
         </div>
@@ -70,7 +70,7 @@ export function TicketResponse({
           type="button"
         >
           <Send aria-hidden="true" size={14} />
-          {hasSentResponse ? "Sent" : "Send response"}
+          {hasSentResponse ? "Terkirim" : "Kirim balasan"}
         </button>
       </div>
     </section>
@@ -79,6 +79,6 @@ export function TicketResponse({
 
 const CHANNEL_LABELS: Record<ResponseChannel, string> = {
   email: "email",
-  phone: "phone follow-up",
+  phone: "tindak lanjut telepon",
   whatsapp: "WhatsApp",
 };

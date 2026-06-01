@@ -19,11 +19,11 @@ export default function AgentError({
           </p>
         </div>
         <h1 className="mt-4 text-3xl font-semibold text-[var(--rail-ink)]">
-          The performance board could not load.
+          Performance board gagal dimuat.
         </h1>
         <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">
           {error.message ||
-            "Refresh the dashboard to request a new performance snapshot."}
+            "Muat ulang dasbor untuk mengambil data performa terbaru."}
         </p>
         <button
           className="mt-6 inline-flex h-11 items-center gap-2 border border-[var(--rail-ink)] bg-[var(--rail-ink)] px-4 text-sm font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[var(--signal-blue)]"
@@ -31,7 +31,7 @@ export default function AgentError({
           type="button"
         >
           <RotateCcw aria-hidden="true" size={16} />
-          Retry
+          Coba lagi
         </button>
       </section>
     </main>

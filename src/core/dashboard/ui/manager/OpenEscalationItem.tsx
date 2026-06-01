@@ -13,7 +13,7 @@ export function OpenEscalationItem({ escalation }: OpenEscalationItemProps) {
             {escalation.customerName}
           </p>
           <p className="mt-1 truncate text-xs text-[var(--text-muted)]">
-            {escalation.category} · assigned {escalation.assignedAgent}
+            {escalation.category} · ditangani {escalation.assignedAgent}
           </p>
         </div>
         <span

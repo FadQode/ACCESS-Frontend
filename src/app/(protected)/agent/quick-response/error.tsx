@@ -16,17 +16,17 @@ export default function QuickResponseError({
             <AlertCircle aria-hidden="true" size={22} />
           </span>
           <h1 className="mt-4 text-2xl font-semibold text-[var(--rail-ink)]">
-            Unable to load Quick Response.
+            Quick Response gagal dimuat.
           </h1>
           <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-            Please try again.
+            Silakan coba lagi.
           </p>
           <button
             className="mt-5 h-11 rounded-lg bg-[var(--rail-ink)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)]"
             onClick={reset}
             type="button"
           >
-            Retry
+            Coba lagi
           </button>
         </div>
       </section>

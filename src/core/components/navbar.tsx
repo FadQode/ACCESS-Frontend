@@ -23,11 +23,11 @@ export interface DashboardNavbarProps {
 const ROLE_COPY: Record<DashboardRole, { title: string; subtitle: string }> = {
   agent: {
     title: "Dashboard",
-    subtitle: "KAI support · agent portal",
+    subtitle: "KAI Support · agent portal",
   },
   manager: {
     title: "Operations",
-    subtitle: "KAI support · manager portal",
+    subtitle: "KAI Support · manager portal",
   },
 };
 
@@ -72,7 +72,7 @@ export function DashboardNavbar({
     >
       <div className="flex min-w-0 items-center gap-3">
         <IconButton
-          label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+          label={isSidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
           onClick={onSidebarToggle}
         >
           {isSidebarOpen ? (
@@ -93,10 +93,10 @@ export function DashboardNavbar({
 
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         {controls}
-        <IconButton label="Open settings">
+        <IconButton label="Buka pengaturan">
           <Settings aria-hidden="true" size={16} />
         </IconButton>
-        <IconButton label="View notifications" notification>
+        <IconButton label="Lihat notifikasi" notification>
           <Bell aria-hidden="true" size={16} />
         </IconButton>
         <button

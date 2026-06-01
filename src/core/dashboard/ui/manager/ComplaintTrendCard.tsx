@@ -11,8 +11,8 @@ interface ComplaintTrendCardProps {
 }
 
 const INTERVALS: { label: string; value: TrendInterval }[] = [
-  { label: "Monthly", value: "monthly" },
-  { label: "Weekly", value: "weekly" },
+  { label: "Bulanan", value: "monthly" },
+  { label: "Mingguan", value: "weekly" },
 ];
 
 export function ComplaintTrendCard({
@@ -28,7 +28,7 @@ export function ComplaintTrendCard({
             Complaint trend
           </h2>
           <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Incoming, resolved, and escalated complaints.
+            Keluhan masuk, selesai, dan dieskalasi.
           </p>
         </div>
         <div className="flex w-fit rounded-full border border-[var(--rail-border)] bg-[var(--background)] p-1">
@@ -50,9 +50,9 @@ export function ComplaintTrendCard({
       </div>
 
       <div className="mb-3 flex flex-wrap gap-4">
-        <Legend color="var(--signal-blue)" label="Incoming" />
-        <Legend color="var(--signal-green)" label="Resolved" />
-        <Legend color="var(--signal-red)" label="Escalated" />
+        <Legend color="var(--signal-blue)" label="Masuk" />
+        <Legend color="var(--signal-green)" label="Selesai" />
+        <Legend color="var(--signal-red)" label="Dieskalasi" />
       </div>
       <ComplaintTrendChart data={data} />
     </section>

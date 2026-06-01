@@ -1,24 +1,27 @@
 import { Search } from "lucide-react";
-import type { Ticket, TicketFilter } from "../model/ticket.types";
+import type {
+  FollowUpTicket,
+  FollowUpTicketFilter,
+} from "../model/ticket.types";
 import { TicketCard } from "./TicketCard";
 
 interface TicketQueueProps {
-  tickets: Ticket[];
+  tickets: FollowUpTicket[];
   selectedTicketId: string;
-  filter: TicketFilter;
-  openTicketCount: number;
+  filter: FollowUpTicketFilter;
+  readyCount: number;
+  waitingCount: number;
   searchQuery: string;
-  onFilterChange: (filter: TicketFilter) => void;
+  onFilterChange: (filter: FollowUpTicketFilter) => void;
   onSearchChange: (value: string) => void;
   onSelectTicket: (ticketId: string) => void;
 }
 
-const FILTERS: Array<{ label: string; value: TicketFilter }> = [
-  { label: "All", value: "all" },
-  { label: "New", value: "new" },
-  { label: "Open", value: "open" },
-  { label: "Resolved", value: "resolved" },
-  { label: "Escalated", value: "escalated" },
+const filters: Array<{ label: string; value: FollowUpTicketFilter }> = [
+  { label: "Semua", value: "all" },
+  { label: "Menunggu", value: "waiting" },
+  { label: "Siap", value: "ready" },
+  { label: "Tutup", value: "closed" },
 ];
 
 export function TicketQueue({
@@ -26,51 +29,57 @@ export function TicketQueue({
   onFilterChange,
   onSearchChange,
   onSelectTicket,
-  openTicketCount,
+  readyCount,
   searchQuery,
   selectedTicketId,
   tickets,
+  waitingCount,
 }: TicketQueueProps) {
   return (
-    <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[var(--rail-border)] bg-[var(--surface-panel)] xl:w-[280px] xl:border-b-0 xl:border-r">
-      <div className="border-b border-[var(--rail-border)] p-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
+    <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[var(--rail-border)] bg-[var(--surface-panel)] xl:w-[320px] xl:border-b-0 xl:border-r">
+      <div className="border-b border-[var(--rail-border)] p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
+            <h2 className="text-base font-semibold text-[var(--rail-ink)]">
               Tickets
             </h2>
-            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
-              Complaint review queue
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Kasus eksternal yang masih butuh tindak lanjut internal.
             </p>
           </div>
-          <span className="rounded-full bg-[var(--signal-blue-soft)] px-2 py-1 text-[11px] font-semibold text-[var(--signal-blue)]">
-            {openTicketCount} active
+          <span className="rounded-full bg-[var(--signal-green-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--signal-green-dark)]">
+            {readyCount} siap
           </span>
         </div>
 
-        <label className="relative mb-2 block">
-          <span className="sr-only">Search tickets</span>
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <QueueMetric label="Siap" value={readyCount} />
+          <QueueMetric label="Menunggu" value={waitingCount} />
+        </div>
+
+        <label className="relative mb-3 block">
+          <span className="sr-only">Cari tiket lanjutan</span>
           <Search
             aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
             size={14}
           />
           <input
-            className="h-8 w-full rounded-md border border-[var(--rail-border)] bg-[var(--background)] pl-8 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
+            className="h-10 w-full rounded-lg border border-[var(--rail-border)] bg-[var(--background)] pl-9 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search name, ref, issue..."
+            placeholder="Cari nama, handle, tiket, tindakan..."
             type="search"
             value={searchQuery}
           />
         </label>
 
-        <div className="flex flex-wrap gap-1">
-          {FILTERS.map((item) => (
+        <div className="grid grid-cols-4 gap-1.5">
+          {filters.map((item) => (
             <button
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+              className={`min-h-8 rounded-lg border px-2 text-[11px] font-semibold transition ${
                 filter === item.value
                   ? "border-[var(--signal-blue)] bg-[var(--signal-blue)] text-white"
-                  : "border-[var(--rail-border)] text-[var(--text-muted)] hover:border-[var(--signal-blue)]"
+                  : "border-[var(--rail-border)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
               }`}
               key={item.value}
               onClick={() => onFilterChange(item.value)}
@@ -82,7 +91,7 @@ export function TicketQueue({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         {tickets.length > 0 ? (
           tickets.map((ticket) => (
             <TicketCard
@@ -94,10 +103,23 @@ export function TicketQueue({
           ))
         ) : (
           <p className="rounded-lg border border-dashed border-[var(--rail-border)] p-3 text-xs leading-5 text-[var(--text-muted)]">
-            No complaints match this search.
+            Tidak ada tiket lanjutan yang cocok dengan pencarian ini.
           </p>
         )}
       </div>
     </aside>
+  );
+}
+
+function QueueMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-[var(--rail-ink)]">
+        {value}
+      </p>
+    </div>
   );
 }

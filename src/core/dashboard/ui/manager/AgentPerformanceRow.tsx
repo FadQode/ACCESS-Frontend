@@ -53,7 +53,7 @@ export function AgentPerformanceRow({ agent }: AgentPerformanceRowProps) {
               : "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]"
           }`}
         >
-          {isOnTarget ? "On target" : "Needs review"}
+          {isOnTarget ? "Sesuai target" : "Perlu ditinjau"}
         </span>
       </td>
     </tr>

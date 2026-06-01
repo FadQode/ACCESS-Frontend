@@ -14,11 +14,11 @@ export function OpenEscalationsCard({ escalations }: OpenEscalationsCardProps) {
             Open escalations
           </h2>
           <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Manager-visible complaints needing attention.
+            Keluhan yang perlu perhatian manajer.
           </p>
         </div>
         <span className="rounded-full bg-[var(--signal-red-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--signal-red-dark)]">
-          {escalations.length} open
+          {escalations.length} terbuka
         </span>
       </div>
       <div className="grid gap-2">

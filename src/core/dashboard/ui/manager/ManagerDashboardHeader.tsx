@@ -27,15 +27,15 @@ export function ManagerDashboardHeader({
             Manager overview
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-            Complaint health, team performance, and escalations in one compact
-            operating view.
+            Kondisi keluhan, performa tim, dan eskalasi dalam satu tampilan
+            ringkas.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="flex h-10 items-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--background)] px-3 text-xs font-semibold text-[var(--text-muted)]">
             <CalendarDays aria-hidden="true" size={15} />
-            Period
+            Periode
           </span>
           <div className="flex rounded-full border border-[var(--rail-border)] bg-[var(--background)] p-1">
             {PERIODS.map((item) => (

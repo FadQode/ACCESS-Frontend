@@ -2,7 +2,7 @@
 
 import { AlertCircle } from "lucide-react";
 
-export default function ManagerActionQueueError({
+export default function AgentTicketsError({
   reset,
 }: {
   error: Error & { digest?: string };
@@ -16,7 +16,7 @@ export default function ManagerActionQueueError({
             <AlertCircle aria-hidden="true" size={22} />
           </span>
           <h1 className="mt-4 text-2xl font-semibold text-[var(--rail-ink)]">
-            Antrean tindakan gagal dimuat.
+            Tickets gagal dimuat.
           </h1>
           <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
             Silakan coba lagi.

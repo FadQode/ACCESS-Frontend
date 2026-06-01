@@ -10,12 +10,15 @@ export function ServiceContextCard({ context }: ServiceContextCardProps) {
   return (
     <InfoCard
       icon={<TrainFront aria-hidden="true" size={15} />}
-      title="Related service info"
+      title="Info layanan terkait"
     >
-      <InfoRow label="Reported issue" value={context.reportedIssue} />
-      <InfoRow label="Route" value={context.route} />
-      <InfoRow label="Known disruption" value={context.knownDisruption} />
-      <InfoRow label="Policy: delay >2h" value={context.refundPolicy} />
+      <InfoRow label="Isu dilaporkan" value={context.reportedIssue} />
+      <InfoRow label="Rute" value={context.route} />
+      <InfoRow label="Gangguan diketahui" value={context.knownDisruption} />
+      <InfoRow
+        label="Kebijakan: terlambat >2 jam"
+        value={context.refundPolicy}
+      />
     </InfoCard>
   );
 }

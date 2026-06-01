@@ -18,10 +18,7 @@ export function TicketWorkspace() {
     return null;
   }
 
-  const activeTicketCount = workspace.openTicketCount;
-  const escalatedCount = workspace.tickets.filter(
-    (ticket) => ticket.status === "escalated",
-  ).length;
+  const activeTicketCount = workspace.readyCount + workspace.waitingCount;
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
@@ -31,9 +28,9 @@ export function TicketWorkspace() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           stats={[
-            { label: "Active", value: activeTicketCount.toString() },
-            { label: "Escalated", value: escalatedCount.toString() },
-            { label: "Queue", value: workspace.tickets.length.toString() },
+            { label: "Aktif", value: activeTicketCount.toString() },
+            { label: "Siap", value: workspace.readyCount.toString() },
+            { label: "Menunggu", value: workspace.waitingCount.toString() },
           ]}
         />
 
@@ -47,13 +44,13 @@ export function TicketWorkspace() {
                   type="button"
                 >
                   <EyeOff aria-hidden="true" size={15} />
-                  Hide navbar
+                  Sembunyikan navbar
                 </button>
               }
               dashboardRole="agent"
               isSidebarOpen={sidebarOpen}
               onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
-              roleLabel="Support agent"
+              roleLabel="Agen dukungan"
               userName="Rizky A."
             />
           ) : (
@@ -63,7 +60,7 @@ export function TicketWorkspace() {
               type="button"
             >
               <Eye aria-hidden="true" size={14} />
-              Show navbar
+              Tampilkan navbar
             </button>
           )}
 
@@ -73,25 +70,21 @@ export function TicketWorkspace() {
               onFilterChange={workspace.setFilter}
               onSearchChange={workspace.setSearchQuery}
               onSelectTicket={workspace.setSelectedTicketId}
-              openTicketCount={workspace.openTicketCount}
+              readyCount={workspace.readyCount}
               searchQuery={workspace.searchQuery}
               selectedTicketId={workspace.selectedTicketId}
               tickets={workspace.tickets}
+              waitingCount={workspace.waitingCount}
             />
             <TicketDetail
-              hasSentResponse={workspace.hasSentResponse}
-              onEscalate={workspace.escalateTicket}
-              onResolve={workspace.resolveTicket}
-              onResponseDraftChange={workspace.setResponseDraft}
-              onSendResponse={workspace.sendResponse}
-              responseDraft={workspace.responseDraft}
+              closureDraft={workspace.closureDraft}
+              hasCopiedClosure={workspace.hasCopiedClosure}
+              onAddInternalNote={workspace.addInternalNote}
+              onClosureDraftChange={workspace.setClosureDraft}
+              onCopyClosureAndClose={workspace.copyClosureAndClose}
               ticket={workspace.selectedTicket}
             />
-            <TicketAssistPanel
-              onUseSuggestedResponse={workspace.useSuggestedResponse}
-              suggestionApplied={workspace.suggestionApplied}
-              ticket={workspace.selectedTicket}
-            />
+            <TicketAssistPanel ticket={workspace.selectedTicket} />
           </section>
         </section>
       </div>

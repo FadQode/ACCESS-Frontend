@@ -11,11 +11,11 @@ export function AgentPerformanceTable({ agents }: AgentPerformanceTableProps) {
       <table className="w-full min-w-[720px] border-collapse">
         <thead>
           <tr className="border-b border-[var(--rail-border)] bg-[var(--background)] text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-            <th className="px-4 py-3">Agent</th>
-            <th className="px-4 py-3">Resolved</th>
-            <th className="px-4 py-3">Avg response</th>
-            <th className="px-4 py-3">Escalations</th>
-            <th className="px-4 py-3">Quality</th>
+            <th className="px-4 py-3">Agen</th>
+            <th className="px-4 py-3">Selesai</th>
+            <th className="px-4 py-3">Rata-rata respons</th>
+            <th className="px-4 py-3">Eskalasi</th>
+            <th className="px-4 py-3">Kualitas</th>
             <th className="px-4 py-3">Status</th>
           </tr>
         </thead>
