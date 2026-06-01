@@ -113,3 +113,88 @@ export interface TicketDetailData extends TicketPreview {
   suggestedResponse: TicketSuggestedResponse;
   activityLog: TicketActivityItem[];
 }
+
+export type FollowUpTicketStatus =
+  | "waiting_manager"
+  | "ready_to_notify"
+  | "closed"
+  | "escalated";
+
+export type FollowUpTicketCategory =
+  | "delay"
+  | "refund"
+  | "cancellation"
+  | "payment"
+  | "facility"
+  | "app_issue"
+  | "lost_item"
+  | "other";
+
+export type ExternalChannel =
+  | "twitter"
+  | "instagram"
+  | "facebook"
+  | "google_play"
+  | "app_store"
+  | "other";
+
+export type FollowUpTicketFilter = "all" | "waiting" | "ready" | "closed";
+
+export interface TicketReference {
+  id: string;
+  type: "sop" | "policy" | "past_ticket" | "manager_note";
+  title: string;
+  summary: string;
+}
+
+export interface FollowUpTicketActivity {
+  id: string;
+  label: string;
+  actor: string;
+  actorType?:
+    | "customer"
+    | "agent"
+    | "manager"
+    | "internal"
+    | "platform"
+    | "system";
+  time: string;
+  tone?: "neutral" | "success" | "warning" | "danger";
+}
+
+export interface ManagerActionResult {
+  status: "pending" | "approved" | "rejected" | "completed";
+  managerName?: string;
+  completedAt?: string;
+  actionTaken?: string;
+  closureDraft?: string;
+  references: TicketReference[];
+}
+
+export interface FollowUpTicket {
+  id: string;
+  displayId: string;
+  status: FollowUpTicketStatus;
+  category: FollowUpTicketCategory;
+  customerName: string;
+  customerInitials: string;
+  username: string;
+  sourceChannel: ExternalChannel;
+  sourceLabel: string;
+  sourceType: string;
+  externalUrl?: string;
+  route?: string;
+  originalComplaint: string;
+  submittedAt: string;
+  relativeTime: string;
+  safeReplyText?: string;
+  safeReplyCopiedAt?: string;
+  safeReplyBy?: string;
+  managerAction: ManagerActionResult;
+  closureMessage: string;
+  closureCopiedAt?: string;
+  closedAt?: string;
+  closedBy?: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  activityLog: FollowUpTicketActivity[];
+}

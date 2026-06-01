@@ -31,104 +31,111 @@ const MANAGER = {
 };
 
 const statusFilters = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "needs_info", label: "Needs Info" },
-  { value: "action_completed", label: "Done" },
+  { value: "all", label: "Semua" },
+  { value: "pending", label: "Menunggu" },
+  { value: "in_progress", label: "Diproses" },
+  { value: "needs_info", label: "Butuh Info" },
+  { value: "action_completed", label: "Selesai" },
 ];
 
 const priorityFilters = [
-  { value: "all", label: "All priority" },
-  { value: "urgent", label: "Urgent" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
+  { value: "all", label: "Semua prioritas" },
+  { value: "urgent", label: "Mendesak" },
+  { value: "high", label: "Tinggi" },
+  { value: "medium", label: "Sedang" },
+  { value: "low", label: "Rendah" },
 ];
 
 const decisionOptions = [
-  { value: "", label: "Select decision" },
-  { value: "refund_approved", label: "Refund approved" },
-  { value: "reschedule_approved", label: "Reschedule approved" },
-  { value: "compensation_approved", label: "Compensation approved" },
-  { value: "compensation_not_eligible", label: "Compensation not eligible" },
-  { value: "official_explanation_only", label: "Official explanation only" },
-  { value: "need_more_customer_data", label: "Need more customer data" },
+  { value: "", label: "Pilih keputusan" },
+  { value: "refund_approved", label: "Pengembalian dana disetujui" },
+  { value: "reschedule_approved", label: "Jadwal ulang disetujui" },
+  { value: "compensation_approved", label: "Kompensasi disetujui" },
+  {
+    value: "compensation_not_eligible",
+    label: "Tidak memenuhi syarat kompensasi",
+  },
+  { value: "official_explanation_only", label: "Hanya penjelasan resmi" },
+  { value: "need_more_customer_data", label: "Butuh data pelanggan tambahan" },
   {
     value: "forwarded_internal_department",
-    label: "Forwarded to internal department",
+    label: "Diteruskan ke tim internal",
   },
-  { value: "escalate_higher_authority", label: "Escalate higher authority" },
-  { value: "no_further_action", label: "No further action needed" },
+  {
+    value: "escalate_higher_authority",
+    label: "Eskalasi ke otoritas lebih tinggi",
+  },
+  { value: "no_further_action", label: "Tidak perlu tindak lanjut" },
 ];
 
 const scopeOptions: { value: AffectedScope | ""; label: string }[] = [
-  { value: "", label: "Select scope" },
-  { value: "all", label: "All complaints in this cluster" },
-  { value: "selected", label: "Selected complaints only" },
-  { value: "future_similar", label: "Future similar complaints too" },
+  { value: "", label: "Pilih cakupan" },
+  { value: "all", label: "Semua keluhan di klaster ini" },
+  { value: "selected", label: "Hanya keluhan yang dipilih" },
+  { value: "future_similar", label: "Termasuk keluhan serupa berikutnya" },
 ];
 
 const decisionStatusOptions: { value: DecisionStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "completed", label: "Completed" },
-  { value: "rejected", label: "Rejected" },
+  { value: "draft", label: "Draf" },
+  { value: "in_progress", label: "Diproses" },
+  { value: "confirmed", label: "Dikonfirmasi" },
+  { value: "completed", label: "Selesai" },
+  { value: "rejected", label: "Ditolak" },
 ];
 
 const internalTeamOptions = [
-  "Operations",
-  "Refund Team",
-  "Station Staff",
-  "Lost and Found",
-  "IT / Application Support",
-  "Customer Relations",
-  "Legal / Compliance",
-  "Other",
+  "Operasional",
+  "Tim Pengembalian Dana",
+  "Petugas Stasiun",
+  "Barang Tertinggal",
+  "IT / Bantuan Aplikasi",
+  "Relasi Pelanggan",
+  "Legal / Kepatuhan",
+  "Lainnya",
 ];
 
 const initialClusters: ActionClusterDetail[] = [
   {
     id: "CL-2026-0017",
-    title: "Train delay - Surabaya-Jakarta line, 17 May",
-    category: "Delay",
-    subCategory: "Long delay / no notification",
+    title: "Keterlambatan kereta - lintas Surabaya-Jakarta, 17 Mei",
+    category: "Keterlambatan",
+    subCategory: "Terlambat lama / tanpa notifikasi",
     status: "pending",
     priority: "high",
     complaintCount: 5,
     agentCount: 3,
     affectedRoute: "Surabaya-Jakarta",
-    incidentDate: "17 May 2026",
-    timeWindow: "Morning departure batch",
-    possibleRootCause: "Track maintenance - unconfirmed",
+    incidentDate: "17 Mei 2026",
+    timeWindow: "Keberangkatan pagi",
+    possibleRootCause: "Perawatan jalur - belum terkonfirmasi",
     rootCauseVerificationStatus: "partially_verified",
     groupingConfidence: "high",
     decisionStatus: "draft",
     slaStatus: "at_risk",
-    slaDueAt: "1h 20m left",
-    createdAt: "Raised 2h ago",
-    updatedAt: "Updated 18m ago",
-    actionSummary: "Coordinating delay report with operations team.",
+    slaDueAt: "Sisa 1 jam 20 menit",
+    createdAt: "Dibuat 2 jam lalu",
+    updatedAt: "Diperbarui 18 menit lalu",
+    actionSummary:
+      "Laporan keterlambatan sedang dikoordinasikan dengan tim operasional.",
     actionResult: "",
     agentInstruction:
-      "Manager action pending. Agents should wait for operational confirmation before sending final follow-up to linked customers.",
+      "Menunggu arahan manajer. Agen perlu menunggu konfirmasi operasional sebelum mengirim tindak lanjut akhir ke pelanggan terkait.",
     suggestedContext: {
-      possibleRootCause: "Track maintenance - unconfirmed",
+      possibleRootCause: "Perawatan jalur - belum terkonfirmasi",
       confidence: "medium",
       detectedPattern:
-        "Same route, same date, similar delay duration, and multiple passengers reporting no notification.",
+        "Rute sama, tanggal sama, durasi keterlambatan mirip, dan beberapa penumpang melaporkan tidak ada notifikasi.",
       affectedScope:
-        "Surabaya-Jakarta line, 17 May 2026, morning departure batch.",
+        "Lintas Surabaya-Jakarta, 17 Mei 2026, keberangkatan pagi.",
       suggestedPolicy:
-        "Refund or reschedule review may apply for delays above 3 hours.",
+        "Pengembalian dana atau jadwal ulang dapat ditinjau untuk keterlambatan di atas 3 jam.",
       relevantSources: [
-        "SOP delay handling v2.1",
-        "Refund policy v3.2",
-        "Similar delay case, March 2026",
+        "SOP penanganan keterlambatan v2.1",
+        "Kebijakan pengembalian dana v3.2",
+        "Kasus keterlambatan serupa, Maret 2026",
       ],
       neededVerification:
-        "Confirm actual root cause, affected train numbers, and refund eligibility with operations.",
+        "Konfirmasi penyebab aktual, nomor kereta terdampak, dan kelayakan pengembalian dana dengan operasional.",
     },
     complaints: [
       {
@@ -137,10 +144,10 @@ const initialClusters: ActionClusterDetail[] = [
         customerName: "Siti Nuraini",
         source: "twitter",
         complaintText:
-          "Kereta delay 3 jam dari Surabaya, ada meeting penting, tidak ada notifikasi sama sekali.",
+          "Kereta terlambat 3 jam dari Surabaya, ada meeting penting, tidak ada notifikasi sama sekali.",
         assignedAgentId: "agent-001",
         assignedAgentName: "Rizky A.",
-        ticketStatus: "Waiting Manager Action",
+        ticketStatus: "Menunggu Arahan Manajer",
         sourceUrl: "https://x.example.com/post/1024",
         createdAt: "10:06",
       },
@@ -153,7 +160,7 @@ const initialClusters: ActionClusterDetail[] = [
           "Info keterlambatan tidak jelas. Penumpang hanya menunggu di stasiun tanpa arahan.",
         assignedAgentId: "agent-002",
         assignedAgentName: "Dina P.",
-        ticketStatus: "Escalated",
+        ticketStatus: "Dieskalasi",
         createdAt: "10:14",
       },
       {
@@ -165,7 +172,7 @@ const initialClusters: ActionClusterDetail[] = [
           "Saya butuh kompensasi karena jadwal tiba berubah jauh dari tiket awal.",
         assignedAgentId: "agent-003",
         assignedAgentName: "Yusuf H.",
-        ticketStatus: "Waiting Manager Action",
+        ticketStatus: "Menunggu Arahan Manajer",
         createdAt: "10:31",
       },
     ],
@@ -173,70 +180,75 @@ const initialClusters: ActionClusterDetail[] = [
       {
         id: "AT-001",
         type: "url",
-        label: "Delay incident report draft",
+        label: "Draf laporan insiden keterlambatan",
         url: "https://internal.example.com/incidents/delay-17-may",
-        uploadedByName: "Operations Desk",
+        uploadedByName: "Meja Operasional",
         createdAt: "10:36",
       },
     ],
     auditLogs: [
       {
         id: "AU-001",
-        actorName: "System",
+        actorName: "Sistem",
         action: "cluster_created",
-        description: "Cluster created from 5 similar delay complaints.",
+        description: "Klaster dibuat dari 5 keluhan keterlambatan serupa.",
         createdAt: "10:12",
       },
       {
         id: "AU-002",
-        actorName: "Operations Desk",
+        actorName: "Meja Operasional",
         action: "attachment_added",
-        description: "Delay incident report draft linked for review.",
+        description:
+          "Draf laporan insiden keterlambatan ditautkan untuk ditinjau.",
         createdAt: "10:36",
       },
     ],
   },
   {
     id: "CL-2026-0018",
-    title: "Refund processing - cancelled trips May batch",
-    category: "Refund",
-    subCategory: "Refund not received",
+    title: "Proses pengembalian dana - batch perjalanan batal bulan Mei",
+    category: "Pengembalian Dana",
+    subCategory: "Pengembalian dana belum diterima",
     status: "in_progress",
     priority: "medium",
     assignedManagerId: "manager-001",
     assignedManagerName: "Maya R.",
     complaintCount: 2,
     agentCount: 2,
-    affectedRoute: "Multiple routes",
-    incidentDate: "16-18 May 2026",
-    timeWindow: "Cancellation batch",
-    possibleRootCause: "Payment gateway settlement queue",
+    affectedRoute: "Beberapa rute",
+    incidentDate: "16-18 Mei 2026",
+    timeWindow: "Batch pembatalan",
+    possibleRootCause: "Antrean settlement payment gateway",
     rootCauseVerificationStatus: "verified",
     groupingConfidence: "medium",
     decisionType: "forwarded_internal_department",
     decisionStatus: "in_progress",
     affectedScope: "all",
-    internalTeam: "Refund Team",
-    actionSummary: "Refund team is checking settlement status.",
+    internalTeam: "Tim Pengembalian Dana",
+    actionSummary: "Tim pengembalian dana sedang memeriksa status settlement.",
     actionResult:
-      "Initial check shows several refunds are waiting for gateway settlement confirmation.",
+      "Pengecekan awal menunjukkan beberapa pengembalian dana masih menunggu konfirmasi settlement gateway.",
     agentInstruction:
-      "Tell linked agents the refund batch is under finance review and avoid promising a fixed date until confirmation is received.",
+      "Beri tahu agen terkait bahwa batch pengembalian dana masih ditinjau tim keuangan dan jangan menjanjikan tanggal pasti sebelum ada konfirmasi.",
     slaStatus: "healthy",
-    slaDueAt: "5h 45m left",
-    createdAt: "Raised 4h ago",
-    updatedAt: "Updated 12m ago",
+    slaDueAt: "Sisa 5 jam 45 menit",
+    createdAt: "Dibuat 4 jam lalu",
+    updatedAt: "Diperbarui 12 menit lalu",
     suggestedContext: {
-      possibleRootCause: "Payment gateway settlement queue",
+      possibleRootCause: "Antrean settlement payment gateway",
       confidence: "medium",
       detectedPattern:
-        "Two refund complaints reference cancelled May trips and similar waiting period.",
-      affectedScope: "Cancelled trip refund requests from 16-18 May.",
+        "Dua keluhan pengembalian dana merujuk perjalanan batal bulan Mei dan waktu tunggu yang mirip.",
+      affectedScope:
+        "Permintaan pengembalian dana perjalanan batal dari 16-18 Mei.",
       suggestedPolicy:
-        "Refund team should verify payment channel status before final customer response.",
-      relevantSources: ["Refund policy v3.2", "Gateway settlement SOP"],
+        "Tim pengembalian dana perlu memverifikasi status kanal pembayaran sebelum balasan akhir ke pelanggan.",
+      relevantSources: [
+        "Kebijakan pengembalian dana v3.2",
+        "SOP settlement gateway",
+      ],
       neededVerification:
-        "Confirm payment method, booking IDs, and gateway settlement response.",
+        "Konfirmasi metode pembayaran, ID booking, dan respons settlement gateway.",
     },
     complaints: [
       {
@@ -245,10 +257,10 @@ const initialClusters: ActionClusterDetail[] = [
         customerName: "Wulan Sari",
         source: "email",
         complaintText:
-          "Refund tiket batal belum masuk setelah lebih dari seminggu.",
+          "Pengembalian dana tiket batal belum masuk setelah lebih dari seminggu.",
         assignedAgentId: "agent-004",
         assignedAgentName: "Laras N.",
-        ticketStatus: "Internal Review",
+        ticketStatus: "Tinjauan Internal",
         createdAt: "08:48",
       },
       {
@@ -257,10 +269,10 @@ const initialClusters: ActionClusterDetail[] = [
         customerName: "Dedi Kusuma",
         source: "facebook",
         complaintText:
-          "Pengembalian dana pembatalan belum diterima, customer service bilang tunggu terus.",
+          "Pengembalian dana pembatalan belum diterima, layanan pelanggan hanya meminta menunggu.",
         assignedAgentId: "agent-002",
         assignedAgentName: "Dina P.",
-        ticketStatus: "Waiting Internal Team",
+        ticketStatus: "Menunggu Tim Internal",
         createdAt: "09:03",
       },
     ],
@@ -268,25 +280,25 @@ const initialClusters: ActionClusterDetail[] = [
     auditLogs: [
       {
         id: "AU-003",
-        actorName: "System",
+        actorName: "Sistem",
         action: "cluster_created",
-        description: "Cluster created from 2 refund complaints.",
+        description: "Klaster dibuat dari 2 keluhan pengembalian dana.",
         createdAt: "08:59",
       },
       {
         id: "AU-004",
         actorName: "Maya R.",
         action: "status_changed",
-        description: "Status changed to In Progress.",
+        description: "Status diubah menjadi Diproses.",
         createdAt: "09:12",
       },
     ],
   },
   {
     id: "CL-2026-0019",
-    title: "Seat mismatch - executive coach B",
-    category: "Seat",
-    subCategory: "Seat mismatch",
+    title: "Ketidaksesuaian kursi - gerbong eksekutif B",
+    category: "Kursi",
+    subCategory: "Kursi tidak sesuai",
     status: "needs_info",
     priority: "urgent",
     assignedManagerId: "manager-002",
@@ -294,27 +306,28 @@ const initialClusters: ActionClusterDetail[] = [
     complaintCount: 7,
     agentCount: 4,
     affectedRoute: "Bandung-Yogyakarta",
-    incidentDate: "18 May 2026",
-    timeWindow: "Evening departure",
-    possibleRootCause: "Coach layout sync issue",
+    incidentDate: "18 Mei 2026",
+    timeWindow: "Keberangkatan malam",
+    possibleRootCause: "Sinkronisasi denah gerbong bermasalah",
     rootCauseVerificationStatus: "unverified",
     groupingConfidence: "low",
     decisionStatus: "draft",
     slaStatus: "overdue",
-    slaDueAt: "Overdue by 32m",
-    createdAt: "Raised 6h ago",
-    updatedAt: "Updated 6m ago",
+    slaDueAt: "Terlambat 32 menit",
+    createdAt: "Dibuat 6 jam lalu",
+    updatedAt: "Diperbarui 6 menit lalu",
     suggestedContext: {
-      possibleRootCause: "Coach layout sync issue - unverified",
+      possibleRootCause:
+        "Sinkronisasi denah gerbong bermasalah - belum diverifikasi",
       confidence: "low",
       detectedPattern:
-        "Multiple complaints mention executive coach B but details vary by seat number.",
-      affectedScope: "Bandung-Yogyakarta evening departure.",
+        "Beberapa keluhan menyebut gerbong eksekutif B, tetapi detailnya berbeda per nomor kursi.",
+      affectedScope: "Keberangkatan malam Bandung-Yogyakarta.",
       suggestedPolicy:
-        "Verify seat map, onboard report, and any coach substitution before deciding compensation.",
-      relevantSources: ["Seat assignment SOP", "Coach substitution memo"],
+        "Verifikasi denah kursi, laporan di kereta, dan kemungkinan penggantian gerbong sebelum memutuskan kompensasi.",
+      relevantSources: ["SOP penetapan kursi", "Memo penggantian gerbong"],
       neededVerification:
-        "Ask agents to collect booking IDs, coach numbers, and passenger seat photos where available.",
+        "Minta agen mengumpulkan ID booking, nomor gerbong, dan foto kursi penumpang jika tersedia.",
     },
     complaints: [
       {
@@ -326,7 +339,7 @@ const initialClusters: ActionClusterDetail[] = [
           "Nomor kursi di aplikasi beda dengan kursi di kereta, petugas juga bingung.",
         assignedAgentId: "agent-001",
         assignedAgentName: "Rizky A.",
-        ticketStatus: "Needs Info",
+        ticketStatus: "Butuh Info",
         createdAt: "12:12",
       },
     ],
@@ -337,15 +350,15 @@ const initialClusters: ActionClusterDetail[] = [
         actorName: "Andi S.",
         action: "info_requested",
         description:
-          "Requested booking IDs and coach photos from all linked agents.",
+          "Meminta ID booking dan foto gerbong dari semua agen terkait.",
         createdAt: "12:40",
       },
     ],
   },
   {
     id: "CL-2026-0020",
-    title: "App login outage - OTP code not received",
-    category: "Application",
+    title: "Gangguan login aplikasi - kode OTP tidak diterima",
+    category: "Aplikasi",
     subCategory: "Login / OTP",
     status: "action_completed",
     priority: "medium",
@@ -353,42 +366,43 @@ const initialClusters: ActionClusterDetail[] = [
     assignedManagerName: "Maya R.",
     complaintCount: 4,
     agentCount: 2,
-    possibleRootCause: "SMS provider delivery delay",
+    possibleRootCause: "Keterlambatan pengiriman dari provider SMS",
     rootCauseVerificationStatus: "verified",
     groupingConfidence: "high",
     decisionType: "official_explanation_only",
     decisionStatus: "completed",
     affectedScope: "all",
-    internalTeam: "IT / Application Support",
-    actionSummary: "IT team confirmed SMS delivery delay and recovery window.",
+    internalTeam: "IT / Bantuan Aplikasi",
+    actionSummary:
+      "Tim IT mengonfirmasi keterlambatan pengiriman SMS dan estimasi pemulihan.",
     actionResult:
-      "SMS provider issue has been resolved. Affected users can request a new OTP and retry login.",
+      "Kendala provider SMS sudah terselesaikan. Pengguna terdampak dapat meminta OTP baru dan mencoba login lagi.",
     agentInstruction:
-      "Notify linked agents that customers should retry OTP request and contact support if the issue continues after 15 minutes.",
+      "Beri tahu agen terkait agar pelanggan mencoba meminta OTP ulang dan menghubungi kanal bantuan jika kendala masih terjadi setelah 15 menit.",
     slaStatus: "healthy",
-    slaDueAt: "Completed",
-    createdAt: "Raised yesterday",
-    updatedAt: "Completed 1h ago",
-    resolvedAt: "Completed 1h ago",
+    slaDueAt: "Selesai",
+    createdAt: "Dibuat kemarin",
+    updatedAt: "Selesai 1 jam lalu",
+    resolvedAt: "Selesai 1 jam lalu",
     suggestedContext: {
-      possibleRootCause: "SMS provider delivery delay",
+      possibleRootCause: "Keterlambatan pengiriman dari provider SMS",
       confidence: "high",
       detectedPattern:
-        "Login complaints started in the same 40-minute window and mention missing OTP.",
-      affectedScope: "Mobile app login, OTP delivery.",
+        "Keluhan login muncul dalam rentang 40 menit yang sama dan menyebut OTP tidak diterima.",
+      affectedScope: "Login aplikasi mobile, pengiriman OTP.",
       suggestedPolicy:
-        "Provide official explanation and safe retry steps, no compensation required.",
-      relevantSources: ["App incident log", "OTP troubleshooting SOP"],
-      neededVerification: "Verified by IT support.",
+        "Berikan penjelasan resmi dan langkah coba ulang yang aman; tidak perlu kompensasi.",
+      relevantSources: ["Log insiden aplikasi", "SOP kendala OTP"],
+      neededVerification: "Terverifikasi oleh tim IT.",
     },
     complaints: [],
     attachments: [
       {
         id: "AT-002",
         type: "url",
-        label: "IT recovery note",
+        label: "Catatan pemulihan IT",
         url: "https://internal.example.com/it/otp-recovery",
-        uploadedByName: "IT Support",
+        uploadedByName: "Tim IT",
         createdAt: "14:05",
       },
     ],
@@ -397,7 +411,7 @@ const initialClusters: ActionClusterDetail[] = [
         id: "AU-006",
         actorName: "Maya R.",
         action: "action_completed",
-        description: "Action completed and linked agents notified.",
+        description: "Tindakan selesai dan agen terkait sudah diberi tahu.",
         createdAt: "14:18",
       },
     ],
@@ -507,7 +521,7 @@ export function ManagerActionQueue() {
               actorName: MANAGER.name,
               action,
               description,
-              createdAt: "Just now",
+              createdAt: "Baru saja",
             },
             ...cluster.auditLogs,
           ],
@@ -524,9 +538,9 @@ export function ManagerActionQueue() {
         selectedCluster.status === "pending"
           ? "assigned"
           : selectedCluster.status,
-      updatedAt: "Updated just now",
+      updatedAt: "Diperbarui baru saja",
     });
-    addAuditLog("Manager assigned: Maya R.", "manager_assigned");
+    addAuditLog("Manajer ditetapkan: Maya R.", "manager_assigned");
     setCompletionMessage("");
   };
 
@@ -534,22 +548,22 @@ export function ManagerActionQueue() {
     updateSelectedCluster({
       status: "in_progress",
       decisionStatus: "in_progress",
-      updatedAt: "Updated just now",
+      updatedAt: "Diperbarui baru saja",
     });
-    addAuditLog("Status changed to In Progress.", "status_changed");
+    addAuditLog("Status diubah menjadi Diproses.", "status_changed");
     setCompletionMessage("");
   };
 
   const handleRequestInfo = () => {
     updateSelectedCluster({
       status: "needs_info",
-      updatedAt: "Updated just now",
+      updatedAt: "Diperbarui baru saja",
     });
     addAuditLog(
-      "Requested more information from all linked agents.",
+      "Meminta informasi tambahan dari semua agen terkait.",
       "info_requested",
     );
-    setCompletionMessage("Information request recorded for linked agents.");
+    setCompletionMessage("Permintaan informasi dicatat untuk agen terkait.");
   };
 
   const handleRemoveComplaint = (complaintId: string) => {
@@ -567,14 +581,14 @@ export function ManagerActionQueue() {
           ...cluster,
           complaints: nextComplaints,
           complaintCount: Math.max(cluster.complaintCount - 1, 0),
-          updatedAt: "Updated just now",
+          updatedAt: "Diperbarui baru saja",
           auditLogs: [
             {
               id: `AU-${Date.now()}`,
               actorName: MANAGER.name,
               action: "complaint_removed",
-              description: "Complaint removed from this cluster.",
-              createdAt: "Just now",
+              description: "Keluhan dihapus dari klaster ini.",
+              createdAt: "Baru saja",
             },
             ...cluster.auditLogs,
           ],
@@ -585,26 +599,26 @@ export function ManagerActionQueue() {
 
   const validateCompletion = () => {
     if (!selectedCluster.decisionType) {
-      return "Select a decision type before completing this action.";
+      return "Pilih jenis keputusan sebelum menyelesaikan tindakan ini.";
     }
 
     if (!selectedCluster.affectedScope) {
-      return "Select the affected scope before completing this action.";
+      return "Pilih cakupan terdampak sebelum menyelesaikan tindakan ini.";
     }
 
     if (!selectedCluster.actionSummary?.trim()) {
-      return "Write an action summary before completing this action.";
+      return "Tulis ringkasan tindakan sebelum menyelesaikan tindakan ini.";
     }
 
     if (!selectedCluster.actionResult?.trim()) {
-      return "Write the detailed action result before completing this action.";
+      return "Tulis hasil tindakan secara rinci sebelum menyelesaikan tindakan ini.";
     }
 
     if (
       !selectedCluster.agentInstruction?.trim() &&
       !selectedCluster.closureMessage?.trim()
     ) {
-      return "Write an agent follow-up instruction or closure message.";
+      return "Tulis instruksi tindak lanjut untuk agen atau balasan akhir.";
     }
 
     return "";
@@ -623,18 +637,18 @@ export function ManagerActionQueue() {
     updateSelectedCluster({
       status: "action_completed",
       decisionStatus: "completed",
-      resolvedAt: "Completed just now",
-      slaDueAt: "Completed",
+      resolvedAt: "Selesai baru saja",
+      slaDueAt: "Selesai",
       slaStatus: "healthy",
-      updatedAt: "Completed just now",
+      updatedAt: "Selesai baru saja",
     });
     addAuditLog(
-      `Action completed and ${selectedCluster.agentCount} agents notified.`,
+      `Tindakan selesai dan ${selectedCluster.agentCount} agen diberi tahu.`,
       "action_completed",
     );
     setConfirmationOpen(false);
     setCompletionMessage(
-      `${selectedCluster.complaintCount} linked tickets are now ready for final agent follow-up.`,
+      `${selectedCluster.complaintCount} tiket terkait siap untuk tindak lanjut akhir oleh agen.`,
     );
   };
 
@@ -644,10 +658,10 @@ export function ManagerActionQueue() {
         <section className="mx-auto flex min-h-[520px] max-w-4xl items-center justify-center rounded-[22px] border border-[var(--rail-border)] bg-[var(--surface-panel)] p-6 text-center shadow-[var(--shadow-soft)]">
           <div>
             <h1 className="text-2xl font-semibold text-[var(--rail-ink)]">
-              No action requests yet.
+              Belum ada permintaan tindakan.
             </h1>
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Complaint clusters requiring manager action will appear here.
+              Klaster keluhan yang butuh arahan manajer akan tampil di sini.
             </p>
           </div>
         </section>
@@ -663,10 +677,10 @@ export function ManagerActionQueue() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           stats={[
-            { label: "Pending", value: pendingCount.toString() },
-            { label: "SLA risk", value: atRiskCount.toString() },
+            { label: "Menunggu", value: pendingCount.toString() },
+            { label: "Risiko SLA", value: atRiskCount.toString() },
             {
-              label: "Clusters",
+              label: "Klaster",
               value: clusters.length.toString(),
             },
           ]}
@@ -681,13 +695,13 @@ export function ManagerActionQueue() {
                   className="text-[var(--signal-red)]"
                   size={15}
                 />
-                {atRiskCount} SLA risk
+                {atRiskCount} risiko SLA
               </span>
             }
             dashboardRole="manager"
             isSidebarOpen={sidebarOpen}
             onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
-            roleLabel="Operations manager"
+            roleLabel="Manajer operasional"
             userName={MANAGER.name}
           />
 
@@ -702,15 +716,15 @@ export function ManagerActionQueue() {
                     Manager Action Queue
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-                    Resolve grouped complaint clusters once, then notify the
-                    linked agents with a consistent operational result.
+                    Selesaikan klaster keluhan sekaligus, lalu beri agen hasil
+                    operasional yang konsisten.
                   </p>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[430px]">
-                  <MetricPill label="Pending clusters" value={pendingCount} />
-                  <MetricPill label="Linked tickets" value={18} />
-                  <MetricPill label="Agents affected" value={11} />
+                  <MetricPill label="Klaster menunggu" value={pendingCount} />
+                  <MetricPill label="Tiket terkait" value={18} />
+                  <MetricPill label="Agen terdampak" value={11} />
                 </div>
               </div>
             </header>
@@ -843,7 +857,7 @@ function ActionQueueSidebar({
       </div>
 
       <label className="relative block">
-        <span className="sr-only">Search clusters</span>
+        <span className="sr-only">Cari klaster</span>
         <Search
           aria-hidden="true"
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -852,7 +866,7 @@ function ActionQueueSidebar({
         <input
           className="h-11 w-full rounded-lg border border-[var(--rail-border)] bg-[var(--background)] pl-9 pr-3 text-sm text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search clusters..."
+          placeholder="Cari klaster..."
           type="search"
           value={searchQuery}
         />
@@ -888,12 +902,12 @@ function ActionQueueSidebar({
       <div className="mt-3 grid grid-cols-2 gap-2">
         <ToggleButton
           active={slaRiskOnly}
-          label="SLA risk"
+          label="Risiko SLA"
           onClick={() => setSlaRiskOnly(!slaRiskOnly)}
         />
         <ToggleButton
           active={assignedToMeOnly}
-          label="Assigned to me"
+          label="Untuk saya"
           onClick={() => setAssignedToMeOnly(!assignedToMeOnly)}
         />
       </div>
@@ -911,10 +925,10 @@ function ActionQueueSidebar({
         ) : (
           <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4 text-center">
             <p className="text-sm font-semibold text-[var(--rail-ink)]">
-              No matching clusters found.
+              Tidak ada klaster yang cocok.
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-              Try changing your search keyword or filters.
+              Coba ubah kata kunci atau filter pencarian.
             </p>
           </div>
         )}
@@ -956,11 +970,11 @@ function ActionClusterCard({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[var(--text-muted)]">
-        <span>{cluster.complaintCount} complaints</span>
-        <span>{cluster.agentCount} agents</span>
+        <span>{cluster.complaintCount} keluhan</span>
+        <span>{cluster.agentCount} agen</span>
         <span>{cluster.createdAt}</span>
         <span className="truncate">
-          {cluster.assignedManagerName ?? "Unassigned"}
+          {cluster.assignedManagerName ?? "Belum ditugaskan"}
         </span>
       </div>
     </button>
@@ -993,32 +1007,32 @@ function ClusterHeader({
             {cluster.title}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-            {cluster.complaintCount} complaints waiting across{" "}
-            {cluster.agentCount} agents. Raised{" "}
-            {cluster.createdAt.toLowerCase()}.
+            {cluster.complaintCount} keluhan menunggu dari {cluster.agentCount}{" "}
+            agen. Dibuat{" "}
+            {cluster.createdAt.replace(/^Dibuat\s+/i, "").toLowerCase()}.
           </p>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[420px]">
           <ActionButton
             icon={<UserCheck aria-hidden="true" size={15} />}
-            label="Assign to me"
+            label="Ambil tugas"
             onClick={onAssignToMe}
           />
           <ActionButton
             icon={<Clock3 aria-hidden="true" size={15} />}
-            label="Mark In Progress"
+            label="Tandai Diproses"
             onClick={onMarkInProgress}
           />
           <ActionButton
             icon={<CheckCircle2 aria-hidden="true" size={15} />}
-            label="Complete Action"
+            label="Selesaikan Tindakan"
             onClick={onComplete}
             tone="primary"
           />
           <ActionButton
             icon={<AlertCircle aria-hidden="true" size={15} />}
-            label="Request More Info"
+            label="Minta Info Tambahan"
             onClick={onRequestInfo}
           />
         </div>
@@ -1029,33 +1043,33 @@ function ClusterHeader({
 
 function ClusterSummaryCard({ cluster }: { cluster: ActionClusterDetail }) {
   return (
-    <Panel title="Cluster Summary">
+    <Panel title="Ringkasan Klaster">
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryItem label="Cluster ID" value={cluster.id} />
-        <SummaryItem label="Category" value={cluster.category} />
-        <SummaryItem label="Sub-category" value={cluster.subCategory ?? "-"} />
+        <SummaryItem label="ID Klaster" value={cluster.id} />
+        <SummaryItem label="Kategori" value={cluster.category} />
+        <SummaryItem label="Subkategori" value={cluster.subCategory ?? "-"} />
         <SummaryItem
-          label="Affected route"
-          value={cluster.affectedRoute ?? "Multiple / unknown"}
+          label="Rute terdampak"
+          value={cluster.affectedRoute ?? "Beberapa / belum diketahui"}
         />
         <SummaryItem
-          label="Incident date"
-          value={cluster.incidentDate ?? "Needs verification"}
+          label="Tanggal insiden"
+          value={cluster.incidentDate ?? "Perlu verifikasi"}
         />
         <SummaryItem
-          label="Time window"
-          value={cluster.timeWindow ?? "Needs verification"}
+          label="Rentang waktu"
+          value={cluster.timeWindow ?? "Perlu verifikasi"}
         />
         <SummaryItem
-          label="Assigned manager"
-          value={cluster.assignedManagerName ?? "Unassigned"}
+          label="Manajer"
+          value={cluster.assignedManagerName ?? "Belum ditugaskan"}
         />
         <SummaryItem
-          label="Grouping"
+          label="Pengelompokan"
           value={confidenceLabel(cluster.groupingConfidence)}
         />
         <SummaryItem
-          label="Verification"
+          label="Verifikasi"
           value={verificationLabel(cluster.rootCauseVerificationStatus)}
         />
       </div>
@@ -1074,10 +1088,10 @@ function ClusterComplaintList({
     <Panel
       action={
         <span className="rounded-full bg-[var(--background)] px-3 py-1 text-[11px] font-semibold text-[var(--text-muted)]">
-          {cluster.complaints.length} linked
+          {cluster.complaints.length} terkait
         </span>
       }
-      title="Complaints in Cluster"
+      title="Keluhan dalam Klaster"
     >
       <div className="space-y-3">
         {cluster.complaints.length > 0 ? (
@@ -1092,7 +1106,7 @@ function ClusterComplaintList({
                     {complaint.customerName}
                   </h4>
                   <p className="mt-1 text-xs text-[var(--text-muted)]">
-                    via {sourceLabel(complaint.source)} - Agent{" "}
+                    via {sourceLabel(complaint.source)} - Agen{" "}
                     {complaint.assignedAgentName}
                   </p>
                 </div>
@@ -1107,21 +1121,21 @@ function ClusterComplaintList({
               <div className="mt-3 flex flex-wrap gap-2">
                 <ActionButton
                   icon={<FileText aria-hidden="true" size={14} />}
-                  label="View ticket"
+                  label="Lihat tiket"
                   onClick={() => undefined}
                   small
                 />
                 {complaint.sourceUrl ? (
                   <ActionButton
                     icon={<Link2 aria-hidden="true" size={14} />}
-                    label="Open source URL"
+                    label="Buka URL sumber"
                     onClick={() => undefined}
                     small
                   />
                 ) : null}
                 <ActionButton
                   icon={<X aria-hidden="true" size={14} />}
-                  label="Remove from cluster"
+                  label="Hapus dari klaster"
                   onClick={() => onRemoveComplaint(complaint.id)}
                   small
                   tone="danger"
@@ -1132,10 +1146,10 @@ function ClusterComplaintList({
         ) : (
           <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4 text-center">
             <p className="text-sm font-semibold text-[var(--rail-ink)]">
-              This cluster has no linked complaints.
+              Klaster ini belum memiliki keluhan terkait.
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-              It may have been split, merged, or archived.
+              Keluhan mungkin sudah dipisah, digabung, atau diarsipkan.
             </p>
           </div>
         )}
@@ -1155,15 +1169,15 @@ function SuggestedContextCard({ cluster }: { cluster: ActionClusterDetail }) {
     <Panel
       action={
         <Badge tone="blue">
-          {confidenceLabel(context.confidence)} confidence
+          Keyakinan {confidenceLabel(context.confidence).toLowerCase()}
         </Badge>
       }
-      title="System-Suggested Context"
+      title="Konteks Rekomendasi Sistem"
     >
       <div className="grid gap-3 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-lg bg-[var(--background)] p-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-            Possible root cause
+            Dugaan penyebab
           </p>
           <p className="mt-2 text-sm font-semibold text-[var(--rail-ink)]">
             {context.possibleRootCause}
@@ -1173,13 +1187,16 @@ function SuggestedContextCard({ cluster }: { cluster: ActionClusterDetail }) {
           </p>
         </div>
         <div className="space-y-3">
-          <SummaryItem label="Affected scope" value={context.affectedScope} />
           <SummaryItem
-            label="Suggested policy"
+            label="Cakupan terdampak"
+            value={context.affectedScope}
+          />
+          <SummaryItem
+            label="Kebijakan yang disarankan"
             value={context.suggestedPolicy}
           />
           <SummaryItem
-            label="Needed verification"
+            label="Verifikasi yang dibutuhkan"
             value={context.neededVerification}
           />
         </div>
@@ -1202,9 +1219,9 @@ function ManagerDecisionForm({
   onChange: (patch: Partial<ActionClusterDetail>) => void;
 }) {
   return (
-    <Panel title="Manager Decision">
+    <Panel title="Keputusan Manajer">
       <div className="grid gap-3 md:grid-cols-2">
-        <FormField label="Decision type">
+        <FormField label="Jenis keputusan">
           <select
             className={inputClassName()}
             onChange={(event) => onChange({ decisionType: event.target.value })}
@@ -1217,7 +1234,7 @@ function ManagerDecisionForm({
             ))}
           </select>
         </FormField>
-        <FormField label="Affected scope">
+        <FormField label="Cakupan terdampak">
           <select
             className={inputClassName()}
             onChange={(event) =>
@@ -1232,13 +1249,13 @@ function ManagerDecisionForm({
             ))}
           </select>
         </FormField>
-        <FormField label="Internal team">
+        <FormField label="Tim internal">
           <select
             className={inputClassName()}
             onChange={(event) => onChange({ internalTeam: event.target.value })}
             value={cluster.internalTeam ?? ""}
           >
-            <option value="">Select team</option>
+            <option value="">Pilih tim</option>
             {internalTeamOptions.map((team) => (
               <option key={team} value={team}>
                 {team}
@@ -1246,7 +1263,7 @@ function ManagerDecisionForm({
             ))}
           </select>
         </FormField>
-        <FormField label="Decision status">
+        <FormField label="Status keputusan">
           <select
             className={inputClassName()}
             onChange={(event) =>
@@ -1274,29 +1291,29 @@ function ActionResultForm({
   onChange: (patch: Partial<ActionClusterDetail>) => void;
 }) {
   return (
-    <Panel title="Action Result">
+    <Panel title="Hasil Tindakan">
       <div className="grid gap-3">
-        <FormField label="Action summary">
+        <FormField label="Ringkasan tindakan">
           <input
             className={inputClassName()}
             onChange={(event) =>
               onChange({ actionSummary: event.target.value })
             }
-            placeholder="Coordinated with operations and refund team."
+            placeholder="Sudah dikoordinasikan dengan tim operasional dan tim pengembalian dana."
             type="text"
             value={cluster.actionSummary ?? ""}
           />
         </FormField>
-        <FormField label="Detailed action result">
+        <FormField label="Rincian hasil tindakan">
           <textarea
             className={`${inputClassName()} min-h-[150px] resize-none py-3 leading-6`}
             onChange={(event) => onChange({ actionResult: event.target.value })}
-            placeholder="Write the official operational result here."
+            placeholder="Tulis hasil operasional resmi di sini."
             value={cluster.actionResult ?? ""}
           />
         </FormField>
         <div className="grid gap-3 md:grid-cols-2">
-          <FormField label="Reference URL">
+          <FormField label="URL referensi">
             <input
               className={inputClassName()}
               onChange={(event) =>
@@ -1307,13 +1324,13 @@ function ActionResultForm({
               value={cluster.referenceUrl ?? ""}
             />
           </FormField>
-          <FormField label="Additional manager notes">
+          <FormField label="Catatan tambahan manajer">
             <input
               className={inputClassName()}
               onChange={(event) =>
                 onChange({ managerNotes: event.target.value })
               }
-              placeholder="Optional internal note"
+              placeholder="Catatan internal opsional"
               type="text"
               value={cluster.managerNotes ?? ""}
             />
@@ -1327,10 +1344,10 @@ function ActionResultForm({
 function ClosurePreviewCard({ cluster }: { cluster: ActionClusterDetail }) {
   return (
     <Panel
-      action={<Badge tone="green">Notify agents only</Badge>}
-      title="Closure / Agent Follow-up Preview"
+      action={<Badge tone="green">Hanya beri tahu agen</Badge>}
+      title="Pratinjau Tindak Lanjut Agen"
     >
-      <FormField label="Agent follow-up message">
+      <FormField label="Pesan tindak lanjut untuk agen">
         <textarea
           className={`${inputClassName()} min-h-[150px] resize-none py-3 leading-6`}
           readOnly
@@ -1343,11 +1360,11 @@ function ClosurePreviewCard({ cluster }: { cluster: ActionClusterDetail }) {
 
 function ReferencePanel({ cluster }: { cluster: ActionClusterDetail }) {
   return (
-    <Panel title="Evidence and References">
+    <Panel title="Bukti dan Referensi">
       <div className="space-y-3">
         {cluster.referenceUrl ? (
           <ReferenceRow
-            label="Manager reference URL"
+            label="URL referensi manajer"
             uploadedByName={MANAGER.name}
             url={cluster.referenceUrl}
           />
@@ -1362,8 +1379,8 @@ function ReferencePanel({ cluster }: { cluster: ActionClusterDetail }) {
         ))}
         {!cluster.referenceUrl && cluster.attachments.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4 text-sm text-[var(--text-muted)]">
-            Add a reference URL in the action result form to keep evidence
-            linked to the manager decision.
+            Tambahkan URL referensi di formulir hasil tindakan agar bukti tetap
+            terhubung dengan keputusan manajer.
           </div>
         ) : null}
       </div>
@@ -1403,7 +1420,7 @@ function ReferenceRow({
 
 function AuditTrail({ cluster }: { cluster: ActionClusterDetail }) {
   return (
-    <Panel title="Audit Trail">
+    <Panel title="Riwayat Audit">
       <ol className="space-y-3">
         {cluster.auditLogs.map((log) => (
           <li className="relative pl-5" key={log.id}>
@@ -1439,12 +1456,12 @@ function CompleteActionModal({
           </span>
           <div>
             <h2 className="text-lg font-semibold text-[var(--rail-ink)]">
-              Complete action and notify agents?
+              Selesaikan tindakan dan beri tahu agen?
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-              This action will update {cluster.complaintCount} linked tickets
-              and notify {cluster.agentCount} agents. Review the decision and
-              action result before continuing.
+              Tindakan ini akan memperbarui {cluster.complaintCount} tiket
+              terkait dan memberi tahu {cluster.agentCount} agen. Tinjau
+              keputusan dan hasil tindakan sebelum melanjutkan.
             </p>
           </div>
         </div>
@@ -1455,14 +1472,14 @@ function CompleteActionModal({
             onClick={onCancel}
             type="button"
           >
-            Cancel
+            Batal
           </button>
           <button
             className="h-11 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)]"
             onClick={onConfirm}
             type="button"
           >
-            Complete Action & Notify Agents
+            Selesaikan & Beri Tahu Agen
           </button>
         </div>
       </section>
@@ -1712,22 +1729,22 @@ function buildAgentInstruction(cluster: ActionClusterDetail) {
 
   const result = cluster.actionResult?.trim()
     ? cluster.actionResult
-    : "Manager action result is not complete yet.";
+    : "Hasil tindakan manajer belum lengkap.";
 
-  return `Manager action completed.\n\nResult:\n${result}\n\nInstruction for agents:\nPlease send a final follow-up response to each linked customer using the approved operational result above.`;
+  return `Arahan manajer selesai.\n\nHasil:\n${result}\n\nInstruksi untuk agen:\nKirim tindak lanjut akhir ke setiap pelanggan terkait berdasarkan hasil operasional yang sudah disetujui di atas.`;
 }
 
 function statusLabel(status: ClusterStatus) {
   const labels: Record<ClusterStatus, string> = {
-    action_completed: "Done",
-    assigned: "Assigned",
-    cancelled: "Cancelled",
-    in_progress: "In Progress",
-    merged: "Merged",
-    needs_info: "Needs Info",
-    pending: "Pending",
-    resolved: "Resolved",
-    waiting_internal_team: "Waiting Team",
+    action_completed: "Selesai",
+    assigned: "Ditugaskan",
+    cancelled: "Dibatalkan",
+    in_progress: "Diproses",
+    merged: "Digabung",
+    needs_info: "Butuh Info",
+    pending: "Menunggu",
+    resolved: "Selesai",
+    waiting_internal_team: "Menunggu Tim",
   };
 
   return labels[status];
@@ -1735,10 +1752,10 @@ function statusLabel(status: ClusterStatus) {
 
 function priorityLabel(priority: ClusterPriority) {
   const labels: Record<ClusterPriority, string> = {
-    high: "High Priority",
-    low: "Low Priority",
-    medium: "Medium Priority",
-    urgent: "Urgent",
+    high: "Prioritas Tinggi",
+    low: "Prioritas Rendah",
+    medium: "Prioritas Sedang",
+    urgent: "Mendesak",
   };
 
   return labels[priority];
@@ -1746,10 +1763,10 @@ function priorityLabel(priority: ClusterPriority) {
 
 function confidenceLabel(confidence: string) {
   const labels: Record<string, string> = {
-    high: "High",
-    low: "Low",
-    manual: "Manual grouping",
-    medium: "Medium",
+    high: "Tinggi",
+    low: "Rendah",
+    manual: "Pengelompokan manual",
+    medium: "Sedang",
   };
 
   return labels[confidence] ?? confidence;
@@ -1757,10 +1774,10 @@ function confidenceLabel(confidence: string) {
 
 function verificationLabel(status: string) {
   const labels: Record<string, string> = {
-    partially_verified: "Partially Verified",
-    rejected: "Rejected",
-    unverified: "Unverified",
-    verified: "Verified",
+    partially_verified: "Sebagian Terverifikasi",
+    rejected: "Ditolak",
+    unverified: "Belum Diverifikasi",
+    verified: "Terverifikasi",
   };
 
   return labels[status] ?? status;
@@ -1773,7 +1790,7 @@ function sourceLabel(source: string) {
     instagram: "Instagram",
     manual: "Manual",
     twitter: "X / Twitter",
-    web_form: "Web form",
+    web_form: "Form web",
   };
 
   return labels[source] ?? source;

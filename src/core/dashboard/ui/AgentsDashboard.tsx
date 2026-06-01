@@ -69,14 +69,14 @@ export function AgentPerformanceDashboard({
         <section className="mx-auto flex min-h-[520px] max-w-5xl items-center justify-center rounded-[20px] border border-[var(--rail-border)] bg-[var(--surface-panel)] p-6">
           <div className="max-w-md text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
-              Agent portal
+              Portal agen
             </p>
             <h1 className="mt-3 text-2xl font-semibold text-[var(--rail-ink)]">
-              No performance snapshot available
+              Data performa belum tersedia
             </h1>
             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">
-              Once the service feed is connected, your performance metrics will
-              appear here.
+              Setelah data layanan terhubung, metrik performa Anda akan tampil
+              di sini.
             </p>
           </div>
         </section>
@@ -94,10 +94,13 @@ export function AgentPerformanceDashboard({
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           stats={[
-            { label: "On time", value: `${snapshot.slaHealth.onTimePercent}%` },
-            { label: "Active", value: openCases.toString() },
             {
-              label: "Overdue",
+              label: "Tepat waktu",
+              value: `${snapshot.slaHealth.onTimePercent}%`,
+            },
+            { label: "Aktif", value: openCases.toString() },
+            {
+              label: "Terlambat",
               value: snapshot.slaHealth.overdueCount.toString(),
             },
           ]}
@@ -107,7 +110,7 @@ export function AgentPerformanceDashboard({
           <DashboardNavbar
             controls={
               <select
-                aria-label="Select performance period"
+                aria-label="Pilih periode performa"
                 className="h-10 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-medium text-[var(--text-muted)] outline-none focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
                 onChange={(event) =>
                   setSelectedPeriod(event.target.value as PerformancePeriod)
@@ -130,33 +133,33 @@ export function AgentPerformanceDashboard({
 
           <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
-              detail={`${snapshot.slaHealth.activeRiskCount} at risk · ${snapshot.slaHealth.overdueCount} overdue`}
+              detail={`${snapshot.slaHealth.activeRiskCount} berisiko · ${snapshot.slaHealth.overdueCount} terlambat`}
               icon={<ShieldCheck aria-hidden="true" size={20} />}
-              label="SLA health"
+              label="Kesehatan SLA"
               tone="blue"
               trend="up"
               value={`${snapshot.slaHealth.onTimePercent}%`}
             />
             <KpiCard
-              detail="Target under 15m"
+              detail="Target di bawah 15 menit"
               icon={<Clock3 aria-hidden="true" size={20} />}
-              label="Avg first response"
+              label="Rata-rata respons awal"
               tone="amber"
               trend="down"
               value={`${snapshot.metrics.averageFirstResponseMinutes}m`}
             />
             <KpiCard
-              detail={`${snapshot.metrics.resolvedToday} cases resolved today`}
+              detail={`${snapshot.metrics.resolvedToday} kasus selesai hari ini`}
               icon={<Sparkles aria-hidden="true" size={20} />}
-              label="Quality score"
+              label="Skor kualitas"
               tone="green"
               trend="up"
               value={snapshot.metrics.qualityScore.toString()}
             />
             <KpiCard
-              detail={`${openCases} active cases`}
+              detail={`${openCases} kasus aktif`}
               icon={<AlertTriangle aria-hidden="true" size={20} />}
-              label="Escalation rate"
+              label="Rasio eskalasi"
               tone="red"
               trend="attention"
               value={`${snapshot.metrics.escalationRatePercent}%`}
@@ -165,46 +168,46 @@ export function AgentPerformanceDashboard({
 
           <section className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)]">
             <Card
-              action={<SelectPill label="Monthly" />}
-              title="Resolution trend"
+              action={<SelectPill label="Bulanan" />}
+              title="Tren penyelesaian"
             >
               <div className="mb-3 flex flex-wrap gap-4">
-                <LegendDot color="var(--signal-blue)" label="Cases resolved" />
+                <LegendDot color="var(--signal-blue)" label="Kasus selesai" />
                 <LegendDot
                   color="var(--signal-amber)"
-                  label="Avg response (min)"
+                  label="Rata-rata respons (menit)"
                 />
               </div>
               <TrendChart data={snapshot.caseTrend} />
               <div className="mt-3 grid grid-cols-2 border-t border-[var(--rail-border)] pt-3">
                 <SummaryStat
-                  label="Resolved this month"
-                  value={`${latest(snapshot.caseTrend)?.resolved ?? 0} cases`}
+                  label="Selesai bulan ini"
+                  value={`${latest(snapshot.caseTrend)?.resolved ?? 0} kasus`}
                 />
                 <SummaryStat
-                  label="Avg resolution time"
-                  value={`${snapshot.oldestActiveCaseHours + 1}.4 hrs`}
+                  label="Rata-rata waktu selesai"
+                  value={`${snapshot.oldestActiveCaseHours + 1},4 jam`}
                 />
               </div>
             </Card>
 
             <Card
-              action={<SelectPill label="This week" />}
-              title="Cases this week"
+              action={<SelectPill label="Minggu ini" />}
+              title="Kasus minggu ini"
             >
               <div className="mb-3 flex flex-wrap gap-4">
-                <LegendDot color="var(--signal-blue)" label="New" />
-                <LegendDot color="var(--signal-blue-soft)" label="Resolved" />
+                <LegendDot color="var(--signal-blue)" label="Baru" />
+                <LegendDot color="var(--signal-blue-soft)" label="Selesai" />
               </div>
               <p className="mb-2 text-xl font-semibold text-[var(--rail-ink)]">
-                {openCases} open
+                {openCases} terbuka
               </p>
               <WeeklyCasesChart data={snapshot.weeklyCases} />
             </Card>
           </section>
 
           <section className="grid gap-3 xl:grid-cols-3">
-            <Card title="Service categories">
+            <Card title="Kategori layanan">
               <div className="mb-4 flex flex-wrap gap-x-3 gap-y-2">
                 {snapshot.categoryBreakdown.map((item, index) => (
                   <LegendDot
@@ -217,7 +220,7 @@ export function AgentPerformanceDashboard({
               <CategoryDonut data={snapshot.categoryBreakdown} />
             </Card>
 
-            <Card title="Service signals">
+            <Card title="Sinyal layanan">
               <div className="space-y-3">
                 {snapshot.qualitySignals.map((signal) => (
                   <SignalRow key={signal.label} signal={signal} />
@@ -228,10 +231,10 @@ export function AgentPerformanceDashboard({
             <Card
               action={
                 <span className="text-[10px] text-[var(--text-muted)]">
-                  by quality score
+                  berdasarkan skor kualitas
                 </span>
               }
-              title="Team ranking"
+              title="Peringkat tim"
             >
               <div className="space-y-2">
                 {snapshot.teamRanking.map((agent) => (
@@ -241,10 +244,10 @@ export function AgentPerformanceDashboard({
               <div className="mt-4 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-[11px] font-medium text-[var(--rail-ink)]">
-                    Recent outcomes
+                    Hasil terbaru
                   </p>
                   <label className="relative min-h-8 sm:w-[190px]">
-                    <span className="sr-only">Search recent outcomes</span>
+                    <span className="sr-only">Cari hasil terbaru</span>
                     <Search
                       aria-hidden="true"
                       className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -253,7 +256,7 @@ export function AgentPerformanceDashboard({
                     <input
                       className="h-8 w-full rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] pl-8 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
                       onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Search outcomes"
+                      placeholder="Cari hasil"
                       type="search"
                       value={searchTerm}
                     />
@@ -276,7 +279,7 @@ export function AgentPerformanceDashboard({
                     ))
                   ) : (
                     <p className="text-xs text-[var(--text-muted)]">
-                      No matching outcomes.
+                      Tidak ada hasil yang cocok.
                     </p>
                   )}
                 </div>
@@ -380,12 +383,12 @@ function TrendChart({ data }: { data: CaseTrendPoint[] }) {
   return (
     <div className="h-[220px] w-full">
       <svg
-        aria-label="Monthly case resolution and average response time trend"
+        aria-label="Tren penyelesaian kasus bulanan dan rata-rata waktu respons"
         className="h-full w-full overflow-visible"
         role="img"
         viewBox="0 0 360 180"
       >
-        <title>Resolution trend</title>
+        <title>Tren penyelesaian</title>
         {[40, 80, 120, 160].map((y) => (
           <line
             key={y}
@@ -493,7 +496,7 @@ function CategoryDonut({ data }: { data: CategoryBreakdownItem[] }) {
   return (
     <div className="flex min-h-[160px] items-center justify-center">
       <div
-        aria-label="Service category distribution"
+        aria-label="Distribusi kategori layanan"
         className="relative h-36 w-36 rounded-full"
         role="img"
         style={{ background: gradient }}
@@ -505,7 +508,7 @@ function CategoryDonut({ data }: { data: CategoryBreakdownItem[] }) {
             size={22}
           />
           <span className="mt-1 text-xs font-semibold text-[var(--rail-ink)]">
-            Mix
+            Campuran
           </span>
         </div>
       </div>

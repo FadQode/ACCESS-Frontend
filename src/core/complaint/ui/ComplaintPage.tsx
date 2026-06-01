@@ -43,8 +43,8 @@ const categoryOptions: Array<{
   label: string;
   value: Exclude<ComplaintCategory, "">;
 }> = [
-  { label: "Delay / keterlambatan", value: "delay" },
-  { label: "Refund / pengembalian dana", value: "refund" },
+  { label: "Keterlambatan", value: "delay" },
+  { label: "Pengembalian dana", value: "refund" },
   { label: "Pembatalan tiket", value: "cancellation" },
   { label: "Jadwal ulang", value: "reschedule" },
   { label: "Pembayaran", value: "payment" },
@@ -68,7 +68,8 @@ const categoryHints: Record<Exclude<ComplaintCategory, "">, string> = {
   other:
     "Ceritakan masalah Anda dengan kata-kata sendiri. Tim kami akan membantu mengarahkan.",
   payment: "Jika ada, sertakan waktu transaksi dan status pembayaran.",
-  refund: "Jika ada, sertakan tanggal pengajuan refund dan metode pembayaran.",
+  refund:
+    "Jika ada, sertakan tanggal pengajuan pengembalian dana dan metode pembayaran.",
   reschedule: "Jika ada, sertakan jadwal awal dan jadwal baru yang diinginkan.",
   "seat-schedule": "Jika ada, sertakan nomor kursi, jadwal, atau kode booking.",
 };
@@ -531,7 +532,7 @@ function ComplaintProcessSection() {
       id="cara-kerja"
     >
       <SectionHeading
-        subtitle="Setelah dikirim, keluhan Anda akan masuk ke alur kerja tim support agar dapat ditinjau dan ditindaklanjuti."
+        subtitle="Setelah dikirim, keluhan Anda akan masuk ke alur kerja tim layanan agar dapat ditinjau dan ditindaklanjuti."
         title="Bagaimana keluhan Anda diproses?"
       />
       <div className="mx-auto mt-8 grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -541,14 +542,14 @@ function ComplaintProcessSection() {
           title="Keluhan diterima"
         />
         <ProcessCard
-          description="Tim support membaca detail keluhan dan memeriksa konteks yang relevan."
+          description="Tim layanan membaca detail keluhan dan memeriksa konteks yang relevan."
           number="2"
-          title="Ditinjau oleh tim support"
+          title="Ditinjau oleh tim layanan"
         />
         <ProcessCard
-          description="Agen menyiapkan respons berdasarkan situasi dan kebijakan yang berlaku."
+          description="Agen menyiapkan balasan berdasarkan situasi dan kebijakan yang berlaku."
           number="3"
-          title="Respons disiapkan"
+          title="Balasan disiapkan"
         />
         <ProcessCard
           description="Balasan dikirim melalui email atau nomor telepon yang Anda berikan."
@@ -580,12 +581,12 @@ function ComplaintPromiseSection() {
         />
         <PromiseCard
           icon={<MessageSquareText aria-hidden="true" size={22} />}
-          text="Keluhan Anda akan dibaca dan ditangani oleh agen support, bukan hanya sistem otomatis."
-          title="Ditinjau oleh tim support"
+          text="Keluhan Anda akan dibaca dan ditangani oleh agen layanan, bukan hanya sistem otomatis."
+          title="Ditinjau oleh tim layanan"
         />
         <PromiseCard
           icon={<ShieldCheck aria-hidden="true" size={22} />}
-          text="Respons disiapkan berdasarkan situasi dan kebijakan penanganan yang berlaku."
+          text="Balasan disiapkan berdasarkan situasi dan kebijakan penanganan yang berlaku."
           title="Mengikuti kebijakan layanan"
         />
       </div>
@@ -621,7 +622,7 @@ function ComplaintFaqSection() {
           question="Apakah kontak saya aman?"
         />
         <FaqItem
-          answer="Tidak masalah. Tim support tetap akan meninjau isi keluhan Anda dan mengarahkan ke kategori yang sesuai."
+          answer="Tidak masalah. Tim layanan tetap akan meninjau isi keluhan Anda dan mengarahkan ke kategori yang sesuai."
           question="Bagaimana jika saya memilih kategori yang kurang tepat?"
         />
       </div>

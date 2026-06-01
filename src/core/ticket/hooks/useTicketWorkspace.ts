@@ -1,21 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { Ticket, TicketFilter } from "../model/ticket.types";
-import { mockTickets } from "../service/ticket.mock";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  FollowUpTicket,
+  FollowUpTicketFilter,
+  FollowUpTicketStatus,
+} from "../model/ticket.types";
+import { mockFollowUpTickets } from "../service/ticket.mock";
+
+const filterMap: Record<FollowUpTicketFilter, FollowUpTicketStatus[]> = {
+  all: ["waiting_manager", "ready_to_notify", "closed", "escalated"],
+  closed: ["closed"],
+  ready: ["ready_to_notify"],
+  waiting: ["waiting_manager", "escalated"],
+};
 
 export function useTicketWorkspace() {
-  const [tickets, setTickets] = useState<Ticket[]>(mockTickets);
+  const [tickets, setTickets] = useState<FollowUpTicket[]>(mockFollowUpTickets);
   const [selectedTicketId, setSelectedTicketId] = useState(
-    mockTickets[0]?.id ?? "",
+    mockFollowUpTickets[0]?.id ?? "",
   );
-  const [filter, setFilter] = useState<TicketFilter>("all");
+  const [filter, setFilter] = useState<FollowUpTicketFilter>("ready");
   const [searchQuery, setSearchQuery] = useState("");
-  const [responseDraft, setResponseDraft] = useState(
-    mockTickets[0]?.responseDraft ?? "",
+  const [closureDraft, setClosureDraft] = useState(
+    mockFollowUpTickets[0]?.closureMessage ?? "",
   );
-  const [sentTicketId, setSentTicketId] = useState<string | null>(null);
-  const [suggestionApplied, setSuggestionApplied] = useState(false);
+  const [closureCopiedTicketId, setClosureCopiedTicketId] = useState<
+    string | null
+  >(null);
 
   const selectedTicket = useMemo(() => {
     return (
@@ -23,122 +35,120 @@ export function useTicketWorkspace() {
     );
   }, [selectedTicketId, tickets]);
 
+  useEffect(() => {
+    const selected = tickets.find((ticket) => ticket.id === selectedTicketId);
+    setClosureDraft(selected?.closureMessage ?? "");
+    setClosureCopiedTicketId(null);
+  }, [selectedTicketId, tickets]);
+
   const filteredTickets = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
     return tickets.filter((ticket) => {
-      const matchesFilter = filter === "all" || ticket.status === filter;
-      const normalizedQuery = searchQuery.toLowerCase().trim();
+      const matchesFilter = filterMap[filter].includes(ticket.status);
       const matchesSearch =
         normalizedQuery.length === 0 ||
-        ticket.customerName.toLowerCase().includes(normalizedQuery) ||
-        ticket.referenceNumber.toLowerCase().includes(normalizedQuery) ||
-        ticket.complaintText.toLowerCase().includes(normalizedQuery) ||
-        ticket.category.toLowerCase().includes(normalizedQuery);
+        [
+          ticket.customerName,
+          ticket.username,
+          ticket.displayId,
+          ticket.originalComplaint,
+          ticket.category,
+          ticket.managerAction.actionTaken,
+          ticket.closureMessage,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
 
       return matchesFilter && matchesSearch;
     });
   }, [filter, searchQuery, tickets]);
 
-  const openTicketCount = tickets.filter(
-    (ticket) => ticket.status !== "resolved",
+  const readyCount = tickets.filter(
+    (ticket) => ticket.status === "ready_to_notify",
+  ).length;
+  const waitingCount = tickets.filter((ticket) =>
+    ["waiting_manager", "escalated"].includes(ticket.status),
+  ).length;
+  const closedCount = tickets.filter(
+    (ticket) => ticket.status === "closed",
   ).length;
 
-  const updateSelectedTicket = (updater: (ticket: Ticket) => Ticket): void => {
+  const selectTicket = (ticketId: string) => {
+    setSelectedTicketId(ticketId);
+  };
+
+  const copyClosureAndClose = async () => {
+    if (!selectedTicket || closureDraft.trim().length === 0) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(closureDraft);
+    } catch {
+      // Clipboard can fail in non-secure contexts; the prototype still updates the workflow state.
+    }
+
     setTickets((currentTickets) =>
       currentTickets.map((ticket) =>
-        ticket.id === selectedTicketId ? updater(ticket) : ticket,
+        ticket.id === selectedTicket.id
+          ? {
+              ...ticket,
+              status: "closed",
+              closureMessage: closureDraft,
+              closureCopiedAt: "Baru saja",
+              closedAt: "Baru saja",
+              closedBy: "Rizky A.",
+              activityLog: [
+                {
+                  id: `${ticket.id}-closure-${Date.now()}`,
+                  label: "Balasan akhir disalin dan tiket ditutup",
+                  actor: "Rizky A.",
+                  actorType: "agent",
+                  time: "Baru saja",
+                  tone: "success",
+                },
+                ...ticket.activityLog,
+              ],
+            }
+          : ticket,
+      ),
+    );
+    setClosureCopiedTicketId(selectedTicket.id);
+  };
+
+  const addInternalNote = () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    setTickets((currentTickets) =>
+      currentTickets.map((ticket) =>
+        ticket.id === selectedTicket.id
+          ? {
+              ...ticket,
+              activityLog: [
+                {
+                  id: `${ticket.id}-note-${Date.now()}`,
+                  label: "Catatan internal ditambahkan oleh agen",
+                  actor: "Rizky A.",
+                  actorType: "agent",
+                  time: "Baru saja",
+                  tone: "neutral",
+                },
+                ...ticket.activityLog,
+              ],
+            }
+          : ticket,
       ),
     );
   };
 
-  const selectTicket = (ticketId: string) => {
-    const nextTicket =
-      tickets.find((ticket) => ticket.id === ticketId) ?? tickets[0];
-
-    setSelectedTicketId(ticketId);
-    setResponseDraft(nextTicket?.responseDraft ?? "");
-    setSentTicketId(null);
-    setSuggestionApplied(false);
-  };
-
-  const useSuggestedResponse = () => {
-    if (!selectedTicket) {
-      return;
-    }
-
-    setResponseDraft(selectedTicket.suggestedResponse);
-    setSuggestionApplied(true);
-  };
-
-  const sendResponse = () => {
-    if (!selectedTicket || responseDraft.trim().length === 0) {
-      return;
-    }
-
-    updateSelectedTicket((ticket) => ({
-      ...ticket,
-      responseDraft,
-      status: "resolved",
-      activityLog: [
-        {
-          id: `${ticket.id}-response-${Date.now()}`,
-          label: `Response sent via ${channelLabel(ticket.responseChannel)}`,
-          time: currentTimeLabel(),
-          actor: ticket.assignedAgent,
-          tone: "success",
-        },
-        ...ticket.activityLog,
-      ],
-    }));
-    setSentTicketId(selectedTicketId);
-    setSuggestionApplied(false);
-  };
-
-  const escalateTicket = () => {
-    if (!selectedTicket) {
-      return;
-    }
-
-    updateSelectedTicket((ticket) => ({
-      ...ticket,
-      status: "escalated",
-      activityLog: [
-        {
-          id: `${ticket.id}-escalated-${Date.now()}`,
-          label: "Escalated to supervisor",
-          time: currentTimeLabel(),
-          actor: ticket.assignedAgent,
-          tone: "danger",
-        },
-        ...ticket.activityLog,
-      ],
-    }));
-  };
-
-  const resolveTicket = () => {
-    if (!selectedTicket) {
-      return;
-    }
-
-    updateSelectedTicket((ticket) => ({
-      ...ticket,
-      responseDraft,
-      status: "resolved",
-      activityLog: [
-        {
-          id: `${ticket.id}-resolved-${Date.now()}`,
-          label: "Ticket resolved",
-          time: currentTimeLabel(),
-          actor: ticket.assignedAgent,
-          tone: "success",
-        },
-        ...ticket.activityLog,
-      ],
-    }));
-  };
-
   return {
     tickets: filteredTickets,
-    openTicketCount,
+    allTickets: tickets,
     selectedTicket,
     selectedTicketId,
     setSelectedTicketId: selectTicket,
@@ -146,30 +156,13 @@ export function useTicketWorkspace() {
     setFilter,
     searchQuery,
     setSearchQuery,
-    responseDraft,
-    setResponseDraft,
-    hasSentResponse: sentTicketId === selectedTicketId,
-    suggestionApplied,
-    useSuggestedResponse,
-    sendResponse,
-    escalateTicket,
-    resolveTicket,
+    closureDraft,
+    setClosureDraft,
+    readyCount,
+    waitingCount,
+    closedCount,
+    hasCopiedClosure: closureCopiedTicketId === selectedTicketId,
+    copyClosureAndClose,
+    addInternalNote,
   };
-}
-
-function currentTimeLabel() {
-  return new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date());
-}
-
-function channelLabel(channel: Ticket["responseChannel"]) {
-  const labels: Record<Ticket["responseChannel"], string> = {
-    email: "email",
-    phone: "phone follow-up",
-    whatsapp: "WhatsApp",
-  };
-
-  return labels[channel];
 }

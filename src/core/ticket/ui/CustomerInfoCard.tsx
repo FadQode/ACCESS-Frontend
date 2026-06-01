@@ -11,10 +11,10 @@ export function CustomerInfoCard({ customer }: CustomerInfoCardProps) {
       icon={<User aria-hidden="true" size={15} />}
       title={customer.name}
     >
-      <InfoRow label="Contact" value={customer.contact} />
-      <InfoRow label="Channel" value={customer.channel} />
-      <InfoRow label="Past complaints" value={customer.pastComplaints} />
-      <InfoRow label="Last contact" value={customer.lastContact} />
+      <InfoRow label="Kontak" value={customer.contact} />
+      <InfoRow label="Kanal" value={customer.channel} />
+      <InfoRow label="Keluhan sebelumnya" value={customer.pastComplaints} />
+      <InfoRow label="Kontak terakhir" value={customer.lastContact} />
     </InfoCard>
   );
 }

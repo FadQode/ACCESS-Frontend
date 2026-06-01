@@ -13,7 +13,7 @@ export function AgentPerformanceCard({ agents }: AgentPerformanceCardProps) {
           Agent performance
         </h2>
         <p className="mt-1 text-xs text-[var(--text-muted)]">
-          Resolved tickets, response speed, escalation load, and quality.
+          Tiket selesai, kecepatan respons, beban eskalasi, dan kualitas.
         </p>
       </div>
       <AgentPerformanceTable agents={agents} />

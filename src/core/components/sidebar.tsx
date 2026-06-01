@@ -40,12 +40,12 @@ interface NavigationItem {
 const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
   agent: [
     { href: "/agent", icon: Gauge, label: "Dashboard" },
-    { href: "/agent/tickets", icon: Inbox, label: "Tickets" },
     {
       href: "/agent/quick-response",
       icon: MessageSquareText,
       label: "Quick Response",
     },
+    { href: "/agent/tickets", icon: Inbox, label: "Tickets" },
     { href: "/agent/knowledge", icon: BookOpen, label: "Knowledge" },
     { href: "/agent/reports", icon: BarChart3, label: "Reports" },
   ],
@@ -89,7 +89,7 @@ export function DashboardSidebar({
   return (
     <>
       <button
-        aria-label="Close sidebar overlay"
+        aria-label="Tutup overlay sidebar"
         className={`fixed inset-0 z-30 bg-[rgba(19,35,31,0.28)] transition-opacity lg:hidden ${
           isOpen
             ? "pointer-events-auto opacity-100"
@@ -120,7 +120,7 @@ export function DashboardSidebar({
             </div>
           </div>
           <button
-            aria-label="Close sidebar"
+            aria-label="Tutup sidebar"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--rail-border)] text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
             onClick={onClose}
             type="button"
@@ -178,7 +178,7 @@ export function DashboardSidebar({
             type="button"
           >
             <LogOut aria-hidden="true" size={16} />
-            <span>Sign out</span>
+            <span>Keluar</span>
           </button>
         </div>
       </aside>

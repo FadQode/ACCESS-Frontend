@@ -16,9 +16,9 @@ export function TicketHeader({ ticket }: TicketHeaderProps) {
           {ticket.customerName}
         </h2>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-          <span>Opened {ticket.openedAt}</span>
+          <span>Dibuka {ticket.openedAt}</span>
           <span aria-hidden="true">.</span>
-          <span>assigned to {ticket.assignedAgent}</span>
+          <span>ditugaskan ke {ticket.assignedAgent}</span>
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass(
               ticket.category,
@@ -28,7 +28,7 @@ export function TicketHeader({ ticket }: TicketHeaderProps) {
           </span>
           {ticket.escalated ? (
             <span className="rounded-full bg-[var(--signal-red-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--signal-red-dark)]">
-              Escalated
+              Dieskalasi
             </span>
           ) : null}
         </div>
@@ -40,7 +40,7 @@ export function TicketHeader({ ticket }: TicketHeaderProps) {
           type="button"
         >
           <AlertTriangle aria-hidden="true" size={14} />
-          Escalate
+          Eskalasi
         </button>
         <button
           className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--signal-blue)] bg-[var(--signal-blue)] px-3 text-[11px] font-semibold text-white transition hover:bg-[#12486b]"
@@ -48,7 +48,7 @@ export function TicketHeader({ ticket }: TicketHeaderProps) {
           type="button"
         >
           <CircleCheck aria-hidden="true" size={14} />
-          Resolve
+          Selesaikan
         </button>
       </div>
     </header>
@@ -56,13 +56,13 @@ export function TicketHeader({ ticket }: TicketHeaderProps) {
 }
 
 const CATEGORY_LABELS: Record<TicketCategory, string> = {
-  cancellation: "Cancellation",
-  delay: "Delay",
-  facility: "Facility",
-  refund: "Refund",
-  "lost-item": "Lost item",
-  other: "Other",
-  "seat-issue": "Seat issue",
+  cancellation: "Pembatalan",
+  delay: "Keterlambatan",
+  facility: "Fasilitas",
+  refund: "Pengembalian Dana",
+  "lost-item": "Barang Tertinggal",
+  other: "Lainnya",
+  "seat-issue": "Masalah Kursi",
 };
 
 function categoryBadgeClass(category: TicketCategory) {

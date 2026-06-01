@@ -80,24 +80,24 @@ const sourceOptions: Option[] = [
   { value: "facebook", label: "Facebook" },
   { value: "google-play", label: "Google Play" },
   { value: "app-store", label: "App Store" },
-  { value: "other", label: "Other" },
+  { value: "other", label: "Lainnya" },
 ];
 
 const targetOptions: { value: ResponseTarget; label: string }[] = [
-  { value: "public-reply", label: "Public reply" },
-  { value: "direct-message", label: "DM / private message" },
-  { value: "app-review", label: "App review" },
-  { value: "internal-note", label: "Internal note" },
+  { value: "public-reply", label: "Balasan publik" },
+  { value: "direct-message", label: "DM / pesan pribadi" },
+  { value: "app-review", label: "Ulasan aplikasi" },
+  { value: "internal-note", label: "Catatan internal" },
 ];
 
 const toneOptions: { value: Tone; label: string }[] = [
   { value: "formal", label: "Formal" },
-  { value: "friendly", label: "Friendly" },
-  { value: "concise", label: "Concise" },
+  { value: "friendly", label: "Ramah" },
+  { value: "concise", label: "Ringkas" },
 ];
 
 const defaultComplaint =
-  "Kereta saya delay lebih dari 3 jam dari Surabaya ke Jakarta. Saya ada meeting penting dan tidak ada pemberitahuan sama sekali. Ini sangat mengecewakan!";
+  "Kereta saya terlambat lebih dari 3 jam dari Surabaya ke Jakarta. Saya ada meeting penting dan tidak ada pemberitahuan sama sekali. Ini sangat mengecewakan!";
 
 const genericOptions: BuilderOptions = {
   hear: [
@@ -161,32 +161,32 @@ const genericOptions: BuilderOptions = {
 const scenarios: Record<string, Scenario> = {
   delay: {
     key: "delay",
-    label: "Long delay / no notification",
+    label: "Terlambat lama / tanpa notifikasi",
     insight:
-      "Likely operational complaint. Public reply should acknowledge the issue without confirming compensation.",
+      "Kemungkinan keluhan operasional. Balasan publik cukup mengakui kendala tanpa menjanjikan kompensasi.",
     managerApprovalRequired: true,
     similarCase: {
-      title: "Similar complaint resolved - March 2026, Surabaya-Jakarta",
+      title: "Keluhan serupa selesai - Maret 2026, Surabaya-Jakarta",
       detail:
-        "Full refund approved after operations review. Resolved in 2 days.",
+        "Pengembalian dana penuh disetujui setelah tinjauan operasional. Selesai dalam 2 hari.",
     },
     references: [
       {
-        title: "SOP - delay handling v2.1",
-        meta: "Delay above 120 minutes may qualify for refund or reschedule after manager approval.",
-        linkLabel: "View SOP",
+        title: "SOP - penanganan keterlambatan v2.1",
+        meta: "Keterlambatan di atas 120 menit dapat ditinjau untuk pengembalian dana atau jadwal ulang setelah disetujui manajer.",
+        linkLabel: "Lihat SOP",
         tone: "green",
       },
       {
-        title: "Past resolution - Sby-Jkt delay, Mar 2026",
-        meta: "Same route. Full refund approved by manager after incident confirmation.",
-        linkLabel: "View ticket #0712",
+        title: "Riwayat penyelesaian - keterlambatan Sby-Jkt, Mar 2026",
+        meta: "Rute sama. Pengembalian dana penuh disetujui manajer setelah insiden dikonfirmasi.",
+        linkLabel: "Lihat tiket #0712",
         tone: "amber",
       },
       {
-        title: "Refund policy v3.2 - Section 4.2",
-        meta: "Refund or reschedule decision must be verified before customer confirmation.",
-        linkLabel: "View policy",
+        title: "Kebijakan pengembalian dana v3.2 - Bagian 4.2",
+        meta: "Keputusan pengembalian dana atau jadwal ulang harus diverifikasi sebelum dikonfirmasi ke pelanggan.",
+        linkLabel: "Lihat kebijakan",
         tone: "blue",
       },
     ],
@@ -224,26 +224,26 @@ const scenarios: Record<string, Scenario> = {
   },
   refund: {
     key: "refund",
-    label: "Refund follow-up",
+    label: "Tindak lanjut pengembalian dana",
     insight:
-      "Refund complaints need internal status checking. Use safe acknowledgement and create a ticket.",
+      "Keluhan pengembalian dana perlu pengecekan status internal. Beri balasan awal yang aman dan buat tiket.",
     managerApprovalRequired: true,
     similarCase: {
-      title: "Similar refund batch - April 2026",
+      title: "Batch pengembalian dana serupa - April 2026",
       detail:
-        "Resolved after finance team confirmed gateway settlement status.",
+        "Selesai setelah tim keuangan mengonfirmasi status settlement payment gateway.",
     },
     references: [
       {
-        title: "Refund policy v3.2",
-        meta: "Refund status must be verified before sharing a timeline.",
-        linkLabel: "View policy",
+        title: "Kebijakan pengembalian dana v3.2",
+        meta: "Status pengembalian dana harus diverifikasi sebelum estimasi waktu dibagikan.",
+        linkLabel: "Lihat kebijakan",
         tone: "blue",
       },
       {
-        title: "Payment settlement SOP",
-        meta: "Gateway issues require finance team confirmation.",
-        linkLabel: "View SOP",
+        title: "SOP settlement pembayaran",
+        meta: "Kendala gateway membutuhkan konfirmasi tim keuangan.",
+        linkLabel: "Lihat SOP",
         tone: "amber",
       },
     ],
@@ -252,7 +252,7 @@ const scenarios: Record<string, Scenario> = {
       hear: [
         {
           id: "hear-refund-1",
-          text: "Kami menerima keluhan Kakak terkait proses refund yang belum diterima.",
+          text: "Kami menerima keluhan Kakak terkait proses pengembalian dana yang belum diterima.",
         },
         {
           id: "hear-refund-2",
@@ -260,13 +260,13 @@ const scenarios: Record<string, Scenario> = {
         },
         {
           id: "hear-refund-3",
-          text: "Kami memahami bahwa Kakak membutuhkan kejelasan terkait proses refund.",
+          text: "Kami memahami bahwa Kakak membutuhkan kejelasan terkait proses pengembalian dana.",
         },
       ],
       takeAction: [
         {
           id: "action-refund-safe",
-          text: "Kami akan teruskan laporan ini ke tim terkait untuk pengecekan status refund dan tindak lanjut sesuai ketentuan.",
+          text: "Kami akan teruskan laporan ini ke tim terkait untuk pengecekan status pengembalian dana dan tindak lanjut sesuai ketentuan.",
         },
         {
           id: "action-refund-dm",
@@ -281,20 +281,20 @@ const scenarios: Record<string, Scenario> = {
   },
   app: {
     key: "app",
-    label: "Application access issue",
+    label: "Kendala akses aplikasi",
     insight:
-      "Likely resolvable with safe troubleshooting steps unless the customer reports payment or booking loss.",
+      "Kemungkinan bisa dibantu dengan langkah awal yang aman, kecuali pelanggan melaporkan pembayaran atau booking hilang.",
     managerApprovalRequired: false,
     similarCase: {
-      title: "Similar app login issue - May 2026",
+      title: "Kendala login aplikasi serupa - Mei 2026",
       detail:
-        "Resolved with cache refresh, app update, and official support contact.",
+        "Selesai dengan refresh cache, pembaruan aplikasi, dan kontak bantuan resmi.",
     },
     references: [
       {
-        title: "App troubleshooting SOP",
-        meta: "Use safe steps first; route persistent account issues to support.",
-        linkLabel: "View SOP",
+        title: "SOP kendala aplikasi",
+        meta: "Gunakan langkah aman lebih dulu; arahkan kendala akun yang berlanjut ke kanal bantuan.",
+        linkLabel: "Lihat SOP",
         tone: "green",
       },
     ],
@@ -334,20 +334,20 @@ const scenarios: Record<string, Scenario> = {
 
 const genericScenario: Scenario = {
   key: "generic",
-  label: "External customer complaint",
+  label: "Keluhan pelanggan eksternal",
   insight:
-    "General complaint. Acknowledge safely and avoid requesting sensitive data publicly.",
+    "Keluhan umum. Akui kendala secara aman dan jangan meminta data sensitif di ruang publik.",
   managerApprovalRequired: false,
   similarCase: {
-    title: "Similar complaint pattern found",
+    title: "Pola keluhan serupa ditemukan",
     detail:
-      "Use safe acknowledgement and move private details to official support.",
+      "Gunakan pengakuan awal yang aman dan pindahkan detail pribadi ke kanal bantuan resmi.",
   },
   references: [
     {
-      title: "External response safety guide",
-      meta: "Do not ask for private data in public replies.",
-      linkLabel: "View guide",
+      title: "Panduan keamanan balasan eksternal",
+      meta: "Jangan meminta data pribadi di balasan publik.",
+      linkLabel: "Lihat panduan",
       tone: "blue",
     },
   ],
@@ -361,23 +361,23 @@ const builderSections: {
 }[] = [
   {
     key: "hear",
-    label: "Hear",
-    description: "Recognise what the customer is complaining about.",
+    label: "Tangkap Keluhan",
+    description: "Sebutkan inti masalah yang dikeluhkan pelanggan.",
   },
   {
     key: "empathize",
-    label: "Empathize",
-    description: "Show that the situation is understood.",
+    label: "Tunjukkan Empati",
+    description: "Tunjukkan bahwa situasi pelanggan dipahami.",
   },
   {
     key: "apologize",
-    label: "Apologize",
-    description: "Say sorry clearly without over-explaining.",
+    label: "Minta Maaf",
+    description: "Sampaikan maaf dengan jelas tanpa penjelasan berlebihan.",
   },
   {
     key: "takeAction",
-    label: "Take Action",
-    description: "Use safe customer-facing next steps only.",
+    label: "Tindak Lanjut",
+    description: "Gunakan langkah berikutnya yang aman untuk pelanggan.",
   },
 ];
 
@@ -453,25 +453,24 @@ export function QuickResponse() {
     () => [
       {
         id: "resolved" as const,
-        title: "Copy and Resolve",
+        title: "Salin dan Selesaikan",
         description:
-          "Copy the full response and close this external complaint internally.",
+          "Salin balasan lengkap dan tutup keluhan eksternal ini secara internal.",
         recommended: !managerApprovalRequired,
         icon: <CheckCircle2 aria-hidden="true" size={18} />,
       },
       {
         id: "ticket" as const,
-        title: "Copy Safe Reply + Create Ticket",
+        title: "Salin Balasan Awal + Buat Tiket",
         description:
-          "Copy a safe reply now, then create a ticket for unresolved follow-up.",
+          "Salin balasan awal sekarang, lalu buat tiket untuk tindak lanjut.",
         recommended: managerApprovalRequired,
         icon: <TicketCheck aria-hidden="true" size={18} />,
       },
       {
         id: "escalated" as const,
-        title: "Escalate to Manager",
-        description:
-          "Create a ticket and send the full case directly to manager review.",
+        title: "Eskalasi ke Manajer",
+        description: "Buat tiket dan kirim kasus lengkap ke manajer.",
         recommended: false,
         icon: <Flag aria-hidden="true" size={18} />,
       },
@@ -567,7 +566,7 @@ export function QuickResponse() {
 
   const handleCopyReview = async () => {
     await copyText(finalResponse);
-    setCopiedLabel("Response copied");
+    setCopiedLabel("Balasan disalin");
   };
 
   const handleOutcome = async (outcome: OutcomeId) => {
@@ -620,14 +619,14 @@ export function QuickResponse() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           stats={[
-            { label: "Flow", value: `Step ${currentStep}` },
+            { label: "Alur", value: `Langkah ${currentStep}` },
             {
-              label: "Ticket",
-              value: completionState === "resolved" ? "No" : "If needed",
+              label: "Tiket",
+              value: completionState === "resolved" ? "Tidak" : "Jika perlu",
             },
             {
-              label: "Risk",
-              value: managerApprovalRequired ? "Approval" : "Low",
+              label: "Risiko",
+              value: managerApprovalRequired ? "Perlu persetujuan" : "Rendah",
             },
           ]}
         />
@@ -641,13 +640,13 @@ export function QuickResponse() {
                   className="text-[var(--signal-amber)]"
                   size={15}
                 />
-                Flow prototype
+                Prototipe alur
               </span>
             }
             dashboardRole="agent"
             isSidebarOpen={sidebarOpen}
             onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
-            roleLabel="Support agent"
+            roleLabel="Agen layanan"
             userName="Rizky A."
           />
 
@@ -656,27 +655,27 @@ export function QuickResponse() {
               <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-3xl">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--signal-blue)]">
-                    External complaint handler
+                    External Complaint Handler
                   </p>
                   <h1 className="mt-2 text-2xl font-semibold text-[var(--rail-ink)] sm:text-3xl">
                     Quick Response
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-                    Build a safe external reply, review it for platform risk,
-                    then decide whether the case is resolved or needs internal
-                    follow-up.
+                    Susun balasan eksternal yang aman, cek risikonya, lalu
+                    tentukan apakah kasus bisa ditutup atau perlu tindak lanjut
+                    internal.
                   </p>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[420px]">
                   <MetricPill label="Platform" value={sourceLabel} />
-                  <MetricPill label="Target" value={targetLabel} />
+                  <MetricPill label="Tujuan" value={targetLabel} />
                   <MetricPill
-                    label="Outcome rule"
+                    label="Aturan hasil"
                     value={
                       completionState === "resolved"
-                        ? "No ticket"
-                        : "Ticket only if unresolved"
+                        ? "Tanpa tiket"
+                        : "Buat tiket jika belum selesai"
                     }
                   />
                 </div>
@@ -692,10 +691,10 @@ export function QuickResponse() {
                 meta={
                   complaintText.trim()
                     ? `${sourceLabel} - ${targetLabel} - ${toneLabel}`
-                    : "Waiting for complaint input"
+                    : "Menunggu input keluhan"
                 }
                 number={1}
-                title="Complaint input"
+                title="Input"
                 action={
                   !inputExpanded && complaintText.trim().length > 0 ? (
                     <button
@@ -704,7 +703,7 @@ export function QuickResponse() {
                       type="button"
                     >
                       <RefreshCcw aria-hidden="true" size={13} />
-                      Edit
+                      Ubah
                     </button>
                   ) : null
                 }
@@ -766,17 +765,19 @@ export function QuickResponse() {
                 isLocked={flowLocked || currentStep < 2}
                 meta={
                   isBuildingResponse
-                    ? "Processing recommendations"
+                    ? "Menyusun rekomendasi"
                     : currentStep > 2
                       ? activeScenario.label
-                      : "Generate from complaint input"
+                      : "Buat dari input keluhan"
                 }
                 number={2}
-                title="Build response"
+                title="Build Response"
                 action={
                   currentStep >= 2 && !flowLocked ? (
                     <ContextBadge>
-                      {isBuildingResponse ? "Processing" : "Similar case found"}
+                      {isBuildingResponse
+                        ? "Memproses"
+                        : "Kasus serupa ditemukan"}
                     </ContextBadge>
                   ) : null
                 }
@@ -801,10 +802,10 @@ export function QuickResponse() {
                 isComplete={currentStep > 3 && !flowLocked}
                 isLocked={currentStep < 3 || flowLocked}
                 meta={
-                  currentStep > 3 ? "Response reviewed" : "Review before copy"
+                  currentStep > 3 ? "Balasan ditinjau" : "Tinjau sebelum salin"
                 }
                 number={3}
-                title="Review final response"
+                title="Review"
               >
                 <ReviewStep
                   copiedLabel={copiedLabel}
@@ -825,11 +826,11 @@ export function QuickResponse() {
                 isComplete={completionState !== null}
                 meta={
                   completionState
-                    ? "Outcome completed"
-                    : "Resolve, create ticket, or escalate"
+                    ? "Hasil dicatat"
+                    : "Selesaikan, buat tiket, atau eskalasi"
                 }
                 number={4}
-                title="Choose outcome"
+                title="Outcome"
               >
                 <OutcomeStep
                   completionState={completionState}
@@ -899,11 +900,11 @@ function ComplaintInputForm({
     <div className="space-y-4">
       {inputDirty ? (
         <WarningBanner>
-          Complaint changed. Regenerate response to update recommendations.
+          Keluhan berubah. Buat ulang balasan agar rekomendasi ikut diperbarui.
         </WarningBanner>
       ) : null}
 
-      <FieldLabel label="Source channel">
+      <FieldLabel label="Kanal sumber">
         <SegmentedButtons
           options={sourceOptions}
           value={source}
@@ -912,7 +913,7 @@ function ComplaintInputForm({
       </FieldLabel>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <FieldLabel label="Username / handle" note="optional">
+        <FieldLabel label="Username / handle" note="opsional">
           <div className="relative">
             <UserRound
               aria-hidden="true"
@@ -922,13 +923,13 @@ function ComplaintInputForm({
             <input
               className={`${inputClass} pl-9`}
               onChange={(event) => onUsernameChange(event.target.value)}
-              placeholder="@customer"
+              placeholder="@pelanggan"
               type="text"
               value={username}
             />
           </div>
         </FieldLabel>
-        <FieldLabel label="External link" note="optional">
+        <FieldLabel label="Link eksternal" note="opsional">
           <div className="relative">
             <Link2
               aria-hidden="true"
@@ -947,34 +948,34 @@ function ComplaintInputForm({
       </div>
 
       {isReviewSource ? (
-        <FieldLabel label="Review rating">
+        <FieldLabel label="Rating ulasan">
           <select
             className={inputClass}
             onChange={(event) => onRatingChange(event.target.value)}
             value={rating}
           >
-            <option value="1">1 star</option>
-            <option value="2">2 stars</option>
-            <option value="3">3 stars</option>
-            <option value="4">4 stars</option>
-            <option value="5">5 stars</option>
+            <option value="1">1 bintang</option>
+            <option value="2">2 bintang</option>
+            <option value="3">3 bintang</option>
+            <option value="4">4 bintang</option>
+            <option value="5">5 bintang</option>
           </select>
         </FieldLabel>
       ) : null}
 
-      <FieldLabel label="Complaint text">
+      <FieldLabel label="Isi keluhan">
         <textarea
           className={`${textareaClass} min-h-[132px]`}
           onChange={(event) => onComplaintTextChange(event.target.value)}
-          placeholder="Paste the external complaint here"
+          placeholder="Tempel keluhan eksternal di sini"
           value={complaintText}
         />
         <p className="mt-2 text-right text-[11px] font-medium text-[var(--text-muted)]">
-          {complaintText.length} characters
+          {complaintText.length} karakter
         </p>
       </FieldLabel>
 
-      <FieldLabel label="Response target">
+      <FieldLabel label="Tujuan balasan">
         <SegmentedButtons
           options={targetOptions}
           value={responseTarget}
@@ -982,7 +983,7 @@ function ComplaintInputForm({
         />
       </FieldLabel>
 
-      <FieldLabel label="Response tone">
+      <FieldLabel label="Gaya bahasa">
         <SegmentedButtons
           options={toneOptions}
           value={tone}
@@ -997,7 +998,7 @@ function ComplaintInputForm({
           type="button"
         >
           <ArrowLeft aria-hidden="true" size={13} />
-          Cancel
+          Batal
         </button>
         <button
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
@@ -1006,7 +1007,7 @@ function ComplaintInputForm({
           type="button"
         >
           <Sparkles aria-hidden="true" size={15} />
-          Regenerate response
+          Buat ulang balasan
         </button>
       </div>
     </div>
@@ -1062,7 +1063,8 @@ function ResponseBuilder({
     <div className="space-y-4">
       {flowLocked ? (
         <WarningBanner>
-          Recommendations are stale. Regenerate from Step 1 before continuing.
+          Rekomendasi sudah tidak sesuai. Buat ulang dari Langkah 1 sebelum
+          lanjut.
         </WarningBanner>
       ) : null}
 
@@ -1086,7 +1088,7 @@ function ResponseBuilder({
 
       <section>
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-          Response builder - pick one per section
+          Penyusun balasan - pilih satu kalimat per bagian
         </p>
         <div className="space-y-4">
           {builderSections.map((section) =>
@@ -1123,7 +1125,7 @@ function ResponseBuilder({
         onClick={onContinue}
         type="button"
       >
-        Review final response
+        Review
         <ArrowRight aria-hidden="true" size={15} />
       </button>
     </div>
@@ -1156,38 +1158,38 @@ function ReviewStep({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex min-h-8 w-fit items-center gap-2 rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 text-xs font-semibold text-[var(--signal-blue)]">
           <MessageSquareText aria-hidden="true" size={14} />
-          Optimized for {source} - {target}
+          Disesuaikan untuk {source} - {target}
         </span>
         <button className={secondaryButtonClass} onClick={onBack} type="button">
           <ArrowLeft aria-hidden="true" size={13} />
-          Back to builder
+          Kembali ke penyusun
         </button>
       </div>
 
       <section className="rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3">
         <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--signal-amber-dark)]">
           <ShieldCheck aria-hidden="true" size={14} />
-          Safety check
+          Pemeriksaan keamanan
         </div>
         <div className="space-y-2">
           <SafetyItem>
-            Avoid asking for booking code in public replies - move private data
-            to DM or official support.
+            Hindari meminta kode booking di balasan publik. Arahkan data pribadi
+            ke DM atau kanal bantuan resmi.
           </SafetyItem>
           {managerApprovalRequired ? (
             <SafetyItem>
-              Do not confirm refund, reschedule, or compensation directly -
-              approval is required first.
+              Jangan langsung mengonfirmasi pengembalian dana, jadwal ulang,
+              atau kompensasi. Persetujuan diperlukan lebih dulu.
             </SafetyItem>
           ) : null}
           <SafetyItem>
-            Do not mention internal SOP names, past ticket IDs, or approval
-            workflow to the customer.
+            Jangan menyebut nama SOP internal, ID tiket lama, atau alur
+            persetujuan kepada pelanggan.
           </SafetyItem>
         </div>
       </section>
 
-      <FieldLabel label="Final response" note="edit as needed">
+      <FieldLabel label="Balasan akhir" note="boleh diedit">
         <textarea
           className={`${textareaClass} min-h-[180px] border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]`}
           onChange={(event) => onChangeFinalResponse(event.target.value)}
@@ -1198,14 +1200,14 @@ function ReviewStep({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <button className={secondaryButtonClass} onClick={onCopy} type="button">
           <Copy aria-hidden="true" size={13} />
-          {copiedLabel || "Copy response"}
+          {copiedLabel || "Salin balasan"}
         </button>
         <button
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)]"
           onClick={onContinue}
           type="button"
         >
-          Choose outcome
+          Outcome
           <ArrowRight aria-hidden="true" size={15} />
         </button>
       </div>
@@ -1262,18 +1264,18 @@ function OutcomeStep({
     <div className="space-y-4">
       <div>
         <h3 className="text-base font-semibold text-[var(--rail-ink)]">
-          Choose outcome
+          Outcome
         </h3>
         <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
-          Can this complaint be resolved now, or does it need internal
-          follow-up?
+          Apakah keluhan ini bisa selesai sekarang, atau perlu tindak lanjut
+          internal?
         </p>
       </div>
 
       {managerApprovalRequired ? (
         <WarningBanner>
-          Manager approval is required for this case. Recommended: Copy Safe
-          Reply + Create Ticket.
+          Kasus ini perlu persetujuan manajer. Rekomendasi: salin balasan awal
+          dan buat tiket.
         </WarningBanner>
       ) : null}
 
@@ -1303,7 +1305,7 @@ function OutcomeStep({
             {option.recommended ? (
               <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--signal-green-dark)]">
                 <Star aria-hidden="true" size={12} />
-                Recommended
+                Direkomendasikan
               </span>
             ) : null}
           </button>
@@ -1311,14 +1313,17 @@ function OutcomeStep({
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <PreviewBox title="Full final response" value={finalResponse} />
-        <PreviewBox title="Safe reply for unresolved cases" value={safeReply} />
+        <PreviewBox title="Balasan akhir lengkap" value={finalResponse} />
+        <PreviewBox
+          title="Balasan awal untuk kasus lanjutan"
+          value={safeReply}
+        />
       </div>
 
       <div className="text-center">
         <button className={secondaryButtonClass} onClick={onBack} type="button">
           <ArrowLeft aria-hidden="true" size={13} />
-          Back to review
+          Kembali ke tinjauan
         </button>
       </div>
     </div>
@@ -1341,23 +1346,23 @@ function CompletionStateView({
   const content = {
     resolved: {
       icon: <ClipboardCheck aria-hidden="true" size={25} />,
-      title: "Response copied - complaint resolved",
-      body: "The final response has been copied. Paste it on the external platform. This complaint has been closed internally.",
-      reference: `Handled response #${recordId}`,
+      title: "Balasan disalin - keluhan selesai",
+      body: "Balasan akhir sudah disalin. Tempel di platform eksternal. Keluhan ini sudah ditutup secara internal.",
+      reference: `Catatan balasan #${recordId}`,
       tone: "green",
     },
     "ticket-created": {
       icon: <TicketCheck aria-hidden="true" size={25} />,
-      title: "Safe reply copied - ticket created",
-      body: "A safe response has been copied for the external platform. The ticket includes the original complaint, selected action, references, and draft response.",
-      reference: `Ticket #${ticketId} created for internal follow-up`,
+      title: "Balasan awal disalin - tiket dibuat",
+      body: "Balasan awal sudah disalin untuk platform eksternal. Tiket berisi keluhan asli, tindak lanjut yang dipilih, referensi, dan draf balasan.",
+      reference: `Tiket #${ticketId} dibuat untuk tindak lanjut`,
       tone: "blue",
     },
     "manager-escalated": {
       icon: <Flag aria-hidden="true" size={25} />,
-      title: "Escalated to manager",
-      body: "The full case, draft response, and references are attached. No external response was copied by default.",
-      reference: `Ticket #${ticketId} sent to manager queue`,
+      title: "Dieskalasi ke manajer",
+      body: "Kasus lengkap, draf balasan, dan referensi sudah dilampirkan. Tidak ada balasan eksternal yang disalin otomatis.",
+      reference: `Tiket #${ticketId} dikirim ke antrean manajer`,
       tone: "red",
     },
   }[completionState];
@@ -1383,14 +1388,14 @@ function CompletionStateView({
       </p>
       {username ? (
         <p className="text-xs text-[var(--text-tertiary)]">
-          External handle: {username}
+          Handle eksternal: {username}
         </p>
       ) : null}
       <span className="rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-4 py-2 text-xs font-semibold text-[var(--signal-blue)]">
         {content.reference}
       </span>
       <button className={secondaryButtonClass} onClick={onReset} type="button">
-        Start new complaint
+        Mulai keluhan baru
       </button>
     </div>
   );
@@ -1406,7 +1411,7 @@ function Stepper({ currentStep }: { currentStep: StepId }) {
 
   return (
     <nav
-      aria-label="Quick response workflow"
+      aria-label="Quick response flow"
       className="mb-2 flex items-center overflow-x-auto pb-1"
     >
       {steps.map((step, index) => {
@@ -1520,7 +1525,7 @@ function BuildResponseSkeleton() {
   return (
     <output
       aria-busy="true"
-      aria-label="Processing response recommendations"
+      aria-label="Memproses rekomendasi balasan"
       className="space-y-4"
     >
       <div className="flex items-start gap-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
@@ -1557,8 +1562,8 @@ function BuildResponseSkeleton() {
       </div>
 
       <div className="rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3 text-xs font-semibold text-[var(--signal-amber-dark)]">
-        Checking similar complaints, SOP references, policy warnings, and safe
-        response options...
+        Memeriksa keluhan serupa, referensi SOP, peringatan kebijakan, dan opsi
+        balasan yang aman...
       </div>
     </output>
   );
@@ -1622,10 +1627,10 @@ function TakeActionBlock({
   return (
     <section>
       <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-        Take Action
+        Tindak Lanjut
       </h3>
       <p className="mt-1 text-xs text-[var(--text-muted)]">
-        Separate the customer-facing line from internal action needed.
+        Pisahkan kalimat untuk pelanggan dari tindakan internal yang dibutuhkan.
       </p>
       <div className="mt-3 overflow-hidden rounded-xl border border-[var(--signal-amber)]">
         <div className="flex items-center gap-2 border-b border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-3 py-2">
@@ -1635,11 +1640,11 @@ function TakeActionBlock({
             size={15}
           />
           <p className="flex-1 text-xs font-semibold text-[var(--signal-amber-dark)]">
-            Customer-facing action
+            Tindakan yang bisa disampaikan ke pelanggan
           </p>
           {managerApprovalRequired ? (
             <span className="rounded-full border border-[var(--signal-amber)] bg-[var(--surface-panel)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-amber-dark)]">
-              Approval required
+              Perlu persetujuan
             </span>
           ) : null}
         </div>
@@ -1665,7 +1670,7 @@ function TakeActionBlock({
           <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
             <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
               <Lock aria-hidden="true" size={13} />
-              Internal - not shown to customer
+              Internal - tidak ditampilkan ke pelanggan
             </div>
             <div className="space-y-3">
               {references.map((reference) => (
@@ -1680,9 +1685,9 @@ function TakeActionBlock({
                   size={14}
                 />
                 <span>
-                  Manager approval required. Do not confirm refund,
-                  compensation, or reschedule directly. Create a ticket or
-                  escalate when the case remains unresolved.
+                  Perlu persetujuan manajer. Jangan langsung mengonfirmasi
+                  pengembalian dana, kompensasi, atau jadwal ulang. Buat tiket
+                  atau eskalasi jika kasus belum selesai.
                 </span>
               </div>
             ) : null}

@@ -27,7 +27,7 @@ export function SuggestedResponseCard({
           onClick={onUseSuggestedResponse}
           type="button"
         >
-          Use this response
+          Gunakan balasan ini
         </button>
       </div>
     </article>

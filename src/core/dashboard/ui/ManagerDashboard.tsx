@@ -24,9 +24,9 @@ export function ManagerDashboard() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           stats={[
-            { label: "Resolved", value: "231" },
-            { label: "Escalated", value: "18" },
-            { label: "Quality", value: "82" },
+            { label: "Selesai", value: "231" },
+            { label: "Dieskalasi", value: "18" },
+            { label: "Kualitas", value: "82" },
           ]}
         />
 
@@ -35,7 +35,7 @@ export function ManagerDashboard() {
             dashboardRole="manager"
             isSidebarOpen={sidebarOpen}
             onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
-            roleLabel="Operations manager"
+            roleLabel="Manajer operasional"
             userName="Maya R."
           />
 
