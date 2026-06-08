@@ -68,7 +68,7 @@ export function DashboardNavbar({
 
   return (
     <header
-      className={`sticky top-3 z-50 mb-4 flex min-h-14 flex-col gap-3 rounded-[18px] border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3 shadow-lg backdrop-blur-sm transition-transform duration-300 lg:flex-row lg:items-center lg:justify-between ${isVisible ? "translate-y-0" : "-translate-y-[calc(100%+1rem)]"}`}
+      className={`sticky top-3 z-30 mb-4 flex min-h-14 flex-col gap-3 rounded-[18px] border border-[var(--rail-border)] bg-[rgba(251,252,247,0.92)] px-3 py-3 shadow-[var(--shadow-soft)] backdrop-blur-md transition-transform duration-300 sm:px-4 lg:flex-row lg:items-center lg:justify-between ${isVisible ? "translate-y-0" : "-translate-y-[calc(100%+1rem)]"}`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <IconButton
@@ -91,7 +91,7 @@ export function DashboardNavbar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
         {controls}
         <IconButton label="Buka pengaturan">
           <Settings aria-hidden="true" size={16} />

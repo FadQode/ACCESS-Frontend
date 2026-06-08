@@ -13,14 +13,13 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
+import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
+import { mockManagerActionClusters } from "@/core/manager/model/manager-action.mock";
 import type {
   ManagerActionCategory,
   ManagerActionCluster,
   ManagerActionStatus,
 } from "@/core/manager/model/manager-action.types";
-import {
-  mockManagerActionClusters,
-} from "@/core/manager/model/manager-action.mock";
 
 const MANAGER = {
   id: "manager-001",
@@ -79,7 +78,7 @@ const sourceLabel: Record<string, string> = {
 };
 
 export function ManagerActionQueue() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [clusters, setClusters] = useState<ManagerActionCluster[]>(
     structuredClone(mockManagerActionClusters),
   );
@@ -93,9 +92,8 @@ export function ManagerActionQueue() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [completionAlert, setCompletionAlert] = useState("");
 
-  const selectedCluster = clusters.find(
-    (c) => c.id === selectedClusterId,
-  ) ?? clusters[0];
+  const selectedCluster =
+    clusters.find((c) => c.id === selectedClusterId) ?? clusters[0];
 
   useEffect(() => {
     const selected = clusters.find((c) => c.id === selectedClusterId);
@@ -105,9 +103,7 @@ export function ManagerActionQueue() {
     setCompletionAlert("");
   }, [selectedClusterId, clusters]);
 
-  const pendingCount = clusters.filter(
-    (c) => c.status !== "done",
-  ).length;
+  const pendingCount = clusters.filter((c) => c.status !== "done").length;
 
   const visibleClusters = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -154,9 +150,7 @@ export function ManagerActionQueue() {
       ),
     );
     setIsCompleted(true);
-    setCompletionAlert(
-      "Manager action completed — agents notified",
-    );
+    setCompletionAlert("Manager action completed — agents notified");
   };
 
   return (
@@ -165,7 +159,7 @@ export function ManagerActionQueue() {
         <DashboardSidebar
           dashboardRole="manager"
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           stats={[
             { label: "Pending", value: pendingCount.toString() },
             { label: "Clusters", value: clusters.length.toString() },
@@ -182,7 +176,7 @@ export function ManagerActionQueue() {
           <DashboardNavbar
             dashboardRole="manager"
             isSidebarOpen={sidebarOpen}
-            onSidebarToggle={() => setSidebarOpen((open) => !open)}
+            onSidebarToggle={toggleSidebar}
             roleLabel="Manager operations"
             userName={MANAGER.name}
           />
@@ -204,10 +198,7 @@ export function ManagerActionQueue() {
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[430px]">
-                  <MetricPill
-                    label="Clusters pending"
-                    value={pendingCount}
-                  />
+                  <MetricPill label="Clusters pending" value={pendingCount} />
                   <MetricPill
                     label="Complaints"
                     value={clusters.reduce(
@@ -217,10 +208,7 @@ export function ManagerActionQueue() {
                   />
                   <MetricPill
                     label="Agents waiting"
-                    value={clusters.reduce(
-                      (sum, c) => sum + c.agentCount,
-                      0,
-                    )}
+                    value={clusters.reduce((sum, c) => sum + c.agentCount, 0)}
                   />
                 </div>
               </div>
@@ -260,7 +248,6 @@ export function ManagerActionQueue() {
                           <ManagerActionWorkspace
                             actionTaken={actionTaken}
                             closureMessage={closureMessage}
-                            cluster={selectedCluster}
                             onActionTakenChange={setActionTaken}
                             onClosureMessageChange={setClosureMessage}
                             onSubmit={handleCompleteAction}
@@ -456,9 +443,8 @@ function ClusterHeader({ cluster }: { cluster: ManagerActionCluster }) {
             {cluster.title}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-            {cluster.complaintCount} complaints &middot;{" "}
-            {cluster.agentCount} agents waiting &middot; raised{" "}
-            {cluster.relativeTime}
+            {cluster.complaintCount} complaints &middot; {cluster.agentCount}{" "}
+            agents waiting &middot; raised {cluster.relativeTime}
           </p>
           {cluster.assignedManager ? (
             <p className="mt-1 text-xs text-[var(--text-muted)]">
@@ -481,18 +467,12 @@ function ClusterHeader({ cluster }: { cluster: ManagerActionCluster }) {
   );
 }
 
-function ComplaintsInCluster({
-  cluster,
-}: {
-  cluster: ManagerActionCluster;
-}) {
+function ComplaintsInCluster({ cluster }: { cluster: ManagerActionCluster }) {
   return (
-    <Panel
-      title="Complaints in this cluster"
-    >
+    <Panel title="Complaints in this cluster">
       <p className="mb-3 text-xs text-[var(--text-muted)]">
-        {cluster.complaintCount} complaints from{" "}
-        {cluster.agentCount} agents — all waiting for internal action
+        {cluster.complaintCount} complaints from {cluster.agentCount} agents —
+        all waiting for internal action
       </p>
 
       <div className="space-y-3">
@@ -534,11 +514,7 @@ function ComplaintsInCluster({
   );
 }
 
-function ContextAndReferences({
-  cluster,
-}: {
-  cluster: ManagerActionCluster;
-}) {
+function ContextAndReferences({ cluster }: { cluster: ManagerActionCluster }) {
   return (
     <Panel title="Context & references">
       <p className="mb-3 text-xs text-[var(--text-muted)]">
@@ -595,14 +571,12 @@ function ContextAndReferences({
 function ManagerActionWorkspace({
   actionTaken,
   closureMessage,
-  cluster,
   onActionTakenChange,
   onClosureMessageChange,
   onSubmit,
 }: {
   actionTaken: string;
   closureMessage: string;
-  cluster: ManagerActionCluster;
   onActionTakenChange: (v: string) => void;
   onClosureMessageChange: (v: string) => void;
   onSubmit: () => void;
@@ -770,9 +744,15 @@ function CompletionState({ cluster }: { cluster: ManagerActionCluster }) {
                 className="flex items-center gap-2 text-sm text-[var(--rail-ink)]"
                 key={comp.id}
               >
-                <Users aria-hidden="true" className="text-[var(--signal-green)]" size={14} />
+                <Users
+                  aria-hidden="true"
+                  className="text-[var(--signal-green)]"
+                  size={14}
+                />
                 <span className="font-medium">{comp.agentName}</span>
-                <Badge>&#64;{comp.customerName.toLowerCase().replace(/\s+/g, "")}</Badge>
+                <Badge>
+                  &#64;{comp.customerName.toLowerCase().replace(/\s+/g, "")}
+                </Badge>
                 <span className="text-[11px] text-[var(--signal-green)]">
                   &check; ready to notify
                 </span>
@@ -785,13 +765,7 @@ function CompletionState({ cluster }: { cluster: ManagerActionCluster }) {
   );
 }
 
-function Panel({
-  children,
-  title,
-}: {
-  children: ReactNode;
-  title: string;
-}) {
+function Panel({ children, title }: { children: ReactNode; title: string }) {
   return (
     <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4 shadow-[var(--shadow-soft)]">
       <h3 className="mb-3 text-sm font-semibold text-[var(--rail-ink)]">
@@ -871,17 +845,11 @@ function FilterButton({
 
 function StatusBadge({ status }: { status: ManagerActionStatus }) {
   return (
-    <Badge className={statusBadgeClass[status]}>
-      {statusLabel[status]}
-    </Badge>
+    <Badge className={statusBadgeClass[status]}>{statusLabel[status]}</Badge>
   );
 }
 
-function CategoryBadge({
-  category,
-}: {
-  category: ManagerActionCategory;
-}) {
+function CategoryBadge({ category }: { category: ManagerActionCategory }) {
   return (
     <Badge className={categoryBadgeClass[category]}>
       {categoryLabel[category]}

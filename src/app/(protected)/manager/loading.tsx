@@ -1,5 +1,5 @@
 import { DashboardPageSkeleton } from "@/core/components/dashboard-skeleton";
 
-export default function AgentLoading() {
+export default function ManagerLoading() {
   return <DashboardPageSkeleton />;
 }

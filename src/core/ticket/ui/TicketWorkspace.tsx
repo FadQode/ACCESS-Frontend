@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
+import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useTicketWorkspace } from "../hooks/useTicketWorkspace";
 import { TicketAssistPanel } from "./TicketAssistPanel";
 import { TicketDetail } from "./TicketDetail";
@@ -11,7 +12,7 @@ import { TicketQueue } from "./TicketQueue";
 
 export function TicketWorkspace() {
   const workspace = useTicketWorkspace();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [navbarVisible, setNavbarVisible] = useState(true);
 
   if (!workspace.selectedTicket) {
@@ -26,7 +27,7 @@ export function TicketWorkspace() {
         <DashboardSidebar
           dashboardRole="agent"
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           stats={[
             { label: "Aktif", value: activeTicketCount.toString() },
             { label: "Siap", value: workspace.readyCount.toString() },
@@ -49,7 +50,7 @@ export function TicketWorkspace() {
               }
               dashboardRole="agent"
               isSidebarOpen={sidebarOpen}
-              onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
+              onSidebarToggle={toggleSidebar}
               roleLabel="Agen dukungan"
               userName="Rizky A."
             />

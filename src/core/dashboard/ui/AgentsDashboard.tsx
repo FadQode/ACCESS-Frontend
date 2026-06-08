@@ -13,6 +13,7 @@ import {
 import { type ReactNode, useMemo, useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
+import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import type {
   AgentPerformanceSnapshot,
   CaseTrendPoint,
@@ -32,7 +33,7 @@ const CATEGORY_COLORS = ["#1a3f6f", "#d99a18", "#15734f", "#7d6bd6"];
 export function AgentPerformanceDashboard({
   snapshots,
 }: AgentPerformanceDashboardProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [selectedPeriod, setSelectedPeriod] = useState<PerformancePeriod>(
     snapshots[0]?.period ?? "7d",
   );
@@ -92,7 +93,7 @@ export function AgentPerformanceDashboard({
         <DashboardSidebar
           dashboardRole="agent"
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           stats={[
             {
               label: "Tepat waktu",
@@ -126,7 +127,7 @@ export function AgentPerformanceDashboard({
             }
             dashboardRole="agent"
             isSidebarOpen={sidebarOpen}
-            onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
+            onSidebarToggle={toggleSidebar}
             roleLabel={snapshot.role}
             userName={snapshot.agentName}
           />

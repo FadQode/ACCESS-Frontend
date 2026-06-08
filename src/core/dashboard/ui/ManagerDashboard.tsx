@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
+import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useManagerDashboard } from "../hooks/useManagerDashboard";
 import { AgentPerformanceCard } from "./manager/AgentPerformanceCard";
 import { ComplaintCategoryCard } from "./manager/ComplaintCategoryCard";
@@ -14,7 +14,7 @@ import { OpenEscalationsCard } from "./manager/OpenEscalationsCard";
 export function ManagerDashboard() {
   const { dashboardData, period, setPeriod, setTrendInterval, trendInterval } =
     useManagerDashboard();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
@@ -22,7 +22,7 @@ export function ManagerDashboard() {
         <DashboardSidebar
           dashboardRole="manager"
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           stats={[
             { label: "Selesai", value: "231" },
             { label: "Dieskalasi", value: "18" },
@@ -34,7 +34,7 @@ export function ManagerDashboard() {
           <DashboardNavbar
             dashboardRole="manager"
             isSidebarOpen={sidebarOpen}
-            onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
+            onSidebarToggle={toggleSidebar}
             roleLabel="Manajer operasional"
             userName="Maya R."
           />

@@ -25,6 +25,7 @@ import {
 import { type ReactNode, useMemo, useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
+import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 
 type StepId = 1 | 2 | 3 | 4;
 type ResponseTarget =
@@ -382,7 +383,7 @@ const builderSections: {
 ];
 
 export function QuickResponse() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [currentStep, setCurrentStep] = useState<StepId>(1);
   const [source, setSource] = useState("twitter");
   const [username, setUsername] = useState("@sitinuraini");
@@ -617,7 +618,7 @@ export function QuickResponse() {
         <DashboardSidebar
           dashboardRole="agent"
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           stats={[
             { label: "Alur", value: `Langkah ${currentStep}` },
             {
@@ -645,7 +646,7 @@ export function QuickResponse() {
             }
             dashboardRole="agent"
             isSidebarOpen={sidebarOpen}
-            onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
+            onSidebarToggle={toggleSidebar}
             roleLabel="Agen layanan"
             userName="Rizky A."
           />
