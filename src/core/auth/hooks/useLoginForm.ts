@@ -1,12 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { z } from "zod";
+import { useLogin } from "@/core/dashboard/hooks/use-login";
 import type { LoginFormState } from "../model/login.types";
-import { validateDummyLogin } from "../service/login.mock";
+
+const loginFormSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email wajib diisi.")
+    .email("Format email tidak valid."),
+  password: z.string().min(1, "Password wajib diisi."),
+  rememberMe: z.boolean(),
+});
 
 export function useLoginForm() {
-  const router = useRouter();
+  const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -17,9 +27,22 @@ export function useLoginForm() {
     setIsPasswordVisible((previous) => !previous);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const updateEmail = (value: string) => {
+    setEmail(value);
+    setErrorMessage("");
+    loginMutation.resetLoginError();
+  };
+
+  const updatePassword = (value: string) => {
+    setPassword(value);
+    setErrorMessage("");
+    loginMutation.resetLoginError();
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage("");
+    loginMutation.resetLoginError();
 
     const formState: LoginFormState = {
       email,
@@ -27,30 +50,35 @@ export function useLoginForm() {
       rememberMe,
     };
 
-    const result = validateDummyLogin(formState);
+    const validation = loginFormSchema.safeParse(formState);
 
-    if (!result.account) {
-      setErrorMessage(result.error ?? "Login dummy gagal.");
+    if (!validation.success) {
+      setErrorMessage(
+        validation.error.issues[0]?.message ?? "Lengkapi email dan password.",
+      );
       return;
     }
 
-    console.log({
-      ...formState,
-      role: result.account.role,
-    });
-
-    router.push(result.account.redirectPath);
+    try {
+      await loginMutation.loginAsync({
+        email: validation.data.email,
+        password: validation.data.password,
+      });
+    } catch {
+      // React Query stores the normalized error for the UI to render.
+    }
   };
 
   return {
     email,
-    errorMessage,
+    errorMessage: errorMessage || loginMutation.errorMessage,
     handleSubmit,
     isPasswordVisible,
+    isSubmitting: loginMutation.isPending || loginMutation.isSuccess,
     password,
     rememberMe,
-    setEmail,
-    setPassword,
+    setEmail: updateEmail,
+    setPassword: updatePassword,
     setRememberMe,
     togglePasswordVisibility,
   };

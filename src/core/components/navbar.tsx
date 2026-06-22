@@ -1,13 +1,9 @@
 "use client";
 
-import {
-  Bell,
-  ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Settings,
-} from "lucide-react";
+import { Bell, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { ProfileMenu } from "@/core/auth/profile-menu";
+import { useCurrentUser } from "@/core/dashboard/hooks/use-current-user";
 
 export type DashboardRole = "agent" | "manager";
 
@@ -40,9 +36,17 @@ export function DashboardNavbar({
   userName,
 }: DashboardNavbarProps) {
   const copy = ROLE_COPY[dashboardRole];
-  const avatarInitials = initialsFromName(userName);
+  const currentUser = useCurrentUser();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const resolvedRoleLabel =
+    currentUser.data?.role === "agent"
+      ? "Agen layanan"
+      : currentUser.data?.role === "manager"
+        ? "Manajer operasional"
+        : currentUser.data?.role === "admin"
+          ? "Admin"
+          : roleLabel;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -99,25 +103,14 @@ export function DashboardNavbar({
         <IconButton label="Lihat notifikasi" notification>
           <Bell aria-hidden="true" size={16} />
         </IconButton>
-        <button
-          className="flex h-10 min-w-0 items-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-2.5 text-xs font-medium text-[var(--rail-ink)] transition hover:border-[var(--signal-blue)]"
-          type="button"
-        >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--signal-blue)] text-[10px] font-semibold text-white">
-            {avatarInitials}
-          </span>
-          <span className="hidden min-w-0 sm:block">
-            <span className="block max-w-[112px] truncate">{userName}</span>
-            <span className="block max-w-[112px] truncate text-[10px] text-[var(--text-muted)]">
-              {roleLabel}
-            </span>
-          </span>
-          <ChevronDown
-            aria-hidden="true"
-            className="shrink-0 text-[var(--text-muted)]"
-            size={14}
-          />
-        </button>
+        <ProfileMenu
+          fallbackRoleLabel={roleLabel}
+          fallbackUserName={userName}
+          isError={currentUser.isError}
+          isLoading={currentUser.isLoading}
+          roleLabel={resolvedRoleLabel}
+          user={currentUser.data}
+        />
       </div>
     </header>
   );
@@ -147,13 +140,4 @@ function IconButton({
       ) : null}
     </button>
   );
-}
-
-function initialsFromName(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }

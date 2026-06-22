@@ -15,8 +15,9 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { type ComponentType, useEffect } from "react";
+import { useLogout } from "@/core/auth/hooks/useLogout";
 import type { DashboardRole } from "@/core/components/navbar";
 
 export interface DashboardSidebarStat {
@@ -44,6 +45,7 @@ interface NavigationItem {
 const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
   agent: [
     { href: "/agent", icon: Gauge, label: "Dashboard" },
+    { href: "/agent/complaints", icon: ClipboardCheck, label: "Complaints" },
     {
       href: "/agent/quick-response",
       icon: MessageSquareText,
@@ -79,7 +81,7 @@ export function DashboardSidebar({
   stats = [],
 }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const logout = useLogout();
   const navigationItems = NAVIGATION[dashboardRole];
 
   useEffect(() => {
@@ -101,7 +103,7 @@ export function DashboardSidebar({
     }
   };
   const handleSignOut = () => {
-    router.push("/login");
+    logout();
   };
 
   return (

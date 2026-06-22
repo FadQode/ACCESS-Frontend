@@ -12,6 +12,7 @@ export function LoginForm() {
     errorMessage,
     handleSubmit,
     isPasswordVisible,
+    isSubmitting,
     password,
     rememberMe,
     setEmail,
@@ -34,20 +35,26 @@ export function LoginForm() {
 
         <div className="grid gap-4">
           <LoginField
+            autoComplete="email"
+            disabled={isSubmitting}
             id="email"
             label={loginFormContent.emailLabel}
             onChange={setEmail}
             placeholder={loginFormContent.emailPlaceholder}
+            required
             type="email"
             value={email}
           />
           <PasswordField
+            autoComplete="current-password"
+            disabled={isSubmitting}
             id="password"
             isVisible={isPasswordVisible}
             label={loginFormContent.passwordLabel}
             onChange={setPassword}
             onToggleVisibility={togglePasswordVisibility}
             placeholder={loginFormContent.passwordPlaceholder}
+            required
             value={password}
           />
         </div>
@@ -57,6 +64,7 @@ export function LoginForm() {
             <input
               checked={rememberMe}
               className="h-4 w-4 rounded border-[var(--rail-border)] accent-[var(--signal-blue)]"
+              disabled={isSubmitting}
               onChange={(event) => setRememberMe(event.target.checked)}
               type="checkbox"
             />
@@ -64,6 +72,7 @@ export function LoginForm() {
           </label>
           <button
             className="shrink-0 font-semibold text-[var(--signal-blue)] transition hover:text-[var(--rail-ink)]"
+            disabled={isSubmitting}
             type="button"
           >
             {loginFormContent.forgotPasswordLabel}
@@ -80,11 +89,12 @@ export function LoginForm() {
         ) : null}
 
         <button
-          className="mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(19,35,31,0.18)] transition hover:bg-[var(--signal-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--signal-blue)]"
+          className="mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(19,35,31,0.18)] transition hover:bg-[var(--signal-blue)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--signal-blue)] disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={isSubmitting}
           type="submit"
         >
           <LogIn aria-hidden="true" size={17} />
-          {loginFormContent.submitLabel}
+          {isSubmitting ? "Memproses..." : loginFormContent.submitLabel}
         </button>
 
         <p className="mt-7 text-center text-xs leading-5 text-[var(--text-muted)]">

@@ -1,22 +1,28 @@
 import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 
-interface PasswordFieldProps {
+export interface PasswordFieldProps {
+  autoComplete?: string;
+  disabled?: boolean;
   id: string;
   isVisible: boolean;
   label: string;
   onChange: (value: string) => void;
   onToggleVisibility: () => void;
   placeholder: string;
+  required?: boolean;
   value: string;
 }
 
 export function PasswordField({
+  autoComplete,
+  disabled = false,
   id,
   isVisible,
   label,
   onChange,
   onToggleVisibility,
   placeholder,
+  required = false,
   value,
 }: PasswordFieldProps) {
   return (
@@ -35,9 +41,12 @@ export function PasswordField({
         />
         <input
           className="min-w-0 flex-1 bg-transparent text-sm text-[var(--rail-ink)] outline-none placeholder:text-[var(--text-tertiary)]"
+          autoComplete={autoComplete}
+          disabled={disabled}
           id={id}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
+          required={required}
           type={isVisible ? "text" : "password"}
           value={value}
         />
@@ -46,6 +55,7 @@ export function PasswordField({
             isVisible ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"
           }
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--signal-blue-soft)] hover:text-[var(--signal-blue)]"
+          disabled={disabled}
           onClick={onToggleVisibility}
           type="button"
         >
