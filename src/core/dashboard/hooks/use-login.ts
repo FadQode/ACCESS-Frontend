@@ -33,7 +33,7 @@ export function useLogin() {
   const mutation = useMutation<LoginResponse, unknown, LoginRequest>({
     mutationFn: login,
     onSuccess: ({ token, user }) => {
-      setSession(token, user.role);
+      setSession(token, user.role, user);
       router.replace(getDefaultRouteForRole(user.role));
       router.refresh();
     },

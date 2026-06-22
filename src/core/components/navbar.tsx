@@ -2,6 +2,7 @@
 
 import { Bell, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
 import { ProfileMenu } from "@/core/auth/profile-menu";
 import { useCurrentUser } from "@/core/dashboard/hooks/use-current-user";
 
@@ -12,8 +13,8 @@ export interface DashboardNavbarProps {
   dashboardRole: DashboardRole;
   isSidebarOpen?: boolean;
   onSidebarToggle?: () => void;
-  roleLabel: string;
-  userName: string;
+  roleLabel?: string;
+  userName?: string;
 }
 
 const ROLE_COPY: Record<DashboardRole, { title: string; subtitle: string }> = {
@@ -27,26 +28,42 @@ const ROLE_COPY: Record<DashboardRole, { title: string; subtitle: string }> = {
   },
 };
 
+const FALLBACK_PROFILE: Record<
+  DashboardRole,
+  { name: string; roleLabel: string }
+> = {
+  agent: {
+    name: "Agent 1",
+    roleLabel: "Customer Support",
+  },
+  manager: {
+    name: "Manager 1",
+    roleLabel: "Operations Manager",
+  },
+};
+
 export function DashboardNavbar({
   controls,
   dashboardRole,
   isSidebarOpen = true,
   onSidebarToggle,
-  roleLabel,
-  userName,
 }: DashboardNavbarProps) {
   const copy = ROLE_COPY[dashboardRole];
   const currentUser = useCurrentUser();
+  const sessionUser = useSessionUser();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const fallbackProfile = FALLBACK_PROFILE[dashboardRole];
+  const profileUser = currentUser.data ?? sessionUser;
   const resolvedRoleLabel =
-    currentUser.data?.role === "agent"
-      ? "Agen layanan"
-      : currentUser.data?.role === "manager"
-        ? "Manajer operasional"
-        : currentUser.data?.role === "admin"
+    profileUser?.role === "agent"
+      ? "Customer Support"
+      : profileUser?.role === "manager"
+        ? "Operations Manager"
+        : profileUser?.role === "admin"
           ? "Admin"
-          : roleLabel;
+          : fallbackProfile.roleLabel;
+  const resolvedUserName = profileUser?.name || fallbackProfile.name;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -104,12 +121,12 @@ export function DashboardNavbar({
           <Bell aria-hidden="true" size={16} />
         </IconButton>
         <ProfileMenu
-          fallbackRoleLabel={roleLabel}
-          fallbackUserName={userName}
+          fallbackRoleLabel={resolvedRoleLabel}
+          fallbackUserName={resolvedUserName}
           isError={currentUser.isError}
           isLoading={currentUser.isLoading}
           roleLabel={resolvedRoleLabel}
-          user={currentUser.data}
+          user={profileUser}
         />
       </div>
     </header>

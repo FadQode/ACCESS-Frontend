@@ -29,6 +29,7 @@ export function ProfileMenu({
   const logout = useLogout();
   const displayName = user?.name || fallbackUserName || "User";
   const displayRole = roleLabel || fallbackRoleLabel || user?.role || "unknown";
+  const fallbackUser = { name: displayName };
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -53,7 +54,7 @@ export function ProfileMenu({
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
-        <UserAvatar user={user ?? { name: displayName }} />
+        <UserAvatar user={user ?? fallbackUser} />
         <span className="hidden min-w-0 sm:block">
           <span className="block max-w-[112px] truncate">
             {isLoading ? "Loading..." : displayName}
@@ -77,6 +78,7 @@ export function ProfileMenu({
           role="menu"
         >
           <ProfileCard
+            fallbackName={displayName}
             isError={isError}
             isLoading={isLoading}
             roleLabel={displayRole}

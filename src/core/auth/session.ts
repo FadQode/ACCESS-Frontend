@@ -1,9 +1,13 @@
-import type { UserRole } from "@/core/dashboard/model/types/auth.types";
+import type {
+  AuthUser,
+  UserRole,
+} from "@/core/dashboard/model/types/auth.types";
 
 const SESSION_COOKIE_NAME =
   process.env.NEXT_PUBLIC_SESSION_COOKIE_NAME ?? "session";
 const ROLE_COOKIE_NAME = process.env.NEXT_PUBLIC_ROLE_COOKIE_NAME ?? "role";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+const SESSION_USER_STORAGE_KEY = "access.session.user";
 
 function canUseDocumentCookie() {
   return typeof document !== "undefined";
@@ -38,14 +42,30 @@ function writeCookie(name: string, value: string, maxAge: number) {
   )}; path=/; max-age=${maxAge}; samesite=lax${secure}`;
 }
 
-export function setSession(token: string, role: UserRole): void {
+function canUseLocalStorage() {
+  return typeof window !== "undefined" && Boolean(window.localStorage);
+}
+
+export function setSession(
+  token: string,
+  role: UserRole,
+  user?: AuthUser,
+): void {
   writeCookie(SESSION_COOKIE_NAME, token, SESSION_MAX_AGE_SECONDS);
   writeCookie(ROLE_COOKIE_NAME, role, SESSION_MAX_AGE_SECONDS);
+
+  if (user && canUseLocalStorage()) {
+    window.localStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(user));
+  }
 }
 
 export function clearSession(): void {
   writeCookie(SESSION_COOKIE_NAME, "", 0);
   writeCookie(ROLE_COOKIE_NAME, "", 0);
+
+  if (canUseLocalStorage()) {
+    window.localStorage.removeItem(SESSION_USER_STORAGE_KEY);
+  }
 }
 
 export function getClientSessionToken(): string | null {
@@ -57,6 +77,37 @@ export function getClientRole(): UserRole | null {
 
   if (role === "agent" || role === "manager" || role === "admin") {
     return role;
+  }
+
+  return null;
+}
+
+export function getClientSessionUser(): AuthUser | null {
+  if (!canUseLocalStorage()) {
+    return null;
+  }
+
+  const rawUser = window.localStorage.getItem(SESSION_USER_STORAGE_KEY);
+
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    const parsedUser = JSON.parse(rawUser) as Partial<AuthUser>;
+
+    if (
+      typeof parsedUser.id === "string" &&
+      typeof parsedUser.email === "string" &&
+      typeof parsedUser.name === "string" &&
+      (parsedUser.role === "agent" ||
+        parsedUser.role === "manager" ||
+        parsedUser.role === "admin")
+    ) {
+      return parsedUser as AuthUser;
+    }
+  } catch {
+    window.localStorage.removeItem(SESSION_USER_STORAGE_KEY);
   }
 
   return null;

@@ -2,7 +2,7 @@ import type { AuthUser } from "@/core/dashboard/model/types/auth.types";
 
 export type UserAvatarProps = {
   size?: "sm" | "md";
-  user?: Partial<Pick<AuthUser, "image" | "name" | "email">> | null;
+  user?: Partial<Pick<AuthUser, "name" | "email">> | null;
 };
 
 const SIZE_CLASS = {
@@ -12,17 +12,6 @@ const SIZE_CLASS = {
 
 export function UserAvatar({ size = "sm", user }: UserAvatarProps) {
   const label = user?.name || user?.email || "User";
-
-  if (user?.image) {
-    return (
-      <span
-        aria-label={label}
-        className={`${SIZE_CLASS[size]} block shrink-0 rounded-full bg-cover bg-center`}
-        role="img"
-        style={{ backgroundImage: `url(${user.image})` }}
-      />
-    );
-  }
 
   return (
     <span

@@ -5,10 +5,14 @@ export type ProfileCardProps = {
   isError?: boolean;
   isLoading?: boolean;
   roleLabel?: string;
+  fallbackEmail?: string;
+  fallbackName?: string;
   user?: AuthUser | null;
 };
 
 export function ProfileCard({
+  fallbackEmail = "-",
+  fallbackName = "User",
   isError = false,
   isLoading = false,
   roleLabel = "unknown",
@@ -29,18 +33,18 @@ export function ProfileCard({
   if (isError) {
     return (
       <div className="text-sm">
-        <p className="font-semibold text-[var(--rail-ink)]">
-          Unable to load user
-        </p>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">
-          You can still logout and sign in again.
-        </p>
+        <ProfileCard
+          fallbackEmail={fallbackEmail}
+          fallbackName={fallbackName}
+          roleLabel={roleLabel}
+          user={null}
+        />
       </div>
     );
   }
 
-  const name = user?.name || "User";
-  const email = user?.email || "-";
+  const name = user?.name || fallbackName;
+  const email = user?.email || fallbackEmail;
 
   return (
     <div className="flex min-w-0 items-center gap-3">
