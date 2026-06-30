@@ -9,8 +9,6 @@ interface TicketQueueProps {
   tickets: FollowUpTicket[];
   selectedTicketId: string;
   filter: FollowUpTicketFilter;
-  readyCount: number;
-  waitingCount: number;
   searchQuery: string;
   onFilterChange: (filter: FollowUpTicketFilter) => void;
   onSearchChange: (value: string) => void;
@@ -29,32 +27,22 @@ export function TicketQueue({
   onFilterChange,
   onSearchChange,
   onSelectTicket,
-  readyCount,
   searchQuery,
   selectedTicketId,
   tickets,
-  waitingCount,
 }: TicketQueueProps) {
   return (
     <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[var(--rail-border)] bg-[var(--surface-panel)] xl:w-[320px] xl:border-b-0 xl:border-r">
       <div className="border-b border-[var(--rail-border)] p-4">
-        <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="mb-3">
           <div>
             <h2 className="text-base font-semibold text-[var(--rail-ink)]">
               Tickets
             </h2>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Kasus eksternal yang masih butuh tindak lanjut internal.
+              Kasus eksternal yang perlu ditindaklanjuti.
             </p>
           </div>
-          <span className="rounded-full bg-[var(--signal-green-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--signal-green-dark)]">
-            {readyCount} siap
-          </span>
-        </div>
-
-        <div className="mb-3 grid grid-cols-2 gap-2">
-          <QueueMetric label="Siap" value={readyCount} />
-          <QueueMetric label="Menunggu" value={waitingCount} />
         </div>
 
         <label className="relative mb-3 block">
@@ -67,7 +55,7 @@ export function TicketQueue({
           <input
             className="h-10 w-full rounded-lg border border-[var(--rail-border)] bg-[var(--background)] pl-9 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Cari nama, handle, tiket, tindakan..."
+            placeholder="Cari nama, tiket, tindakan..."
             type="search"
             value={searchQuery}
           />
@@ -108,18 +96,5 @@ export function TicketQueue({
         )}
       </div>
     </aside>
-  );
-}
-
-function QueueMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-semibold text-[var(--rail-ink)]">
-        {value}
-      </p>
-    </div>
   );
 }

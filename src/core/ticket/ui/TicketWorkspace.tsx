@@ -1,6 +1,7 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Info, RefreshCcw } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
@@ -14,10 +15,7 @@ export function TicketWorkspace() {
   const workspace = useTicketWorkspace();
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [navbarVisible, setNavbarVisible] = useState(true);
-
-  if (!workspace.selectedTicket) {
-    return null;
-  }
+  const [assistPanelOpen, setAssistPanelOpen] = useState(false);
 
   const activeTicketCount = workspace.readyCount + workspace.waitingCount;
 
@@ -28,25 +26,35 @@ export function TicketWorkspace() {
           dashboardRole="agent"
           isOpen={sidebarOpen}
           onClose={closeSidebar}
-          stats={[
-            { label: "Aktif", value: activeTicketCount.toString() },
-            { label: "Siap", value: workspace.readyCount.toString() },
-            { label: "Menunggu", value: workspace.waitingCount.toString() },
-          ]}
+          stats={[{ label: "Aktif", value: activeTicketCount.toString() }]}
         />
 
         <section className="relative flex min-h-[700px] min-w-0 flex-1 flex-col rounded-[22px] bg-[var(--surface-muted)] p-3 sm:p-5 xl:h-[calc(100vh-40px)]">
           {navbarVisible ? (
             <DashboardNavbar
               controls={
-                <button
-                  className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
-                  onClick={() => setNavbarVisible(false)}
-                  type="button"
-                >
-                  <EyeOff aria-hidden="true" size={15} />
-                  Sembunyikan navbar
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    className={`inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
+                      assistPanelOpen
+                        ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]"
+                        : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
+                    }`}
+                    onClick={() => setAssistPanelOpen((open) => !open)}
+                    type="button"
+                  >
+                    <Info aria-hidden="true" size={15} />
+                    Konteks
+                  </button>
+                  <button
+                    className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
+                    onClick={() => setNavbarVisible(false)}
+                    type="button"
+                  >
+                    <EyeOff aria-hidden="true" size={15} />
+                    Sembunyikan navbar
+                  </button>
+                </div>
               }
               dashboardRole="agent"
               isSidebarOpen={sidebarOpen}
@@ -65,30 +73,92 @@ export function TicketWorkspace() {
             </button>
           )}
 
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-muted)] shadow-[var(--shadow-soft)] xl:flex-row">
-            <TicketQueue
-              filter={workspace.filter}
-              onFilterChange={workspace.setFilter}
-              onSearchChange={workspace.setSearchQuery}
-              onSelectTicket={workspace.setSelectedTicketId}
-              readyCount={workspace.readyCount}
-              searchQuery={workspace.searchQuery}
-              selectedTicketId={workspace.selectedTicketId}
-              tickets={workspace.tickets}
-              waitingCount={workspace.waitingCount}
+          {workspace.isLoading && !workspace.selectedTicket ? (
+            <TicketWorkspaceState
+              title="Memuat tickets..."
+              description="Mengambil follow-up ticket dari backend."
             />
-            <TicketDetail
-              closureDraft={workspace.closureDraft}
-              hasCopiedClosure={workspace.hasCopiedClosure}
-              onAddInternalNote={workspace.addInternalNote}
-              onClosureDraftChange={workspace.setClosureDraft}
-              onCopyClosureAndClose={workspace.copyClosureAndClose}
-              ticket={workspace.selectedTicket}
+          ) : workspace.errorMessage ? (
+            <TicketWorkspaceState
+              action={
+                <button
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--signal-blue)]"
+                  onClick={() => workspace.refetchTickets()}
+                  type="button"
+                >
+                  <RefreshCcw aria-hidden="true" size={14} />
+                  Coba lagi
+                </button>
+              }
+              description={workspace.errorMessage}
+              icon={<AlertTriangle aria-hidden="true" size={18} />}
+              title="Tickets gagal dimuat"
             />
-            <TicketAssistPanel ticket={workspace.selectedTicket} />
-          </section>
+          ) : !workspace.selectedTicket ? (
+            <TicketWorkspaceState
+              title="Belum ada follow-up ticket"
+              description="Ticket akan muncul setelah agent mengirim HEA dan meminta aksi."
+            />
+          ) : (
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-muted)] shadow-[var(--shadow-soft)] xl:flex-row">
+              <TicketQueue
+                filter={workspace.filter}
+                onFilterChange={workspace.setFilter}
+                onSearchChange={workspace.setSearchQuery}
+                onSelectTicket={workspace.setSelectedTicketId}
+                searchQuery={workspace.searchQuery}
+                selectedTicketId={workspace.selectedTicketId}
+                tickets={workspace.tickets}
+              />
+              <TicketDetail
+                closureDraft={workspace.closureDraft}
+                hasCopiedClosure={workspace.hasCopiedClosure}
+                onAddInternalNote={workspace.addInternalNote}
+                onClosureDraftChange={workspace.setClosureDraft}
+                onCopyClosureAndClose={workspace.copyClosureAndClose}
+                ticket={workspace.selectedTicket}
+              />
+              {assistPanelOpen ? (
+                <TicketAssistPanel
+                  onClose={() => setAssistPanelOpen(false)}
+                  ticket={workspace.selectedTicket}
+                />
+              ) : null}
+            </section>
+          )}
         </section>
       </div>
     </main>
+  );
+}
+
+function TicketWorkspaceState({
+  action,
+  description,
+  icon,
+  title,
+}: {
+  action?: ReactNode;
+  description: string;
+  icon?: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="flex min-h-[420px] flex-1 items-center justify-center rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--surface-panel)] p-6 text-center shadow-[var(--shadow-soft)]">
+      <div className="flex max-w-md flex-col items-center gap-3">
+        {icon ? (
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]">
+            {icon}
+          </span>
+        ) : null}
+        <h2 className="text-base font-semibold text-[var(--rail-ink)]">
+          {title}
+        </h2>
+        <p className="text-sm leading-6 text-[var(--text-muted)]">
+          {description}
+        </p>
+        {action}
+      </div>
+    </section>
   );
 }

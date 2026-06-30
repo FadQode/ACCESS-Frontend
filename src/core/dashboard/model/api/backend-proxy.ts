@@ -2,7 +2,7 @@ import axios, { type AxiosError } from "axios";
 import { type NextRequest, NextResponse } from "next/server";
 
 type ProxyOptions = {
-  method: "GET" | "POST";
+  method: "GET" | "PATCH" | "POST";
   request: NextRequest;
   path: string;
 };

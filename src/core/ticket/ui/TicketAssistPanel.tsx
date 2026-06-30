@@ -6,6 +6,7 @@ import {
   User,
   UserRound,
   Wrench,
+  X,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
@@ -16,9 +17,10 @@ import { CATEGORY_LABELS } from "./TicketCard";
 
 interface TicketAssistPanelProps {
   ticket: FollowUpTicket;
+  onClose: () => void;
 }
 
-export function TicketAssistPanel({ ticket }: TicketAssistPanelProps) {
+export function TicketAssistPanel({ onClose, ticket }: TicketAssistPanelProps) {
   return (
     <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-t border-[var(--rail-border)] bg-[var(--surface-panel)] xl:w-[300px] xl:border-l xl:border-t-0">
       <header className="flex items-center gap-2 border-b border-[var(--rail-border)] px-4 py-3">
@@ -35,6 +37,14 @@ export function TicketAssistPanel({ ticket }: TicketAssistPanelProps) {
             Metadata dan riwayat aktivitas
           </p>
         </div>
+        <button
+          aria-label="Tutup konteks tiket"
+          className="ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--rail-border)] text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
+          onClick={onClose}
+          type="button"
+        >
+          <X aria-hidden="true" size={14} />
+        </button>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3.5">

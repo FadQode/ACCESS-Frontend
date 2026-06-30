@@ -84,7 +84,7 @@ export function CategoryBadge({
 export const STATUS_LABELS: Record<FollowUpTicketStatus, string> = {
   closed: "Ditutup",
   escalated: "Dieskalasi",
-  ready_to_notify: "Siap Dikabari",
+  ready_to_notify: "Arahan Siap",
   waiting_manager: "Tunggu Manajer",
 };
 
@@ -128,7 +128,9 @@ export function categoryBadgeClass(category: FollowUpTicketCategory) {
 
 function actionSummary(ticket: FollowUpTicket) {
   if (ticket.status === "ready_to_notify") {
-    return ticket.managerAction.actionTaken ?? "Arahan manajer sudah selesai.";
+    return ticket.managerAction.closureDraft
+      ? "Closure message manager siap ditinjau dan disalin."
+      : (ticket.managerAction.actionTaken ?? "Arahan manajer sudah selesai.");
   }
 
   if (ticket.status === "waiting_manager" || ticket.status === "escalated") {

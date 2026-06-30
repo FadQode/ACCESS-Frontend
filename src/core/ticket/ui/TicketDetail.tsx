@@ -129,9 +129,7 @@ function PreviousSafeReplyCard({ ticket }: { ticket: FollowUpTicket }) {
         text={ticket.safeReplyText ?? "Belum ada balasan awal yang tercatat."}
       />
       <p className="mt-2 text-xs text-[var(--text-muted)]">
-        Disalin oleh: Agen · Kanal: {ticket.sourceLabel} ·{" "}
-        {ticket.safeReplyCopiedAt ?? "-"} ·{" "}
-        {ticket.safeReplyBy ?? "Agen tidak diketahui"}
+        {ticket.safeReplyCopiedAt ?? "Waktu salin belum tercatat"}
       </p>
     </WorkflowCard>
   );
@@ -156,10 +154,21 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
       {actionCompleted ? (
         <>
           <RoleMessage
-            label="Keputusan manajer"
+            label="Action taken - catatan internal"
             actorRole="manager"
             text={ticket.managerAction.actionTaken ?? "Arahan selesai."}
           />
+          <div className="mt-3">
+            <RoleMessage
+              label="Closure message - saran balasan pelanggan"
+              actorRole="agent"
+              quote
+              text={
+                ticket.managerAction.closureDraft ??
+                "Saran balasan akhir belum tersedia."
+              }
+            />
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {ticket.managerAction.references.map((reference) => (
               <span
@@ -180,8 +189,8 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
               Hasil tim internal
             </div>
             <p className="text-xs leading-6 text-[var(--text-muted)]">
-              Catatan ini menjadi bukti tindak lanjut internal untuk agen. Ini
-              bukan balasan akhir yang akan dibaca pelanggan.
+              Action taken dipakai sebagai catatan internal. Closure message
+              sudah dimuat sebagai draft balasan akhir di bawah.
             </p>
           </div>
         </>
@@ -189,7 +198,7 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
         <RoleMessage
           label="Status internal"
           actorRole="internal"
-          text="Tiket ini masih menunggu persetujuan manajer atau hasil tim internal. Balasan akhir untuk pelanggan belum tersedia."
+          text="Menunggu arahan manager. Balasan akhir belum tersedia."
         />
       )}
     </WorkflowCard>
@@ -223,9 +232,9 @@ function ClosureMessageCard({
       >
         <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4">
           <RoleMessage
-            label="Belum boleh dibalas"
+            label="Menunggu arahan"
             actorRole="internal"
-            text="Masih menunggu arahan manajer. Agen boleh menambahkan catatan internal, tetapi balasan ke pelanggan harus menunggu hasil tindak lanjut selesai."
+            text="Balasan akhir bisa dibuat setelah manager menyelesaikan tindak lanjut."
           />
           <button
             className="mt-3 h-9 rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
@@ -263,6 +272,10 @@ function ClosureMessageCard({
           actorRole="platform"
           text={`Tujuan: ${ticket.sourceLabel}`}
         />
+      </div>
+      <div className="mb-2 rounded-lg border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-blue)]">
+        Draft di bawah berasal dari closure message manager. Agen bisa meninjau,
+        menyesuaikan, lalu menyalinnya untuk pelanggan.
       </div>
       <textarea
         className="min-h-[180px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 py-3 text-sm leading-7 text-[var(--rail-ink)] outline-none transition focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)] disabled:opacity-70"

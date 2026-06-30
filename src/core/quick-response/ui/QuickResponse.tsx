@@ -30,6 +30,7 @@ import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useCreateQuickResponse } from "@/core/dashboard/hooks/use-create-quick-response";
+import { useEscalateTicket } from "@/core/dashboard/hooks/use-escalate-ticket";
 import { createQuickResponseSchema } from "@/core/dashboard/model/schemas/quick-response.schema";
 import type {
   CreateQuickResponseResponse,
@@ -404,6 +405,7 @@ export function QuickResponse() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
   const createQuickResponseMutation = useCreateQuickResponse();
+  const escalateTicketMutation = useEscalateTicket();
   const [currentStep, setCurrentStep] = useState<StepId>(1);
   const [source, setSource] = useState("twitter");
   const [username, setUsername] = useState("@sitinuraini");
@@ -462,6 +464,8 @@ export function QuickResponse() {
   const canGenerate = complaintText.trim().length > 0;
   const flowLocked = inputDirty;
   const isManager = sessionUser?.role === "manager";
+  const isSubmitting =
+    createQuickResponseMutation.isPending || escalateTicketMutation.isPending;
 
   const selectedMap = useMemo(
     () => ({
@@ -595,12 +599,12 @@ export function QuickResponse() {
   };
 
   const handleCopyReview = async () => {
-    await copyText(finalResponse);
-    setCopiedLabel("Balasan disalin");
+    const copied = await copyText(finalResponse);
+    setCopiedLabel(copied ? "Balasan disalin" : "Gagal menyalin otomatis");
   };
 
   const handleOutcome = async (outcome: OutcomeId) => {
-    if (createQuickResponseMutation.isPending) {
+    if (isSubmitting) {
       return;
     }
 
@@ -658,27 +662,56 @@ export function QuickResponse() {
       return;
     }
 
+    const copied = await copyText(
+      parsedPayload.data.response.finalResponse ?? "",
+    );
+    setCopiedLabel(copied ? "Balasan disalin" : "Gagal menyalin otomatis");
+
     try {
       const result = await createQuickResponseMutation.mutateAsync(
         parsedPayload.data,
       );
+      let completedResult = result;
+
+      if (result.quickResponseSession.outcome === "sent_hea_action") {
+        if (!result.ticket?.id) {
+          throw new Error(
+            "Tiket follow-up belum tersedia, sehingga action request belum bisa dibuat.",
+          );
+        }
+
+        const escalatedTicket = await escalateTicketMutation.mutateAsync(
+          result.ticket.id,
+        );
+
+        completedResult = {
+          ...result,
+          ticket: {
+            ...result.ticket,
+            priority: escalatedTicket.priority ?? result.ticket.priority,
+            status: escalatedTicket.status ?? result.ticket.status,
+          },
+        };
+      }
+
       const completion = getCompletionState(
-        result.quickResponseSession.outcome,
+        completedResult.quickResponseSession.outcome,
       );
 
-      setCreatedResult(result);
+      setCreatedResult(completedResult);
       setCompletionState(completion);
-      await copyText(parsedPayload.data.response.finalResponse ?? "");
-      setCopiedLabel("Balasan disalin");
       setFeedback({
-        description: getSuccessDescription(result),
-        title: getSuccessTitle(result.quickResponseSession.outcome),
+        description: getSuccessDescription(completedResult),
+        title: getSuccessTitle(completedResult.quickResponseSession.outcome),
         variant: "success",
       });
     } catch (error) {
       setFeedback({
         description: getSubmitErrorMessage(error),
-        title: "Quick response gagal disimpan",
+        title:
+          outcome === "ticket"
+            ? "Request action gagal diproses"
+            : "Quick response gagal disimpan",
         variant: "error",
       });
     }
@@ -701,6 +734,7 @@ export function QuickResponse() {
     setFieldErrors({});
     setFeedback(null);
     createQuickResponseMutation.reset();
+    escalateTicketMutation.reset();
     setCopiedLabel("");
     setFinalResponse("");
     setSafeReply("");
@@ -711,9 +745,17 @@ export function QuickResponse() {
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
       <LoadingOverlay
-        open={createQuickResponseMutation.isPending}
-        title="Menyimpan quick response..."
-        description="Keluhan dan sesi balasan sedang disimpan."
+        open={isSubmitting}
+        title={
+          escalateTicketMutation.isPending
+            ? "Membuat action request..."
+            : "Menyimpan quick response..."
+        }
+        description={
+          escalateTicketMutation.isPending
+            ? "Tiket follow-up sedang dikirim ke antrean manager."
+            : "Keluhan dan sesi balasan sedang disimpan."
+        }
       />
       <FeedbackDialog
         description={feedback?.description}
@@ -951,7 +993,7 @@ export function QuickResponse() {
                   completionState={completionState}
                   finalResponse={finalResponse}
                   isManager={isManager}
-                  isSubmitting={createQuickResponseMutation.isPending}
+                  isSubmitting={isSubmitting}
                   managerApprovalRequired={managerApprovalRequired}
                   onBack={() => setCurrentStep(3)}
                   onOutcome={handleOutcome}
@@ -1503,9 +1545,9 @@ function CompletionStateView({
     "follow-up": {
       icon: <TicketCheck aria-hidden="true" size={25} />,
       title: ticketReference
-        ? "Follow-up tersimpan dan tiket dibuat"
+        ? "Follow-up tersimpan dan action request dibuat"
         : "Follow-up tersimpan",
-      body: "Balasan HEA awal sudah disalin untuk dikirim manual ke pelanggan. Backend menyimpan keluhan dan menandainya perlu tindak lanjut.",
+      body: "Balasan HEA awal sudah disalin untuk dikirim manual ke pelanggan. Ticket follow-up sudah dikirim ke antrean manager.",
       reference: ticketReference
         ? `Tiket #${ticketReference}`
         : `Keluhan #${complaintReference}`,
@@ -2166,8 +2208,8 @@ function getSuccessTitle(outcome: QuickResponseOutcome) {
 }
 
 function getSuccessDescription(result: CreateQuickResponseResponse) {
-  if (result.ticket) {
-    return "Keluhan, quick response, dan tiket follow-up sudah dibuat.";
+  if (result.quickResponseSession.outcome === "sent_hea_action") {
+    return "Keluhan, quick response, tiket follow-up, dan action request manager sudah dibuat.";
   }
 
   if (result.quickResponseSession.outcome === "sent_resolved") {
@@ -2212,9 +2254,39 @@ function getQuickResponseFieldErrors(error: ZodError) {
 }
 
 async function copyText(text: string) {
+  if (!text.trim()) {
+    return false;
+  }
+
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard?.writeText(text);
+    return true;
   } catch {
-    // Clipboard can fail in insecure browser contexts; the UI still records the intended outcome.
+    return copyTextWithTextarea(text);
+  }
+}
+
+function copyTextWithTextarea(text: string) {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.left = "-9999px";
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(textarea);
   }
 }

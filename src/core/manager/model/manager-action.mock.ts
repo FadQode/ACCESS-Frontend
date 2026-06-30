@@ -16,7 +16,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
     affectedRoute: "Surabaya → Jakarta",
     detectedIssue: "Track maintenance — unscheduled",
     policyApplies: "Refund or reschedule eligible",
-    similarPastCase: "Mar 2026, same route, resolved",
+    similarPastCase: "Mar 2026, same route, action completed",
     recommendedAction: "Approve refund or reschedule for affected passengers",
 
     actionTaken:
@@ -96,7 +96,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
     affectedRoute: "Multiple routes",
     detectedIssue: "Payment gateway settlement queue",
     policyApplies: "Refund eligible per cancellation policy v3.2",
-    similarPastCase: "Apr 2026, same gateway issue, resolved in 48h",
+    similarPastCase: "Apr 2026, same gateway issue, action completed in 48h",
     recommendedAction: "Verify settlement status with payment team",
 
     actionTaken:
@@ -160,7 +160,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
 
     detectedIssue: "SMS delivery delay from provider",
     policyApplies: "Official explanation sufficient — no compensation needed",
-    similarPastCase: "Feb 2026, same provider, resolved in 2h",
+    similarPastCase: "Feb 2026, same provider, action completed in 2h",
     recommendedAction: "Provide official explanation and retry steps",
 
     actionTaken:
