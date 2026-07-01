@@ -1,19 +1,25 @@
 import { Mail } from "lucide-react";
 
-interface LoginFieldProps {
+export interface LoginFieldProps {
+  autoComplete?: string;
+  disabled?: boolean;
   id: string;
   label: string;
   onChange: (value: string) => void;
   placeholder: string;
+  required?: boolean;
   type: "email" | "text";
   value: string;
 }
 
 export function LoginField({
+  autoComplete,
+  disabled = false,
   id,
   label,
   onChange,
   placeholder,
+  required = false,
   type,
   value,
 }: LoginFieldProps) {
@@ -33,9 +39,12 @@ export function LoginField({
         />
         <input
           className="min-w-0 flex-1 bg-transparent text-sm text-[var(--rail-ink)] outline-none placeholder:text-[var(--text-tertiary)]"
+          autoComplete={autoComplete}
+          disabled={disabled}
           id={id}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
+          required={required}
           type={type}
           value={value}
         />

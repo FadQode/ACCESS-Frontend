@@ -36,6 +36,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
 button,
@@ -47,4 +48,60 @@ a {
 ::selection {
   background: var(--signal-amber);
   color: var(--rail-ink);
+}
+
+.page-transition {
+  animation: page-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.skeleton-sheen {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(199, 208, 200, 0.72);
+  background: color-mix(in srgb, var(--surface-panel) 76%, var(--surface-muted));
+}
+
+.skeleton-sheen::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.62),
+    transparent
+  );
+  animation: skeleton-sheen 1200ms ease-in-out infinite;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes skeleton-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto;
+  }
+
+  .page-transition,
+  .skeleton-sheen::after {
+    animation: none;
+  }
 }

@@ -10,7 +10,6 @@ import {
   Copy,
   ExternalLink,
   FileText,
-  Flag,
   Headphones,
   Link2,
   Lock,
@@ -23,8 +22,21 @@ import {
   UserRound,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import type { ZodError } from "zod";
+import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
+import { FeedbackDialog } from "@/core/components/feedback/feedback-dialog";
+import { LoadingOverlay } from "@/core/components/feedback/loading-overlay";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
+import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
+import { useCreateQuickResponse } from "@/core/dashboard/hooks/use-create-quick-response";
+import { useEscalateTicket } from "@/core/dashboard/hooks/use-escalate-ticket";
+import { createQuickResponseSchema } from "@/core/dashboard/model/schemas/quick-response.schema";
+import type {
+  CreateQuickResponseResponse,
+  QuickResponseOutcome,
+} from "@/core/dashboard/model/types/quick-response.types";
+import { mapQuickResponseToCreateRequest } from "@/core/dashboard/quick-response/quick-response.mapper";
 
 type StepId = 1 | 2 | 3 | 4;
 type ResponseTarget =
@@ -33,9 +45,17 @@ type ResponseTarget =
   | "app-review"
   | "internal-note";
 type Tone = "formal" | "friendly" | "concise";
-type OutcomeId = "resolved" | "ticket" | "escalated";
-type CompletionState = "resolved" | "ticket-created" | "manager-escalated";
+type OutcomeId = "copy" | "resolved" | "ticket";
+type CompletionState = "saved" | "resolved" | "follow-up";
 type BuilderKey = "hear" | "empathize" | "apologize" | "takeAction";
+type QuickResponseFieldErrors = Partial<
+  Record<"complaintText" | "sourceUrl" | "finalResponse" | "permission", string>
+>;
+type FeedbackState = {
+  description: string;
+  title: string;
+  variant: "success" | "error";
+} | null;
 
 interface Option {
   value: string;
@@ -382,7 +402,10 @@ const builderSections: {
 ];
 
 export function QuickResponse() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
+  const sessionUser = useSessionUser();
+  const createQuickResponseMutation = useCreateQuickResponse();
+  const escalateTicketMutation = useEscalateTicket();
   const [currentStep, setCurrentStep] = useState<StepId>(1);
   const [source, setSource] = useState("twitter");
   const [username, setUsername] = useState("@sitinuraini");
@@ -426,8 +449,10 @@ export function QuickResponse() {
   const [completionState, setCompletionState] =
     useState<CompletionState | null>(null);
   const [copiedLabel, setCopiedLabel] = useState("");
-  const [recordId, setRecordId] = useState("QR-2026-0831");
-  const [ticketId, setTicketId] = useState("EXT-2026-0832");
+  const [createdResult, setCreatedResult] =
+    useState<CreateQuickResponseResponse | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<QuickResponseFieldErrors>({});
+  const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [activeScenario, setActiveScenario] = useState<Scenario>(
     scenarios.delay,
   );
@@ -438,6 +463,9 @@ export function QuickResponse() {
   const isReviewSource = source === "google-play" || source === "app-store";
   const canGenerate = complaintText.trim().length > 0;
   const flowLocked = inputDirty;
+  const isManager = sessionUser?.role === "manager";
+  const isSubmitting =
+    createQuickResponseMutation.isPending || escalateTicketMutation.isPending;
 
   const selectedMap = useMemo(
     () => ({
@@ -452,27 +480,28 @@ export function QuickResponse() {
   const outcomeOptions = useMemo(
     () => [
       {
-        id: "resolved" as const,
-        title: "Salin dan Selesaikan",
+        id: "copy" as const,
+        title: "Salin saja",
         description:
-          "Salin balasan lengkap dan tutup keluhan eksternal ini secara internal.",
+          "Simpan sesi quick response dan salin balasan untuk dikirim manual ke pelanggan.",
+        recommended: false,
+        icon: <Copy aria-hidden="true" size={18} />,
+      },
+      {
+        id: "resolved" as const,
+        title: "Salin & Selesaikan",
+        description:
+          "Salin balasan lengkap untuk pelanggan, lalu tandai keluhan selesai secara internal.",
         recommended: !managerApprovalRequired,
         icon: <CheckCircle2 aria-hidden="true" size={18} />,
       },
       {
         id: "ticket" as const,
-        title: "Salin Balasan Awal + Buat Tiket",
+        title: "Salin HEA & Minta Aksi",
         description:
-          "Salin balasan awal sekarang, lalu buat tiket untuk tindak lanjut.",
+          "Salin balasan HEA awal untuk pelanggan dan tandai kasus perlu tindak lanjut.",
         recommended: managerApprovalRequired,
         icon: <TicketCheck aria-hidden="true" size={18} />,
-      },
-      {
-        id: "escalated" as const,
-        title: "Eskalasi ke Manajer",
-        description: "Buat tiket dan kirim kasus lengkap ke manajer.",
-        recommended: false,
-        icon: <Flag aria-hidden="true" size={18} />,
       },
     ],
     [managerApprovalRequired],
@@ -480,6 +509,7 @@ export function QuickResponse() {
 
   const handleSourceChange = (nextSource: string) => {
     setSource(nextSource);
+    setFieldErrors((current) => ({ ...current, sourceUrl: undefined }));
     markInputDirty();
 
     if (nextSource === "google-play" || nextSource === "app-store") {
@@ -504,6 +534,8 @@ export function QuickResponse() {
     setInputDirty(false);
     setInputExpanded(false);
     setCompletionState(null);
+    setCreatedResult(null);
+    setFieldErrors({});
     setCopiedLabel("");
     setCurrentStep(2);
     setIsBuildingResponse(true);
@@ -557,6 +589,8 @@ export function QuickResponse() {
     setFinalResponse(applyTone(nextDraft, tone));
     setSafeReply(applyTone(nextSafeReply, tone));
     setCompletionState(null);
+    setCreatedResult(null);
+    setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
   };
 
   const handleToneChange = (nextTone: Tone) => {
@@ -565,30 +599,122 @@ export function QuickResponse() {
   };
 
   const handleCopyReview = async () => {
-    await copyText(finalResponse);
-    setCopiedLabel("Balasan disalin");
+    const copied = await copyText(finalResponse);
+    setCopiedLabel(copied ? "Balasan disalin" : "Gagal menyalin otomatis");
   };
 
   const handleOutcome = async (outcome: OutcomeId) => {
+    if (isSubmitting) {
+      return;
+    }
+
     setSelectedOutcome(outcome);
     setCopiedLabel("");
+    setFieldErrors({});
+    setFeedback(null);
 
-    if (outcome === "resolved") {
-      await copyText(finalResponse);
-      setRecordId(`QR-2026-${randomId()}`);
-      setCompletionState("resolved");
+    if (isManager) {
+      setFieldErrors({
+        permission:
+          "Akun manager tidak dapat membuat quick response dari halaman agent.",
+      });
       return;
     }
 
-    if (outcome === "ticket") {
-      await copyText(safeReply);
-      setTicketId(`EXT-2026-${randomId()}`);
-      setCompletionState("ticket-created");
+    const payload = mapQuickResponseToCreateRequest({
+      category: activeScenario.key,
+      complaintText,
+      finalResponse,
+      outcome,
+      responseTarget,
+      safeReply,
+      selectedApologize: findSentenceText(
+        activeScenario.builderOptions.apologize,
+        selectedApologize,
+      ),
+      selectedEmpathize: findSentenceText(
+        activeScenario.builderOptions.empathize,
+        selectedEmpathize,
+      ),
+      selectedHear: findSentenceText(
+        activeScenario.builderOptions.hear,
+        selectedHear,
+      ),
+      selectedTakeAction: findSentenceText(
+        activeScenario.builderOptions.takeAction,
+        selectedTakeAction,
+      ),
+      source,
+      sourceHandle: username,
+      sourceUrl: externalUrl,
+      tone,
+    });
+
+    const parsedPayload = createQuickResponseSchema.safeParse(payload);
+
+    if (!parsedPayload.success) {
+      setFieldErrors(getQuickResponseFieldErrors(parsedPayload.error));
+      setFeedback({
+        description: "Periksa keluhan, URL sumber, dan balasan akhir.",
+        title: "Form belum valid",
+        variant: "error",
+      });
       return;
     }
 
-    setTicketId(`EXT-2026-${randomId()}`);
-    setCompletionState("manager-escalated");
+    const copied = await copyText(
+      parsedPayload.data.response.finalResponse ?? "",
+    );
+    setCopiedLabel(copied ? "Balasan disalin" : "Gagal menyalin otomatis");
+
+    try {
+      const result = await createQuickResponseMutation.mutateAsync(
+        parsedPayload.data,
+      );
+      let completedResult = result;
+
+      if (result.quickResponseSession.outcome === "sent_hea_action") {
+        if (!result.ticket?.id) {
+          throw new Error(
+            "Tiket follow-up belum tersedia, sehingga action request belum bisa dibuat.",
+          );
+        }
+
+        const escalatedTicket = await escalateTicketMutation.mutateAsync(
+          result.ticket.id,
+        );
+
+        completedResult = {
+          ...result,
+          ticket: {
+            ...result.ticket,
+            priority: escalatedTicket.priority ?? result.ticket.priority,
+            status: escalatedTicket.status ?? result.ticket.status,
+          },
+        };
+      }
+
+      const completion = getCompletionState(
+        completedResult.quickResponseSession.outcome,
+      );
+
+      setCreatedResult(completedResult);
+      setCompletionState(completion);
+      setFeedback({
+        description: getSuccessDescription(completedResult),
+        title: getSuccessTitle(completedResult.quickResponseSession.outcome),
+        variant: "success",
+      });
+    } catch (error) {
+      setFeedback({
+        description: getSubmitErrorMessage(error),
+        title:
+          outcome === "ticket"
+            ? "Request action gagal diproses"
+            : "Quick response gagal disimpan",
+        variant: "error",
+      });
+    }
   };
 
   const handleReset = () => {
@@ -604,6 +730,11 @@ export function QuickResponse() {
     setInputDirty(false);
     setSelectedOutcome(null);
     setCompletionState(null);
+    setCreatedResult(null);
+    setFieldErrors({});
+    setFeedback(null);
+    createQuickResponseMutation.reset();
+    escalateTicketMutation.reset();
     setCopiedLabel("");
     setFinalResponse("");
     setSafeReply("");
@@ -613,11 +744,35 @@ export function QuickResponse() {
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
+      <LoadingOverlay
+        open={isSubmitting}
+        title={
+          escalateTicketMutation.isPending
+            ? "Membuat action request..."
+            : "Menyimpan quick response..."
+        }
+        description={
+          escalateTicketMutation.isPending
+            ? "Tiket follow-up sedang dikirim ke antrean manager."
+            : "Keluhan dan sesi balasan sedang disimpan."
+        }
+      />
+      <FeedbackDialog
+        description={feedback?.description}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFeedback(null);
+          }
+        }}
+        open={feedback !== null}
+        title={feedback?.title ?? ""}
+        variant={feedback?.variant ?? "info"}
+      />
       <div className="mx-auto flex max-w-[1600px] flex-col gap-4 lg:flex-row">
         <DashboardSidebar
           dashboardRole="agent"
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           stats={[
             { label: "Alur", value: `Langkah ${currentStep}` },
             {
@@ -645,9 +800,8 @@ export function QuickResponse() {
             }
             dashboardRole="agent"
             isSidebarOpen={sidebarOpen}
-            onSidebarToggle={() => setSidebarOpen((isOpen) => !isOpen)}
+            onSidebarToggle={toggleSidebar}
             roleLabel="Agen layanan"
-            userName="Rizky A."
           />
 
           <section className="overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] shadow-[var(--shadow-soft)]">
@@ -713,6 +867,7 @@ export function QuickResponse() {
                     canGenerate={canGenerate}
                     complaintText={complaintText}
                     externalUrl={externalUrl}
+                    fieldErrors={fieldErrors}
                     inputDirty={inputDirty}
                     isReviewSource={isReviewSource}
                     onCancel={() => {
@@ -809,6 +964,7 @@ export function QuickResponse() {
               >
                 <ReviewStep
                   copiedLabel={copiedLabel}
+                  finalResponseError={fieldErrors.finalResponse}
                   finalResponse={finalResponse}
                   managerApprovalRequired={managerApprovalRequired}
                   onBack={() => setCurrentStep(2)}
@@ -827,23 +983,25 @@ export function QuickResponse() {
                 meta={
                   completionState
                     ? "Hasil dicatat"
-                    : "Selesaikan, buat tiket, atau eskalasi"
+                    : "Simpan, selesaikan, atau request action"
                 }
                 number={4}
                 title="Outcome"
               >
                 <OutcomeStep
+                  createdResult={createdResult}
                   completionState={completionState}
                   finalResponse={finalResponse}
+                  isManager={isManager}
+                  isSubmitting={isSubmitting}
                   managerApprovalRequired={managerApprovalRequired}
                   onBack={() => setCurrentStep(3)}
                   onOutcome={handleOutcome}
                   onReset={handleReset}
                   options={outcomeOptions}
-                  recordId={recordId}
+                  permissionError={fieldErrors.permission}
                   safeReply={safeReply}
                   selectedOutcome={selectedOutcome}
-                  ticketId={ticketId}
                   username={username}
                 />
               </StepCard>
@@ -859,6 +1017,7 @@ function ComplaintInputForm({
   canGenerate,
   complaintText,
   externalUrl,
+  fieldErrors,
   inputDirty,
   isReviewSource,
   onCancel,
@@ -879,6 +1038,7 @@ function ComplaintInputForm({
   canGenerate: boolean;
   complaintText: string;
   externalUrl: string;
+  fieldErrors: QuickResponseFieldErrors;
   inputDirty: boolean;
   isReviewSource: boolean;
   onCancel: () => void;
@@ -944,6 +1104,9 @@ function ComplaintInputForm({
               value={externalUrl}
             />
           </div>
+          {fieldErrors.sourceUrl ? (
+            <FieldError>{fieldErrors.sourceUrl}</FieldError>
+          ) : null}
         </FieldLabel>
       </div>
 
@@ -973,6 +1136,9 @@ function ComplaintInputForm({
         <p className="mt-2 text-right text-[11px] font-medium text-[var(--text-muted)]">
           {complaintText.length} karakter
         </p>
+        {fieldErrors.complaintText ? (
+          <FieldError>{fieldErrors.complaintText}</FieldError>
+        ) : null}
       </FieldLabel>
 
       <FieldLabel label="Tujuan balasan">
@@ -1134,6 +1300,7 @@ function ResponseBuilder({
 
 function ReviewStep({
   copiedLabel,
+  finalResponseError,
   finalResponse,
   managerApprovalRequired,
   onBack,
@@ -1144,6 +1311,7 @@ function ReviewStep({
   target,
 }: {
   copiedLabel: string;
+  finalResponseError?: string;
   finalResponse: string;
   managerApprovalRequired: boolean;
   onBack: () => void;
@@ -1195,6 +1363,9 @@ function ReviewStep({
           onChange={(event) => onChangeFinalResponse(event.target.value)}
           value={finalResponse}
         />
+        {finalResponseError ? (
+          <FieldError>{finalResponseError}</FieldError>
+        ) : null}
       </FieldLabel>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1216,21 +1387,26 @@ function ReviewStep({
 }
 
 function OutcomeStep({
+  createdResult,
   completionState,
   finalResponse,
+  isManager,
+  isSubmitting,
   managerApprovalRequired,
   onBack,
   onOutcome,
   onReset,
   options,
-  recordId,
+  permissionError,
   safeReply,
   selectedOutcome,
-  ticketId,
   username,
 }: {
+  createdResult: CreateQuickResponseResponse | null;
   completionState: CompletionState | null;
   finalResponse: string;
+  isManager: boolean;
+  isSubmitting: boolean;
   managerApprovalRequired: boolean;
   onBack: () => void;
   onOutcome: (outcome: OutcomeId) => void;
@@ -1242,18 +1418,16 @@ function OutcomeStep({
     recommended: boolean;
     icon: ReactNode;
   }[];
-  recordId: string;
+  permissionError?: string;
   safeReply: string;
   selectedOutcome: OutcomeId | null;
-  ticketId: string;
   username: string;
 }) {
-  if (completionState) {
+  if (completionState && createdResult) {
     return (
       <CompletionStateView
         completionState={completionState}
-        recordId={recordId}
-        ticketId={ticketId}
+        result={createdResult}
         username={username}
         onReset={onReset}
       />
@@ -1278,6 +1452,13 @@ function OutcomeStep({
           dan buat tiket.
         </WarningBanner>
       ) : null}
+      {isManager ? (
+        <WarningBanner>
+          Akun manager hanya dapat meninjau. Login sebagai agent atau admin
+          untuk menyimpan quick response.
+        </WarningBanner>
+      ) : null}
+      {permissionError ? <FieldError>{permissionError}</FieldError> : null}
 
       <div className="grid gap-3 lg:grid-cols-3">
         {options.map((option) => (
@@ -1288,8 +1469,9 @@ function OutcomeStep({
                 : option.recommended
                   ? "border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] hover:border-[var(--signal-blue)]"
                   : "border-[var(--rail-border)] bg-[var(--surface-panel)] hover:border-[var(--signal-blue)] hover:bg-[var(--background)]"
-            }`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
             key={option.id}
+            disabled={isManager || isSubmitting}
             onClick={() => onOutcome(option.id)}
             type="button"
           >
@@ -1333,37 +1515,43 @@ function OutcomeStep({
 function CompletionStateView({
   completionState,
   onReset,
-  recordId,
-  ticketId,
+  result,
   username,
 }: {
   completionState: CompletionState;
   onReset: () => void;
-  recordId: string;
-  ticketId: string;
+  result: CreateQuickResponseResponse;
   username: string;
 }) {
+  const complaintReference =
+    result.complaint.referenceNo ?? result.complaint.id;
+  const sessionReference = result.quickResponseSession.id;
+  const ticketReference = result.ticket?.id;
   const content = {
-    resolved: {
+    saved: {
       icon: <ClipboardCheck aria-hidden="true" size={25} />,
-      title: "Balasan disalin - keluhan selesai",
-      body: "Balasan akhir sudah disalin. Tempel di platform eksternal. Keluhan ini sudah ditutup secara internal.",
-      reference: `Catatan balasan #${recordId}`,
+      title: "Quick response tersimpan",
+      body: "Balasan sudah disalin untuk dikirim manual ke pelanggan. Keluhan dan sesi quick response sudah tersimpan tanpa menutup keluhan.",
+      reference: `Keluhan #${complaintReference}`,
       tone: "green",
     },
-    "ticket-created": {
-      icon: <TicketCheck aria-hidden="true" size={25} />,
-      title: "Balasan awal disalin - tiket dibuat",
-      body: "Balasan awal sudah disalin untuk platform eksternal. Tiket berisi keluhan asli, tindak lanjut yang dipilih, referensi, dan draf balasan.",
-      reference: `Tiket #${ticketId} dibuat untuk tindak lanjut`,
-      tone: "blue",
+    resolved: {
+      icon: <ClipboardCheck aria-hidden="true" size={25} />,
+      title: "Keluhan tersimpan dan selesai",
+      body: "Balasan akhir sudah disalin untuk dikirim manual ke pelanggan. Keluhan dan sesi quick response sudah disimpan oleh backend.",
+      reference: `Keluhan #${complaintReference}`,
+      tone: "green",
     },
-    "manager-escalated": {
-      icon: <Flag aria-hidden="true" size={25} />,
-      title: "Dieskalasi ke manajer",
-      body: "Kasus lengkap, draf balasan, dan referensi sudah dilampirkan. Tidak ada balasan eksternal yang disalin otomatis.",
-      reference: `Tiket #${ticketId} dikirim ke antrean manajer`,
-      tone: "red",
+    "follow-up": {
+      icon: <TicketCheck aria-hidden="true" size={25} />,
+      title: ticketReference
+        ? "Follow-up tersimpan dan action request dibuat"
+        : "Follow-up tersimpan",
+      body: "Balasan HEA awal sudah disalin untuk dikirim manual ke pelanggan. Ticket follow-up sudah dikirim ke antrean manager.",
+      reference: ticketReference
+        ? `Tiket #${ticketReference}`
+        : `Keluhan #${complaintReference}`,
+      tone: "blue",
     },
   }[completionState];
 
@@ -1394,6 +1582,17 @@ function CompletionStateView({
       <span className="rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-4 py-2 text-xs font-semibold text-[var(--signal-blue)]">
         {content.reference}
       </span>
+      <div className="grid w-full max-w-xl gap-2 text-left sm:grid-cols-2">
+        <ResultMeta label="Status keluhan" value={result.complaint.status} />
+        <ResultMeta
+          label="Outcome"
+          value={result.quickResponseSession.outcome}
+        />
+        <ResultMeta label="Sesi QR" value={sessionReference} />
+        {result.ticket ? (
+          <ResultMeta label="Status tiket" value={result.ticket.status} />
+        ) : null}
+      </div>
       <button className={secondaryButtonClass} onClick={onReset} type="button">
         Mulai keluhan baru
       </button>
@@ -1687,7 +1886,7 @@ function TakeActionBlock({
                 <span>
                   Perlu persetujuan manajer. Jangan langsung mengonfirmasi
                   pengembalian dana, kompensasi, atau jadwal ulang. Buat tiket
-                  atau eskalasi jika kasus belum selesai.
+                  tindak lanjut jika kasus belum selesai.
                 </span>
               </div>
             ) : null}
@@ -1772,6 +1971,33 @@ function FieldLabel({
         ) : null}
       </p>
       <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+function FieldError({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-2 text-xs font-medium text-[var(--signal-red-dark)]">
+      {children}
+    </p>
+  );
+}
+
+function ResultMeta({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-xs font-semibold text-[var(--rail-ink)]">
+        {value ?? "-"}
+      </p>
     </div>
   );
 }
@@ -1953,14 +2179,114 @@ function labelFor(options: { value: string; label: string }[], value: string) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 
+function findSentenceText(options: SentenceOption[], selectedId: string) {
+  return options.find((option) => option.id === selectedId)?.text ?? null;
+}
+
+function getCompletionState(outcome: QuickResponseOutcome): CompletionState {
+  if (outcome === "copy_only") {
+    return "saved";
+  }
+
+  if (outcome === "sent_hea_action") {
+    return "follow-up";
+  }
+
+  return "resolved";
+}
+
+function getSuccessTitle(outcome: QuickResponseOutcome) {
+  if (outcome === "copy_only") {
+    return "Quick response saved";
+  }
+
+  if (outcome === "sent_hea_action") {
+    return "Follow-up created";
+  }
+
+  return "Complaint resolved";
+}
+
+function getSuccessDescription(result: CreateQuickResponseResponse) {
+  if (result.quickResponseSession.outcome === "sent_hea_action") {
+    return "Keluhan, quick response, tiket follow-up, dan action request manager sudah dibuat.";
+  }
+
+  if (result.quickResponseSession.outcome === "sent_resolved") {
+    return "Keluhan sudah disimpan dan ditandai selesai.";
+  }
+
+  if (result.quickResponseSession.outcome === "copy_only") {
+    return "Keluhan dan sesi quick response sudah disimpan.";
+  }
+
+  return "Keluhan sudah disimpan dan ditandai perlu tindak lanjut.";
+}
+
+function getSubmitErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Failed to save quick response. Please check the form and try again.";
+}
+
+function getQuickResponseFieldErrors(error: ZodError) {
+  const errors: QuickResponseFieldErrors = {};
+
+  for (const issue of error.issues) {
+    const path = issue.path.join(".");
+
+    if (path === "complaint.complaintText") {
+      errors.complaintText = issue.message;
+    }
+
+    if (path === "complaint.sourceUrl") {
+      errors.sourceUrl = issue.message;
+    }
+
+    if (path === "response.finalResponse") {
+      errors.finalResponse = issue.message;
+    }
+  }
+
+  return errors;
+}
+
 async function copyText(text: string) {
+  if (!text.trim()) {
+    return false;
+  }
+
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard?.writeText(text);
+    return true;
   } catch {
-    // Clipboard can fail in insecure browser contexts; the UI still records the intended outcome.
+    return copyTextWithTextarea(text);
   }
 }
 
-function randomId() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+function copyTextWithTextarea(text: string) {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.left = "-9999px";
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTicketDetail } from "@/core/dashboard/hooks/use-ticket-detail";
+import { useTickets } from "@/core/dashboard/hooks/use-tickets";
+import { mapBackendTicketToFollowUpTicket } from "../model/ticket.mapper";
 import type {
   FollowUpTicket,
   FollowUpTicketFilter,
   FollowUpTicketStatus,
 } from "../model/ticket.types";
-import { mockFollowUpTickets } from "../service/ticket.mock";
 
 const filterMap: Record<FollowUpTicketFilter, FollowUpTicketStatus[]> = {
   all: ["waiting_manager", "ready_to_notify", "closed", "escalated"],
@@ -16,35 +18,79 @@ const filterMap: Record<FollowUpTicketFilter, FollowUpTicketStatus[]> = {
 };
 
 export function useTicketWorkspace() {
-  const [tickets, setTickets] = useState<FollowUpTicket[]>(mockFollowUpTickets);
-  const [selectedTicketId, setSelectedTicketId] = useState(
-    mockFollowUpTickets[0]?.id ?? "",
-  );
-  const [filter, setFilter] = useState<FollowUpTicketFilter>("ready");
+  const ticketsQuery = useTickets({ limit: 100 });
+  const [selectedTicketId, setSelectedTicketId] = useState("");
+  const [filter, setFilter] = useState<FollowUpTicketFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [closureDraft, setClosureDraft] = useState(
-    mockFollowUpTickets[0]?.closureMessage ?? "",
-  );
+  const [closureDraft, setClosureDraft] = useState("");
   const [closureCopiedTicketId, setClosureCopiedTicketId] = useState<
     string | null
   >(null);
+  const [localTicketOverrides, setLocalTicketOverrides] = useState<
+    Record<string, Partial<FollowUpTicket>>
+  >({});
+  const selectedTicketQuery = useTicketDetail(selectedTicketId || null);
 
-  const selectedTicket = useMemo(() => {
-    return (
-      tickets.find((ticket) => ticket.id === selectedTicketId) ?? tickets[0]
-    );
-  }, [selectedTicketId, tickets]);
+  const mappedTickets = useMemo(
+    () =>
+      (ticketsQuery.data?.items ?? []).map((ticket) =>
+        applyTicketOverride(
+          mapBackendTicketToFollowUpTicket(ticket),
+          localTicketOverrides[ticket.id],
+        ),
+      ),
+    [localTicketOverrides, ticketsQuery.data?.items],
+  );
 
   useEffect(() => {
-    const selected = tickets.find((ticket) => ticket.id === selectedTicketId);
-    setClosureDraft(selected?.closureMessage ?? "");
-    setClosureCopiedTicketId(null);
-  }, [selectedTicketId, tickets]);
+    if (selectedTicketId || mappedTickets.length === 0) {
+      return;
+    }
+
+    setSelectedTicketId(mappedTickets[0].id);
+  }, [mappedTickets, selectedTicketId]);
+
+  useEffect(() => {
+    if (
+      mappedTickets.length > 0 &&
+      selectedTicketId &&
+      !mappedTickets.some((ticket) => ticket.id === selectedTicketId)
+    ) {
+      setSelectedTicketId(mappedTickets[0].id);
+    }
+  }, [mappedTickets, selectedTicketId]);
+
+  const selectedTicket = useMemo(() => {
+    const listTicket =
+      mappedTickets.find((ticket) => ticket.id === selectedTicketId) ??
+      mappedTickets[0];
+
+    if (
+      selectedTicketQuery.data &&
+      selectedTicketQuery.data.id === selectedTicketId
+    ) {
+      return applyTicketOverride(
+        mapBackendTicketToFollowUpTicket(selectedTicketQuery.data),
+        localTicketOverrides[selectedTicketId],
+      );
+    }
+
+    return listTicket;
+  }, [
+    localTicketOverrides,
+    mappedTickets,
+    selectedTicketId,
+    selectedTicketQuery.data,
+  ]);
+
+  useEffect(() => {
+    setClosureDraft(selectedTicket?.closureMessage ?? "");
+  }, [selectedTicket?.closureMessage]);
 
   const filteredTickets = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return tickets.filter((ticket) => {
+    return mappedTickets.filter((ticket) => {
       const matchesFilter = filterMap[filter].includes(ticket.status);
       const matchesSearch =
         normalizedQuery.length === 0 ||
@@ -64,20 +110,21 @@ export function useTicketWorkspace() {
 
       return matchesFilter && matchesSearch;
     });
-  }, [filter, searchQuery, tickets]);
+  }, [filter, mappedTickets, searchQuery]);
 
-  const readyCount = tickets.filter(
+  const readyCount = mappedTickets.filter(
     (ticket) => ticket.status === "ready_to_notify",
   ).length;
-  const waitingCount = tickets.filter((ticket) =>
+  const waitingCount = mappedTickets.filter((ticket) =>
     ["waiting_manager", "escalated"].includes(ticket.status),
   ).length;
-  const closedCount = tickets.filter(
+  const closedCount = mappedTickets.filter(
     (ticket) => ticket.status === "closed",
   ).length;
 
   const selectTicket = (ticketId: string) => {
     setSelectedTicketId(ticketId);
+    setClosureCopiedTicketId(null);
   };
 
   const copyClosureAndClose = async () => {
@@ -91,31 +138,27 @@ export function useTicketWorkspace() {
       // Clipboard can fail in non-secure contexts; the prototype still updates the workflow state.
     }
 
-    setTickets((currentTickets) =>
-      currentTickets.map((ticket) =>
-        ticket.id === selectedTicket.id
-          ? {
-              ...ticket,
-              status: "closed",
-              closureMessage: closureDraft,
-              closureCopiedAt: "Baru saja",
-              closedAt: "Baru saja",
-              closedBy: "Rizky A.",
-              activityLog: [
-                {
-                  id: `${ticket.id}-closure-${Date.now()}`,
-                  label: "Balasan akhir disalin dan tiket ditutup",
-                  actor: "Rizky A.",
-                  actorType: "agent",
-                  time: "Baru saja",
-                  tone: "success",
-                },
-                ...ticket.activityLog,
-              ],
-            }
-          : ticket,
-      ),
-    );
+    setLocalTicketOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [selectedTicket.id]: {
+        activityLog: [
+          {
+            actor: "Agen",
+            actorType: "agent",
+            id: `${selectedTicket.id}-closure-${Date.now()}`,
+            label: "Balasan akhir disalin",
+            time: "Baru saja",
+            tone: "success",
+          },
+          ...selectedTicket.activityLog,
+        ],
+        closedAt: "Baru saja",
+        closedBy: "Agen",
+        closureCopiedAt: "Baru saja",
+        closureMessage: closureDraft,
+        status: "closed",
+      },
+    }));
     setClosureCopiedTicketId(selectedTicket.id);
   };
 
@@ -124,31 +167,28 @@ export function useTicketWorkspace() {
       return;
     }
 
-    setTickets((currentTickets) =>
-      currentTickets.map((ticket) =>
-        ticket.id === selectedTicket.id
-          ? {
-              ...ticket,
-              activityLog: [
-                {
-                  id: `${ticket.id}-note-${Date.now()}`,
-                  label: "Catatan internal ditambahkan oleh agen",
-                  actor: "Rizky A.",
-                  actorType: "agent",
-                  time: "Baru saja",
-                  tone: "neutral",
-                },
-                ...ticket.activityLog,
-              ],
-            }
-          : ticket,
-      ),
-    );
+    setLocalTicketOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [selectedTicket.id]: {
+        ...currentOverrides[selectedTicket.id],
+        activityLog: [
+          {
+            actor: "Agen",
+            actorType: "agent",
+            id: `${selectedTicket.id}-note-${Date.now()}`,
+            label: "Catatan internal ditambahkan",
+            time: "Baru saja",
+            tone: "neutral",
+          },
+          ...selectedTicket.activityLog,
+        ],
+      },
+    }));
   };
 
   return {
     tickets: filteredTickets,
-    allTickets: tickets,
+    allTickets: mappedTickets,
     selectedTicket,
     selectedTicketId,
     setSelectedTicketId: selectTicket,
@@ -164,5 +204,31 @@ export function useTicketWorkspace() {
     hasCopiedClosure: closureCopiedTicketId === selectedTicketId,
     copyClosureAndClose,
     addInternalNote,
+    errorMessage:
+      ticketsQuery.error instanceof Error
+        ? ticketsQuery.error.message
+        : selectedTicketQuery.error instanceof Error
+          ? selectedTicketQuery.error.message
+          : null,
+    isLoading:
+      ticketsQuery.isLoading ||
+      (Boolean(selectedTicketId) && selectedTicketQuery.isLoading),
+    refetchTickets: ticketsQuery.refetch,
+  };
+}
+
+function applyTicketOverride(
+  ticket: FollowUpTicket,
+  override?: Partial<FollowUpTicket>,
+) {
+  if (!override) {
+    return ticket;
+  }
+
+  return {
+    ...ticket,
+    ...override,
+    activityLog: override.activityLog ?? ticket.activityLog,
+    managerAction: override.managerAction ?? ticket.managerAction,
   };
 }

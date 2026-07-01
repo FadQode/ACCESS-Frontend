@@ -1,13 +1,10 @@
 "use client";
 
-import {
-  Bell,
-  ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Settings,
-} from "lucide-react";
+import { Bell, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
+import { ProfileMenu } from "@/core/auth/profile-menu";
+import { useCurrentUser } from "@/core/dashboard/hooks/use-current-user";
 
 export type DashboardRole = "agent" | "manager";
 
@@ -16,8 +13,8 @@ export interface DashboardNavbarProps {
   dashboardRole: DashboardRole;
   isSidebarOpen?: boolean;
   onSidebarToggle?: () => void;
-  roleLabel: string;
-  userName: string;
+  roleLabel?: string;
+  userName?: string;
 }
 
 const ROLE_COPY: Record<DashboardRole, { title: string; subtitle: string }> = {
@@ -31,18 +28,42 @@ const ROLE_COPY: Record<DashboardRole, { title: string; subtitle: string }> = {
   },
 };
 
+const FALLBACK_PROFILE: Record<
+  DashboardRole,
+  { name: string; roleLabel: string }
+> = {
+  agent: {
+    name: "Agent 1",
+    roleLabel: "Customer Support",
+  },
+  manager: {
+    name: "Manager 1",
+    roleLabel: "Operations Manager",
+  },
+};
+
 export function DashboardNavbar({
   controls,
   dashboardRole,
   isSidebarOpen = true,
   onSidebarToggle,
-  roleLabel,
-  userName,
 }: DashboardNavbarProps) {
   const copy = ROLE_COPY[dashboardRole];
-  const avatarInitials = initialsFromName(userName);
+  const currentUser = useCurrentUser();
+  const sessionUser = useSessionUser();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const fallbackProfile = FALLBACK_PROFILE[dashboardRole];
+  const profileUser = currentUser.data ?? sessionUser;
+  const resolvedRoleLabel =
+    profileUser?.role === "agent"
+      ? "Customer Support"
+      : profileUser?.role === "manager"
+        ? "Operations Manager"
+        : profileUser?.role === "admin"
+          ? "Admin"
+          : fallbackProfile.roleLabel;
+  const resolvedUserName = profileUser?.name || fallbackProfile.name;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -68,7 +89,7 @@ export function DashboardNavbar({
 
   return (
     <header
-      className={`sticky top-3 z-50 mb-4 flex min-h-14 flex-col gap-3 rounded-[18px] border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3 shadow-lg backdrop-blur-sm transition-transform duration-300 lg:flex-row lg:items-center lg:justify-between ${isVisible ? "translate-y-0" : "-translate-y-[calc(100%+1rem)]"}`}
+      className={`sticky top-3 z-30 mb-4 flex min-h-14 flex-col gap-3 rounded-[18px] border border-[var(--rail-border)] bg-[rgba(251,252,247,0.92)] px-3 py-3 shadow-[var(--shadow-soft)] backdrop-blur-md transition-transform duration-300 sm:px-4 lg:flex-row lg:items-center lg:justify-between ${isVisible ? "translate-y-0" : "-translate-y-[calc(100%+1rem)]"}`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <IconButton
@@ -91,7 +112,7 @@ export function DashboardNavbar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
         {controls}
         <IconButton label="Buka pengaturan">
           <Settings aria-hidden="true" size={16} />
@@ -99,25 +120,14 @@ export function DashboardNavbar({
         <IconButton label="Lihat notifikasi" notification>
           <Bell aria-hidden="true" size={16} />
         </IconButton>
-        <button
-          className="flex h-10 min-w-0 items-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-2.5 text-xs font-medium text-[var(--rail-ink)] transition hover:border-[var(--signal-blue)]"
-          type="button"
-        >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--signal-blue)] text-[10px] font-semibold text-white">
-            {avatarInitials}
-          </span>
-          <span className="hidden min-w-0 sm:block">
-            <span className="block max-w-[112px] truncate">{userName}</span>
-            <span className="block max-w-[112px] truncate text-[10px] text-[var(--text-muted)]">
-              {roleLabel}
-            </span>
-          </span>
-          <ChevronDown
-            aria-hidden="true"
-            className="shrink-0 text-[var(--text-muted)]"
-            size={14}
-          />
-        </button>
+        <ProfileMenu
+          fallbackRoleLabel={resolvedRoleLabel}
+          fallbackUserName={resolvedUserName}
+          isError={currentUser.isError}
+          isLoading={currentUser.isLoading}
+          roleLabel={resolvedRoleLabel}
+          user={profileUser}
+        />
       </div>
     </header>
   );
@@ -147,13 +157,4 @@ function IconButton({
       ) : null}
     </button>
   );
-}
-
-function initialsFromName(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }
