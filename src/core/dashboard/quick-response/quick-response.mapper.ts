@@ -20,7 +20,7 @@ export type QuickResponseUiTarget =
   | "app-review"
   | "internal-note";
 
-export type QuickResponseUiOutcome = "copy" | "resolved" | "ticket";
+export type QuickResponseUiOutcome = "resolved" | "ticket";
 export type QuickResponseUiCategory = "delay" | "refund" | "app" | "generic";
 
 export type QuickResponseMapperInput = {
@@ -75,7 +75,6 @@ export const outcomeToBackendMap: Record<
   QuickResponseUiOutcome,
   QuickResponseOutcome
 > = {
-  copy: "copy_only",
   resolved: "sent_resolved",
   ticket: "sent_hea_action",
 };

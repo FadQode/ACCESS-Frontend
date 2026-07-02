@@ -62,20 +62,14 @@ export function useTicketWorkspace() {
   const [closureCopiedTicketId, setClosureCopiedTicketId] = useState<
     string | null
   >(null);
-  const [localTicketOverrides, setLocalTicketOverrides] = useState<
-    Record<string, Partial<FollowUpTicket>>
-  >({});
   const selectedTicketQuery = useTicketDetail(selectedTicketId || null);
 
   const mappedTickets = useMemo(
     () =>
       (ticketsQuery.data?.items ?? []).map((ticket) =>
-        applyTicketOverride(
-          mapBackendTicketToFollowUpTicket(ticket),
-          localTicketOverrides[ticket.id],
-        ),
+        mapBackendTicketToFollowUpTicket(ticket),
       ),
-    [localTicketOverrides, ticketsQuery.data?.items],
+    [ticketsQuery.data?.items],
   );
 
   useEffect(() => {
@@ -105,19 +99,11 @@ export function useTicketWorkspace() {
       selectedTicketQuery.data &&
       selectedTicketQuery.data.id === selectedTicketId
     ) {
-      return applyTicketOverride(
-        mapBackendTicketToFollowUpTicket(selectedTicketQuery.data),
-        localTicketOverrides[selectedTicketId],
-      );
+      return mapBackendTicketToFollowUpTicket(selectedTicketQuery.data);
     }
 
     return listTicket;
-  }, [
-    localTicketOverrides,
-    mappedTickets,
-    selectedTicketId,
-    selectedTicketQuery.data,
-  ]);
+  }, [mappedTickets, selectedTicketId, selectedTicketQuery.data]);
 
   useEffect(() => {
     setClosureDraft(selectedTicket?.closureMessage ?? "");
@@ -263,30 +249,6 @@ export function useTicketWorkspace() {
     }));
   };
 
-  const addInternalNote = () => {
-    if (!selectedTicket) {
-      return;
-    }
-
-    setLocalTicketOverrides((currentOverrides) => ({
-      ...currentOverrides,
-      [selectedTicket.id]: {
-        ...currentOverrides[selectedTicket.id],
-        activityLog: [
-          {
-            actor: "Agen",
-            actorType: "agent",
-            id: `${selectedTicket.id}-note-${Date.now()}`,
-            label: "Catatan internal ditambahkan",
-            time: "Baru saja",
-            tone: "neutral",
-          },
-          ...selectedTicket.activityLog,
-        ],
-      },
-    }));
-  };
-
   return {
     tickets: filteredTickets,
     allTickets: mappedTickets,
@@ -309,7 +271,6 @@ export function useTicketWorkspace() {
     finalClosureFeedback,
     dismissFinalClosureFeedback,
     copyClosureAndClose,
-    addInternalNote,
     errorMessage:
       ticketsQuery.error instanceof Error
         ? ticketsQuery.error.message
@@ -320,22 +281,6 @@ export function useTicketWorkspace() {
       ticketsQuery.isLoading ||
       (Boolean(selectedTicketId) && selectedTicketQuery.isLoading),
     refetchTickets: ticketsQuery.refetch,
-  };
-}
-
-function applyTicketOverride(
-  ticket: FollowUpTicket,
-  override?: Partial<FollowUpTicket>,
-) {
-  if (!override) {
-    return ticket;
-  }
-
-  return {
-    ...ticket,
-    ...override,
-    activityLog: override.activityLog ?? ticket.activityLog,
-    managerAction: override.managerAction ?? ticket.managerAction,
   };
 }
 

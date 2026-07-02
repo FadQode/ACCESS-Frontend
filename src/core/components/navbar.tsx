@@ -114,12 +114,7 @@ export function DashboardNavbar({
 
       <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
         {controls}
-        <IconButton label="Buka pengaturan">
-          <Settings aria-hidden="true" size={16} />
-        </IconButton>
-        <IconButton label="Lihat notifikasi" notification>
-          <Bell aria-hidden="true" size={16} />
-        </IconButton>
+
         <ProfileMenu
           fallbackRoleLabel={resolvedRoleLabel}
           fallbackUserName={resolvedUserName}

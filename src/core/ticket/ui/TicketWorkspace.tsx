@@ -140,7 +140,6 @@ export function TicketWorkspace() {
                 hasCopiedClosure={workspace.hasCopiedClosure}
                 isAdminFinalClosure={isAdminFinalClosure}
                 isFinalClosurePending={workspace.isFinalClosurePending}
-                onAddInternalNote={workspace.addInternalNote}
                 onClosureDraftChange={workspace.setClosureDraft}
                 onCopyClosureAndClose={workspace.copyClosureAndClose}
                 ticket={workspace.selectedTicket}

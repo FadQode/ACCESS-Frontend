@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookOpen,
   ClipboardCheck,
   Gauge,
   Inbox,
@@ -59,6 +60,7 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
       icon: ClipboardCheck,
       label: "Action Queue",
     },
+    { href: "/manager/references", icon: BookOpen, label: "References" },
     { href: "/manager/agents", icon: Users, label: "Agents" },
     { href: "/manager/complaints", icon: ClipboardCheck, label: "Complaints" },
     // { href: "/manager/analytics", icon: BarChart3, label: "Analytics" },

@@ -17,4 +17,11 @@ export const queryKeys = {
     detail: (id: string) => ["tickets", "detail", id] as const,
     list: (filters: unknown) => ["tickets", "list", filters] as const,
   },
+  references: {
+    all: ["references"] as const,
+    detail: (id: string) => ["references", "detail", id] as const,
+    fileUrl: (id: string) => ["references", "file-url", id] as const,
+    list: (filters: unknown) => ["references", "list", filters] as const,
+    tags: ["references", "tags"] as const,
+  },
 };

@@ -20,7 +20,6 @@ interface TicketDetailProps {
   hasCopiedClosure: boolean;
   isAdminFinalClosure: boolean;
   isFinalClosurePending: boolean;
-  onAddInternalNote: () => void;
   onClosureDraftChange: (value: string) => void;
   onCopyClosureAndClose: () => void;
 }
@@ -31,7 +30,6 @@ export function TicketDetail({
   hasCopiedClosure,
   isAdminFinalClosure,
   isFinalClosurePending,
-  onAddInternalNote,
   onClosureDraftChange,
   onCopyClosureAndClose,
   ticket,
@@ -89,7 +87,6 @@ export function TicketDetail({
             hasCopiedClosure={hasCopiedClosure}
             isAdminFinalClosure={isAdminFinalClosure}
             isFinalClosurePending={isFinalClosurePending}
-            onAddInternalNote={onAddInternalNote}
             onChange={onClosureDraftChange}
             onCopyClosureAndClose={onCopyClosureAndClose}
             ticket={ticket}
@@ -224,7 +221,6 @@ function ClosureMessageCard({
   hasCopiedClosure,
   isAdminFinalClosure,
   isFinalClosurePending,
-  onAddInternalNote,
   onChange,
   onCopyClosureAndClose,
   ticket,
@@ -235,7 +231,6 @@ function ClosureMessageCard({
   hasCopiedClosure: boolean;
   isAdminFinalClosure: boolean;
   isFinalClosurePending: boolean;
-  onAddInternalNote: () => void;
   onChange: (value: string) => void;
   onCopyClosureAndClose: () => void;
   ticket: FollowUpTicket;
@@ -254,13 +249,6 @@ function ClosureMessageCard({
             actorRole="internal"
             text="Balasan akhir bisa dibuat setelah manager menyelesaikan tindak lanjut."
           />
-          <button
-            className="mt-3 h-9 rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
-            onClick={onAddInternalNote}
-            type="button"
-          >
-            Tambah catatan internal
-          </button>
         </div>
       </WorkflowCard>
     );

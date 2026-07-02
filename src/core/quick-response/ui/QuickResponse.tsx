@@ -45,7 +45,7 @@ type ResponseTarget =
   | "app-review"
   | "internal-note";
 type Tone = "formal" | "friendly" | "concise";
-type OutcomeId = "copy" | "resolved" | "ticket";
+type OutcomeId = "resolved" | "ticket";
 type CompletionState = "saved" | "resolved" | "follow-up";
 type BuilderKey = "hear" | "empathize" | "apologize" | "takeAction";
 type QuickResponseFieldErrors = Partial<
@@ -464,14 +464,6 @@ export function QuickResponse() {
 
   const outcomeOptions = useMemo(
     () => [
-      {
-        id: "copy" as const,
-        title: "Salin saja",
-        description:
-          "Simpan sesi quick response dan salin balasan untuk dikirim manual ke pelanggan.",
-        recommended: false,
-        icon: <Copy aria-hidden="true" size={18} />,
-      },
       {
         id: "resolved" as const,
         title: "Salin & Selesaikan",
@@ -1014,7 +1006,7 @@ function ComplaintInputForm({
         </WarningBanner>
       ) : null}
 
-      <FieldLabel label="Kanal sumber">
+      <FieldLabel label="Kanal sumber" required>
         <SegmentedButtons
           options={sourceOptions}
           value={source}
@@ -1061,7 +1053,7 @@ function ComplaintInputForm({
       </div>
 
       {isReviewSource ? (
-        <FieldLabel label="Rating ulasan">
+        <FieldLabel label="Rating ulasan" required>
           <select
             className={inputClass}
             onChange={(event) => onRatingChange(event.target.value)}
@@ -1076,7 +1068,7 @@ function ComplaintInputForm({
         </FieldLabel>
       ) : null}
 
-      <FieldLabel label="Isi keluhan">
+      <FieldLabel label="Isi keluhan" required>
         <textarea
           className={`${textareaClass} min-h-[132px]`}
           onChange={(event) => onComplaintTextChange(event.target.value)}
@@ -1283,7 +1275,7 @@ function ReviewStep({
         </div>
       </section>
 
-      <FieldLabel label="Balasan akhir" note="boleh diedit">
+      <FieldLabel label="Balasan akhir" note="boleh diedit" required>
         <textarea
           className={`${textareaClass} min-h-[180px] border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]`}
           onChange={(event) => onChangeFinalResponse(event.target.value)}
@@ -1386,7 +1378,7 @@ function OutcomeStep({
       ) : null}
       {permissionError ? <FieldError>{permissionError}</FieldError> : null}
 
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-2">
         {options.map((option) => (
           <button
             className={`min-h-[154px] rounded-lg border p-4 text-left transition ${
@@ -1880,15 +1872,22 @@ function FieldLabel({
   children,
   label,
   note,
+  required = false,
 }: {
   children: ReactNode;
   label: string;
   note?: string;
+  required?: boolean;
 }) {
   return (
     <div>
       <p className="text-xs font-semibold text-[var(--rail-ink)]">
         {label}
+        {required ? (
+          <span aria-hidden="true" className="ml-1 text-[var(--signal-red)]">
+            *
+          </span>
+        ) : null}
         {note ? (
           <span className="font-normal text-[var(--text-tertiary)]">
             {" "}
