@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useFinalClosure } from "@/core/dashboard/hooks/use-final-closure";
 import { useTicketDetail } from "@/core/dashboard/hooks/use-ticket-detail";
 import { useTickets } from "@/core/dashboard/hooks/use-tickets";
 import { mapBackendTicketToFollowUpTicket } from "../model/ticket.mapper";
@@ -9,6 +10,13 @@ import type {
   FollowUpTicketFilter,
   FollowUpTicketStatus,
 } from "../model/ticket.types";
+
+type FinalClosureFeedback = {
+  open: boolean;
+  variant: "success" | "error" | "warning" | "info";
+  title: string;
+  description: string;
+};
 
 const filterMap: Record<FollowUpTicketFilter, FollowUpTicketStatus[]> = {
   all: ["waiting_manager", "ready_to_notify", "closed", "escalated"],
@@ -19,10 +27,18 @@ const filterMap: Record<FollowUpTicketFilter, FollowUpTicketStatus[]> = {
 
 export function useTicketWorkspace() {
   const ticketsQuery = useTickets({ limit: 100 });
+  const finalClosureMutation = useFinalClosure();
   const [selectedTicketId, setSelectedTicketId] = useState("");
   const [filter, setFilter] = useState<FollowUpTicketFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [closureDraft, setClosureDraft] = useState("");
+  const [finalClosureFeedback, setFinalClosureFeedback] =
+    useState<FinalClosureFeedback>({
+      description: "",
+      open: false,
+      title: "",
+      variant: "info",
+    });
   const [closureCopiedTicketId, setClosureCopiedTicketId] = useState<
     string | null
   >(null);
@@ -129,37 +145,84 @@ export function useTicketWorkspace() {
 
   const copyClosureAndClose = async () => {
     if (!selectedTicket || closureDraft.trim().length === 0) {
+      setFinalClosureFeedback({
+        description:
+          "Balasan akhir wajib diisi sebelum ticket bisa ditandai selesai.",
+        open: true,
+        title: "Balasan akhir belum siap",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (selectedTicket.status !== "ready_to_notify") {
+      setFinalClosureFeedback({
+        description:
+          selectedTicket.status === "closed"
+            ? "Ticket ini sudah ditutup oleh backend."
+            : "Manager action belum selesai, jadi ticket belum bisa ditandai selesai.",
+        open: true,
+        title: "Ticket belum bisa ditutup",
+        variant: "warning",
+      });
+      return;
+    }
+
+    const finalResponse = closureDraft.trim();
+
+    try {
+      await navigator.clipboard.writeText(finalResponse);
+    } catch {
+      setFinalClosureFeedback({
+        description:
+          "Ticket tidak ditutup. Izinkan akses clipboard atau jalankan dari konteks browser yang mendukung clipboard, lalu coba lagi.",
+        open: true,
+        title: "Gagal menyalin balasan akhir",
+        variant: "error",
+      });
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(closureDraft);
-    } catch {
-      // Clipboard can fail in non-secure contexts; the prototype still updates the workflow state.
+      await finalClosureMutation.mutateAsync({
+        complaintId: selectedTicket.complaintId,
+        response: {
+          finalResponse,
+          outcome: "sent_resolved",
+          responseTarget: "public_reply",
+        },
+        ticketId: selectedTicket.id,
+      });
+      setClosureCopiedTicketId(selectedTicket.id);
+      setFinalClosureFeedback({
+        description:
+          "Balasan akhir sudah disalin dan backend mengonfirmasi complaint resolved serta ticket closed.",
+        open: true,
+        title: "Ticket ditandai selesai",
+        variant: "success",
+      });
+      await Promise.all([
+        ticketsQuery.refetch(),
+        selectedTicketQuery.refetch(),
+      ]);
+    } catch (error) {
+      setFinalClosureFeedback({
+        description:
+          error instanceof Error
+            ? `Balasan berhasil disalin, tetapi backend belum menutup ticket: ${error.message}`
+            : "Balasan berhasil disalin, tetapi backend belum menutup ticket. Coba lagi.",
+        open: true,
+        title: "Gagal menutup ticket",
+        variant: "error",
+      });
     }
+  };
 
-    setLocalTicketOverrides((currentOverrides) => ({
-      ...currentOverrides,
-      [selectedTicket.id]: {
-        activityLog: [
-          {
-            actor: "Agen",
-            actorType: "agent",
-            id: `${selectedTicket.id}-closure-${Date.now()}`,
-            label: "Balasan akhir disalin",
-            time: "Baru saja",
-            tone: "success",
-          },
-          ...selectedTicket.activityLog,
-        ],
-        closedAt: "Baru saja",
-        closedBy: "Agen",
-        closureCopiedAt: "Baru saja",
-        closureMessage: closureDraft,
-        status: "closed",
-      },
+  const dismissFinalClosureFeedback = () => {
+    setFinalClosureFeedback((current) => ({
+      ...current,
+      open: false,
     }));
-    setClosureCopiedTicketId(selectedTicket.id);
   };
 
   const addInternalNote = () => {
@@ -202,6 +265,9 @@ export function useTicketWorkspace() {
     waitingCount,
     closedCount,
     hasCopiedClosure: closureCopiedTicketId === selectedTicketId,
+    isFinalClosurePending: finalClosureMutation.isPending,
+    finalClosureFeedback,
+    dismissFinalClosureFeedback,
     copyClosureAndClose,
     addInternalNote,
     errorMessage:

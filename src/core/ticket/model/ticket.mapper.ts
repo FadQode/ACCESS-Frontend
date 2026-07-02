@@ -29,6 +29,7 @@ export function mapBackendTicketToFollowUpTicket(
       ? formatAbsoluteDate(ticket.closureSentAt)
       : undefined,
     closureMessage,
+    complaintId: ticket.complaintId,
     customerInitials: "PA",
     customerName: "Pelanggan ACCESS",
     displayId: ticket.referenceNo ?? shortId(ticket.id),

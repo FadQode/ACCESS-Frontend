@@ -280,6 +280,7 @@ export const mockTickets: Ticket[] = [
 export const mockFollowUpTickets: FollowUpTicket[] = [
   {
     id: "follow-up-0832",
+    complaintId: "complaint-follow-up-0832",
     displayId: "EXT-2026-0832",
     status: "ready_to_notify",
     category: "delay",
@@ -367,6 +368,7 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
   },
   {
     id: "follow-up-0833",
+    complaintId: "complaint-follow-up-0833",
     displayId: "EXT-2026-0833",
     status: "ready_to_notify",
     category: "cancellation",
@@ -425,6 +427,7 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
   },
   {
     id: "follow-up-0834",
+    complaintId: "complaint-follow-up-0834",
     displayId: "EXT-2026-0834",
     status: "ready_to_notify",
     category: "facility",
@@ -481,6 +484,7 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
   },
   {
     id: "follow-up-0828",
+    complaintId: "complaint-follow-up-0828",
     displayId: "EXT-2026-0828",
     status: "closed",
     category: "refund",
@@ -540,6 +544,7 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
   },
   {
     id: "follow-up-0835",
+    complaintId: "complaint-follow-up-0835",
     displayId: "EXT-2026-0835",
     status: "waiting_manager",
     category: "payment",

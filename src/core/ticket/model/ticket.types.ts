@@ -173,6 +173,7 @@ export interface ManagerActionResult {
 
 export interface FollowUpTicket {
   id: string;
+  complaintId: string;
   displayId: string;
   status: FollowUpTicketStatus;
   category: FollowUpTicketCategory;

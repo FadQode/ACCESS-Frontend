@@ -16,7 +16,10 @@ type ActorRole = "customer" | "agent" | "manager" | "internal" | "platform";
 interface TicketDetailProps {
   ticket: FollowUpTicket;
   closureDraft: string;
+  canPerformFinalClosure: boolean;
   hasCopiedClosure: boolean;
+  isAdminFinalClosure: boolean;
+  isFinalClosurePending: boolean;
   onAddInternalNote: () => void;
   onClosureDraftChange: (value: string) => void;
   onCopyClosureAndClose: () => void;
@@ -24,14 +27,20 @@ interface TicketDetailProps {
 
 export function TicketDetail({
   closureDraft,
+  canPerformFinalClosure,
   hasCopiedClosure,
+  isAdminFinalClosure,
+  isFinalClosurePending,
   onAddInternalNote,
   onClosureDraftChange,
   onCopyClosureAndClose,
   ticket,
 }: TicketDetailProps) {
   const canClose =
-    ticket.status === "ready_to_notify" && closureDraft.trim().length > 0;
+    ticket.status === "ready_to_notify" &&
+    closureDraft.trim().length >= 5 &&
+    canPerformFinalClosure &&
+    !isFinalClosurePending;
 
   return (
     <section className="flex min-h-[700px] min-w-0 flex-1 flex-col overflow-hidden bg-[var(--background)] xl:min-h-0">
@@ -76,7 +85,10 @@ export function TicketDetail({
           <ClosureMessageCard
             canClose={canClose}
             closureDraft={closureDraft}
+            canPerformFinalClosure={canPerformFinalClosure}
             hasCopiedClosure={hasCopiedClosure}
+            isAdminFinalClosure={isAdminFinalClosure}
+            isFinalClosurePending={isFinalClosurePending}
             onAddInternalNote={onAddInternalNote}
             onChange={onClosureDraftChange}
             onCopyClosureAndClose={onCopyClosureAndClose}
@@ -208,7 +220,10 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
 function ClosureMessageCard({
   canClose,
   closureDraft,
+  canPerformFinalClosure,
   hasCopiedClosure,
+  isAdminFinalClosure,
+  isFinalClosurePending,
   onAddInternalNote,
   onChange,
   onCopyClosureAndClose,
@@ -216,7 +231,10 @@ function ClosureMessageCard({
 }: {
   canClose: boolean;
   closureDraft: string;
+  canPerformFinalClosure: boolean;
   hasCopiedClosure: boolean;
+  isAdminFinalClosure: boolean;
+  isFinalClosurePending: boolean;
   onAddInternalNote: () => void;
   onChange: (value: string) => void;
   onCopyClosureAndClose: () => void;
@@ -261,8 +279,9 @@ function ClosureMessageCard({
     >
       {hasCopiedClosure ? (
         <div className="mb-3 rounded-lg border border-[var(--signal-green)] bg-[var(--signal-green-soft)] p-3 text-sm text-[var(--signal-green-dark)]">
-          Sudah disalin oleh agen - tiket ditutup. Tempel balasan akhir di{" "}
-          {ticket.sourceLabel} jika percakapan eksternal masih membutuhkannya.
+          Balasan akhir sudah disalin dan backend mengonfirmasi ticket ditutup.
+          Tempel balasan akhir di {ticket.sourceLabel} jika percakapan eksternal
+          masih membutuhkannya.
         </div>
       ) : null}
 
@@ -277,6 +296,17 @@ function ClosureMessageCard({
         Draft di bawah berasal dari closure message manager. Agen bisa meninjau,
         menyesuaikan, lalu menyalinnya untuk pelanggan.
       </div>
+      {isAdminFinalClosure ? (
+        <div className="mb-2 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-amber-dark)]">
+          Mode admin/tester aktif. Aksi ini tetap akan dicatat backend sebagai
+          final closure.
+        </div>
+      ) : null}
+      {!canPerformFinalClosure ? (
+        <div className="mb-2 rounded-lg border border-[var(--signal-red)] bg-[var(--signal-red-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-red-dark)]">
+          Manager tidak dapat melakukan final closure agent.
+        </div>
+      ) : null}
       <textarea
         className="min-h-[180px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 py-3 text-sm leading-7 text-[var(--rail-ink)] outline-none transition focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)] disabled:opacity-70"
         disabled={ticket.status === "closed"}
@@ -286,8 +316,8 @@ function ClosureMessageCard({
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs text-[var(--text-muted)]">
-          Untuk saat ini sistem hanya menyalin; pesan tidak dikirim langsung ke
-          platform eksternal.
+          Sistem menyalin balasan lebih dulu, lalu menutup ticket hanya setelah
+          backend mengonfirmasi complaint resolved.
         </span>
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
@@ -296,9 +326,11 @@ function ClosureMessageCard({
           type="button"
         >
           <Clipboard aria-hidden="true" size={14} />
-          {ticket.status === "closed"
-            ? "Tiket ditutup"
-            : "Salin balasan & tutup"}
+          {isFinalClosurePending
+            ? "Menandai selesai..."
+            : ticket.status === "closed"
+              ? "Tiket ditutup"
+              : "Salin Balasan & Tandai Selesai"}
         </button>
       </div>
     </WorkflowCard>

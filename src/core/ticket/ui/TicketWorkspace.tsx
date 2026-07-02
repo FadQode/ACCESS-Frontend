@@ -3,6 +3,9 @@
 import { AlertTriangle, Eye, EyeOff, Info, RefreshCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
+import { FeedbackDialog } from "@/core/components/feedback/feedback-dialog";
+import { LoadingOverlay } from "@/core/components/feedback/loading-overlay";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
@@ -14,13 +17,32 @@ import { TicketQueue } from "./TicketQueue";
 export function TicketWorkspace() {
   const workspace = useTicketWorkspace();
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
+  const sessionUser = useSessionUser();
   const [navbarVisible, setNavbarVisible] = useState(true);
   const [assistPanelOpen, setAssistPanelOpen] = useState(false);
 
   const activeTicketCount = workspace.readyCount + workspace.waitingCount;
+  const isAdminFinalClosure = sessionUser?.role === "admin";
+  const canPerformFinalClosure = sessionUser?.role !== "manager";
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
+      <LoadingOverlay
+        description="Merekam balasan akhir, menyelesaikan complaint, dan menutup ticket."
+        open={workspace.isFinalClosurePending}
+        title="Menandai ticket selesai..."
+      />
+      <FeedbackDialog
+        description={workspace.finalClosureFeedback.description}
+        onOpenChange={(open) => {
+          if (!open) {
+            workspace.dismissFinalClosureFeedback();
+          }
+        }}
+        open={workspace.finalClosureFeedback.open}
+        title={workspace.finalClosureFeedback.title}
+        variant={workspace.finalClosureFeedback.variant}
+      />
       <div className="mx-auto flex max-w-[1600px] flex-col gap-4 lg:flex-row">
         <DashboardSidebar
           dashboardRole="agent"
@@ -112,7 +134,10 @@ export function TicketWorkspace() {
               />
               <TicketDetail
                 closureDraft={workspace.closureDraft}
+                canPerformFinalClosure={canPerformFinalClosure}
                 hasCopiedClosure={workspace.hasCopiedClosure}
+                isAdminFinalClosure={isAdminFinalClosure}
+                isFinalClosurePending={workspace.isFinalClosurePending}
                 onAddInternalNote={workspace.addInternalNote}
                 onClosureDraftChange={workspace.setClosureDraft}
                 onCopyClosureAndClose={workspace.copyClosureAndClose}
