@@ -47,8 +47,8 @@ export function ComplaintList() {
           isOpen={sidebarOpen}
           onClose={closeSidebar}
           stats={[
-            { label: "Loaded", value: complaints.length.toString() },
-            { label: "Page", value: String(pagination?.page ?? page) },
+            { label: "Dimuat", value: complaints.length.toString() },
+            { label: "Halaman", value: String(pagination?.page ?? page) },
             { label: "Total", value: String(pagination?.total ?? 0) },
           ]}
         />
@@ -68,16 +68,16 @@ export function ComplaintList() {
                 Backend complaints
               </p>
               <h1 className="mt-2 text-2xl font-semibold text-[var(--rail-ink)]">
-                Complaint List
+                Daftar Complaint
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-                Read-only complaint data from the backend. Mutation flows stay
-                disabled for this phase.
+                Data complaint dari backend dalam mode baca. Alur perubahan
+                masih dinonaktifkan untuk fase ini.
               </p>
 
               <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_180px_180px]">
                 <label className="relative">
-                  <span className="sr-only">Search complaints</span>
+                  <span className="sr-only">Cari complaints</span>
                   <Search
                     aria-hidden="true"
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -89,7 +89,7 @@ export function ComplaintList() {
                       setPage(1);
                       setSearch(event.target.value);
                     }}
-                    placeholder="Search complaint text"
+                    placeholder="Cari teks complaint"
                     type="search"
                     value={search}
                   />
@@ -102,11 +102,11 @@ export function ComplaintList() {
                   }}
                   value={status}
                 >
-                  <option value="">All statuses</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="waiting_action">Waiting action</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
+                  <option value="">Semua status</option>
+                  <option value="submitted">Masuk</option>
+                  <option value="waiting_action">Menunggu aksi</option>
+                  <option value="resolved">Selesai</option>
+                  <option value="closed">Ditutup</option>
                 </select>
                 <input
                   className="h-11 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 text-sm text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
@@ -114,7 +114,7 @@ export function ComplaintList() {
                     setPage(1);
                     setCategory(event.target.value);
                   }}
-                  placeholder="Category"
+                  placeholder="Kategori"
                   value={category}
                 />
               </div>
@@ -125,10 +125,10 @@ export function ComplaintList() {
                 emptyFallback={
                   <div className="rounded-xl border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-6 text-center">
                     <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                      No complaints found.
+                      Tidak ada complaint yang cocok.
                     </p>
                     <p className="mt-2 text-sm text-[var(--text-muted)]">
-                      Try changing the filter or search keyword.
+                      Coba ubah filter atau kata kunci pencarian.
                     </p>
                   </div>
                 }
@@ -175,10 +175,10 @@ export function ComplaintList() {
                     }
                     type="button"
                   >
-                    Previous
+                    Sebelumnya
                   </button>
                   <span className="text-xs text-[var(--text-muted)]">
-                    Page {pagination?.page ?? page} of{" "}
+                    Halaman {pagination?.page ?? page} dari{" "}
                     {pagination?.totalPages ?? 1}
                   </span>
                   <button
@@ -191,7 +191,7 @@ export function ComplaintList() {
                     onClick={() => setPage((current) => current + 1)}
                     type="button"
                   >
-                    Next
+                    Berikutnya
                   </button>
                 </div>
               </ApiStateBoundary>
@@ -221,5 +221,5 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Failed to load complaints.";
+  return "Complaints gagal dimuat.";
 }

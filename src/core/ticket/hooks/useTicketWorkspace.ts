@@ -8,6 +8,8 @@ import { mapBackendTicketToFollowUpTicket } from "../model/ticket.mapper";
 import type {
   FollowUpTicket,
   FollowUpTicketFilter,
+  FollowUpTicketSortConfig,
+  FollowUpTicketSortKey,
   FollowUpTicketStatus,
 } from "../model/ticket.types";
 
@@ -25,11 +27,29 @@ const filterMap: Record<FollowUpTicketFilter, FollowUpTicketStatus[]> = {
   waiting: ["waiting_manager", "escalated"],
 };
 
+const ticketStatusRank: Record<FollowUpTicketStatus, number> = {
+  ready_to_notify: 0,
+  waiting_manager: 1,
+  escalated: 2,
+  closed: 3,
+};
+
+const ticketPriorityRank: Record<FollowUpTicket["priority"], number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
 export function useTicketWorkspace() {
   const ticketsQuery = useTickets({ limit: 100 });
   const finalClosureMutation = useFinalClosure();
   const [selectedTicketId, setSelectedTicketId] = useState("");
   const [filter, setFilter] = useState<FollowUpTicketFilter>("all");
+  const [sortConfig, setSortConfig] = useState<FollowUpTicketSortConfig>({
+    direction: "asc",
+    key: "status",
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [closureDraft, setClosureDraft] = useState("");
   const [finalClosureFeedback, setFinalClosureFeedback] =
@@ -106,7 +126,7 @@ export function useTicketWorkspace() {
   const filteredTickets = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return mappedTickets.filter((ticket) => {
+    const filtered = mappedTickets.filter((ticket) => {
       const matchesFilter = filterMap[filter].includes(ticket.status);
       const matchesSearch =
         normalizedQuery.length === 0 ||
@@ -126,7 +146,9 @@ export function useTicketWorkspace() {
 
       return matchesFilter && matchesSearch;
     });
-  }, [filter, mappedTickets, searchQuery]);
+
+    return sortFollowUpTickets(filtered, sortConfig);
+  }, [filter, mappedTickets, searchQuery, sortConfig]);
 
   const readyCount = mappedTickets.filter(
     (ticket) => ticket.status === "ready_to_notify",
@@ -141,6 +163,22 @@ export function useTicketWorkspace() {
   const selectTicket = (ticketId: string) => {
     setSelectedTicketId(ticketId);
     setClosureCopiedTicketId(null);
+  };
+
+  const changeSort = (key: FollowUpTicketSortKey) => {
+    setSortConfig((current) => {
+      if (current.key === key) {
+        return {
+          direction: current.direction === "asc" ? "desc" : "asc",
+          key,
+        };
+      }
+
+      return {
+        direction: key === "submitted" ? "desc" : "asc",
+        key,
+      };
+    });
   };
 
   const copyClosureAndClose = async () => {
@@ -160,7 +198,7 @@ export function useTicketWorkspace() {
         description:
           selectedTicket.status === "closed"
             ? "Ticket ini sudah ditutup oleh backend."
-            : "Manager action belum selesai, jadi ticket belum bisa ditandai selesai.",
+            : "Tindakan manager belum selesai, jadi ticket belum bisa ditandai selesai.",
         open: true,
         title: "Ticket belum bisa ditutup",
         variant: "warning",
@@ -257,6 +295,8 @@ export function useTicketWorkspace() {
     setSelectedTicketId: selectTicket,
     filter,
     setFilter,
+    sortConfig,
+    setSortKey: changeSort,
     searchQuery,
     setSearchQuery,
     closureDraft,
@@ -297,4 +337,75 @@ function applyTicketOverride(
     activityLog: override.activityLog ?? ticket.activityLog,
     managerAction: override.managerAction ?? ticket.managerAction,
   };
+}
+
+function sortFollowUpTickets(
+  tickets: FollowUpTicket[],
+  sortConfig: FollowUpTicketSortConfig,
+) {
+  const direction = sortConfig.direction === "asc" ? 1 : -1;
+
+  return [...tickets].sort((first, second) => {
+    const result = compareTicketSortValues(
+      getTicketSortValue(first, sortConfig.key),
+      getTicketSortValue(second, sortConfig.key),
+    );
+
+    if (result !== 0) {
+      return result * direction;
+    }
+
+    return (
+      compareTicketSortValues(
+        toTime(second.submittedAt),
+        toTime(first.submittedAt),
+      ) || first.displayId.localeCompare(second.displayId)
+    );
+  });
+}
+
+function getTicketSortValue(
+  ticket: FollowUpTicket,
+  key: FollowUpTicketSortKey,
+): string | number {
+  if (key === "status") {
+    return ticketStatusRank[ticket.status];
+  }
+
+  if (key === "customer") {
+    return ticket.customerName;
+  }
+
+  if (key === "category") {
+    return ticket.category;
+  }
+
+  if (key === "priority") {
+    return ticketPriorityRank[ticket.priority];
+  }
+
+  return toTime(ticket.submittedAt);
+}
+
+function compareTicketSortValues(
+  first: string | number,
+  second: string | number,
+) {
+  if (typeof first === "number" && typeof second === "number") {
+    return first - second;
+  }
+
+  return String(first).localeCompare(String(second), "id", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function toTime(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }

@@ -140,6 +140,20 @@ export type ExternalChannel =
 
 export type FollowUpTicketFilter = "all" | "waiting" | "ready" | "closed";
 
+export type FollowUpTicketSortKey =
+  | "status"
+  | "customer"
+  | "category"
+  | "priority"
+  | "submitted";
+
+export type FollowUpTicketSortDirection = "asc" | "desc";
+
+export interface FollowUpTicketSortConfig {
+  key: FollowUpTicketSortKey;
+  direction: FollowUpTicketSortDirection;
+}
+
 export interface TicketReference {
   id: string;
   type: "sop" | "policy" | "past_ticket" | "manager_note";

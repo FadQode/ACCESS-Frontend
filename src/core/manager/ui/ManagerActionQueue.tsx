@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
   CheckCircle2,
   ChevronRight,
   FileText,
@@ -27,25 +30,37 @@ import type {
 
 const MANAGER_NAME = "Mgr. Dina";
 
+type SortDirection = "asc" | "desc";
+type ManagerActionSortKey =
+  | "cluster"
+  | "category"
+  | "agents"
+  | "status"
+  | "raised";
+type ManagerActionSortConfig = {
+  key: ManagerActionSortKey;
+  direction: SortDirection;
+};
+
 const statusFilters: Array<{
   value: "all" | ManagerActionStatus;
   label: string;
 }> = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "done", label: "Done" },
+  { value: "all", label: "Semua" },
+  { value: "pending", label: "Menunggu" },
+  { value: "in_progress", label: "Diproses" },
+  { value: "done", label: "Selesai" },
 ];
 
 const categoryLabel: Record<ManagerActionCategory, string> = {
-  app_issue: "App Issue",
-  cancellation: "Cancellation",
-  delay: "Delay",
-  facility: "Facility",
-  lost_item: "Lost Item",
-  other: "Other",
-  payment: "Payment",
-  refund: "Refund",
+  app_issue: "Kendala Aplikasi",
+  cancellation: "Pembatalan",
+  delay: "Keterlambatan",
+  facility: "Fasilitas",
+  lost_item: "Barang Tertinggal",
+  other: "Lainnya",
+  payment: "Pembayaran",
+  refund: "Pengembalian Dana",
 };
 
 const categoryBadgeClass: Record<ManagerActionCategory, string> = {
@@ -60,9 +75,9 @@ const categoryBadgeClass: Record<ManagerActionCategory, string> = {
 };
 
 const statusLabel: Record<ManagerActionStatus, string> = {
-  done: "Done",
-  in_progress: "In Progress",
-  pending: "Pending",
+  done: "Selesai",
+  in_progress: "Diproses",
+  pending: "Menunggu",
 };
 
 const statusBadgeClass: Record<ManagerActionStatus, string> = {
@@ -71,12 +86,22 @@ const statusBadgeClass: Record<ManagerActionStatus, string> = {
   pending: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
 };
 
+const managerStatusRank: Record<ManagerActionStatus, number> = {
+  pending: 0,
+  in_progress: 1,
+  done: 2,
+};
+
 export function ManagerActionQueue() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(
     null,
   );
   const [filter, setFilter] = useState<"all" | ManagerActionStatus>("all");
+  const [sortConfig, setSortConfig] = useState<ManagerActionSortConfig>({
+    direction: "asc",
+    key: "status",
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [actionTaken, setActionTaken] = useState("");
   const [closureMessage, setClosureMessage] = useState("");
@@ -133,7 +158,7 @@ export function ManagerActionQueue() {
   const visibleClusters = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return clusters.filter((cluster) => {
+    const filteredClusters = clusters.filter((cluster) => {
       const matchesFilter = filter === "all" || cluster.status === filter;
       const searchableText = [
         cluster.displayId,
@@ -157,7 +182,25 @@ export function ManagerActionQueue() {
 
       return matchesFilter && (!query || searchableText.includes(query));
     });
-  }, [clusters, filter, searchQuery]);
+
+    return sortManagerClusters(filteredClusters, sortConfig);
+  }, [clusters, filter, searchQuery, sortConfig]);
+
+  const changeSort = (key: ManagerActionSortKey) => {
+    setSortConfig((current) => {
+      if (current.key === key) {
+        return {
+          direction: current.direction === "asc" ? "desc" : "asc",
+          key,
+        };
+      }
+
+      return {
+        direction: key === "raised" ? "desc" : "asc",
+        key,
+      };
+    });
+  };
 
   const statusCounts = useMemo(() => {
     return {
@@ -206,7 +249,7 @@ export function ManagerActionQueue() {
 
     if (actionTaken.trim().length < 5 || closureMessage.trim().length < 5) {
       setFormError(
-        "Please fill action taken and closure message before submitting.",
+        "Isi tindakan yang dilakukan dan pesan penutup sebelum mengirim.",
       );
       return;
     }
@@ -224,7 +267,7 @@ export function ManagerActionQueue() {
       setFormError(
         error instanceof Error
           ? error.message
-          : "Failed to record action. Please try again.",
+          : "Gagal mencatat tindakan. Coba lagi.",
       );
     }
   };
@@ -246,7 +289,7 @@ export function ManagerActionQueue() {
           isOpen={sidebarOpen}
           onClose={closeSidebar}
           stats={[
-            { label: "Pending", value: statusCounts.pending.toString() },
+            { label: "Menunggu", value: statusCounts.pending.toString() },
             { label: "Clusters", value: clusters.length.toString() },
             { label: "Complaints", value: totalComplaints.toString() },
           ]}
@@ -271,6 +314,7 @@ export function ManagerActionQueue() {
                 filter={filter}
                 isLoading={actionRequestsQuery.isLoading}
                 searchQuery={searchQuery}
+                sortConfig={sortConfig}
                 statusCounts={statusCounts}
                 totalAgents={totalAgents}
                 totalComplaints={totalComplaints}
@@ -280,6 +324,7 @@ export function ManagerActionQueue() {
                   void actionRequestsQuery.refetch();
                 }}
                 onSearchChange={setSearchQuery}
+                onSortChange={changeSort}
               />
             ) : (
               <ClusterDetailView
@@ -314,6 +359,7 @@ function QueueTableView({
   filter,
   isLoading,
   searchQuery,
+  sortConfig,
   statusCounts,
   totalAgents,
   totalComplaints,
@@ -321,12 +367,14 @@ function QueueTableView({
   onOpenCluster,
   onRetry,
   onSearchChange,
+  onSortChange,
 }: {
   clusters: ManagerActionCluster[];
   errorMessage: string;
   filter: "all" | ManagerActionStatus;
   isLoading: boolean;
   searchQuery: string;
+  sortConfig: ManagerActionSortConfig;
   statusCounts: Record<"all" | ManagerActionStatus, number>;
   totalAgents: number;
   totalComplaints: number;
@@ -334,6 +382,7 @@ function QueueTableView({
   onOpenCluster: (cluster: ManagerActionCluster) => void;
   onRetry: () => void;
   onSearchChange: (query: string) => void;
+  onSortChange: (key: ManagerActionSortKey) => void;
 }) {
   return (
     <div className="page-transition">
@@ -344,7 +393,7 @@ function QueueTableView({
               Action Queue
             </h1>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Clusters awaiting manager action
+              Cluster yang menunggu tindakan manager
             </p>
           </div>
 
@@ -353,18 +402,18 @@ function QueueTableView({
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.pending}
               </span>{" "}
-              pending &middot;{" "}
+              menunggu &middot;{" "}
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.in_progress}
               </span>{" "}
-              in progress &middot;{" "}
+              diproses &middot;{" "}
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.done}
               </span>{" "}
-              done
+              selesai
             </div>
             <label className="relative block w-full sm:w-[240px]">
-              <span className="sr-only">Search clusters</span>
+              <span className="sr-only">Cari cluster</span>
               <Search
                 aria-hidden="true"
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -373,7 +422,7 @@ function QueueTableView({
               <input
                 className="h-10 w-full rounded-md border border-[var(--rail-border)] bg-[var(--background)] pl-9 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Search clusters..."
+                placeholder="Cari cluster..."
                 type="search"
                 value={searchQuery}
               />
@@ -384,9 +433,9 @@ function QueueTableView({
 
       <div className="bg-[var(--surface-muted)] p-4 sm:p-5">
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <MetricCard label="Complaint clusters" value={statusCounts.all} />
-          <MetricCard label="Affected complaints" value={totalComplaints} />
-          <MetricCard label="Agents waiting" value={totalAgents} />
+          <MetricCard label="Cluster complaint" value={statusCounts.all} />
+          <MetricCard label="Complaint terdampak" value={totalComplaints} />
+          <MetricCard label="Agent menunggu" value={totalAgents} />
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -415,12 +464,47 @@ function QueueTableView({
             <table className="w-full min-w-[820px] border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rail-border)] bg-[var(--background)]">
-                  <TableHead className="w-[34%]">Cluster</TableHead>
-                  <TableHead className="w-[14%]">Category</TableHead>
-                  <TableHead className="w-[18%]">Agents</TableHead>
-                  <TableHead className="w-[14%]">Status</TableHead>
-                  <TableHead className="w-[12%]">Raised</TableHead>
-                  <TableHead className="w-[8%] text-right">Action</TableHead>
+                  <TableHead
+                    className="w-[34%]"
+                    sortConfig={sortConfig}
+                    sortKey="cluster"
+                    onSortChange={onSortChange}
+                  >
+                    Cluster
+                  </TableHead>
+                  <TableHead
+                    className="w-[14%]"
+                    sortConfig={sortConfig}
+                    sortKey="category"
+                    onSortChange={onSortChange}
+                  >
+                    Kategori
+                  </TableHead>
+                  <TableHead
+                    className="w-[18%]"
+                    sortConfig={sortConfig}
+                    sortKey="agents"
+                    onSortChange={onSortChange}
+                  >
+                    Agent
+                  </TableHead>
+                  <TableHead
+                    className="w-[14%]"
+                    sortConfig={sortConfig}
+                    sortKey="status"
+                    onSortChange={onSortChange}
+                  >
+                    Status
+                  </TableHead>
+                  <TableHead
+                    className="w-[12%]"
+                    sortConfig={sortConfig}
+                    sortKey="raised"
+                    onSortChange={onSortChange}
+                  >
+                    Masuk
+                  </TableHead>
+                  <TableHead className="w-[8%] text-right">Aksi</TableHead>
                 </tr>
               </thead>
               <tbody>
@@ -428,10 +512,10 @@ function QueueTableView({
                   <tr>
                     <td className="px-4 py-12 text-center" colSpan={6}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                        Loading action requests...
+                        Memuat action requests...
                       </p>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
-                        Fetching manager action clusters from backend.
+                        Mengambil cluster tindakan manager dari backend.
                       </p>
                     </td>
                   </tr>
@@ -439,7 +523,7 @@ function QueueTableView({
                   <tr>
                     <td className="px-4 py-12 text-center" colSpan={6}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                        Failed to load action requests.
+                        Action requests gagal dimuat.
                       </p>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
                         {errorMessage}
@@ -449,7 +533,7 @@ function QueueTableView({
                         onClick={onRetry}
                         type="button"
                       >
-                        Try again
+                        Coba lagi
                       </button>
                     </td>
                   </tr>
@@ -498,11 +582,11 @@ function QueueTableView({
                   <tr>
                     <td className="px-4 py-12 text-center" colSpan={6}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                        No action requests yet
+                        Belum ada action request
                       </p>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
-                        Manager action requests will appear here when agents
-                        request follow-up actions.
+                        Action request akan muncul di sini setelah agent meminta
+                        tindak lanjut.
                       </p>
                     </td>
                   </tr>
@@ -563,7 +647,7 @@ function ClusterDetailView({
           type="button"
         >
           <ArrowLeft aria-hidden="true" size={15} />
-          Back to action queue
+          Kembali ke Action Queue
         </button>
       </div>
 
@@ -577,9 +661,8 @@ function ClusterDetailView({
               <CategoryBadge category={cluster.category} />
               <StatusBadge status={cluster.status} />
               <span className="text-xs text-[var(--text-muted)]">
-                {cluster.complaintCount} complaints &middot;{" "}
-                {cluster.agentCount} agents waiting &middot; raised{" "}
-                {cluster.relativeTime}
+                {cluster.complaintCount} complaint &middot; {cluster.agentCount}{" "}
+                agent menunggu &middot; masuk {cluster.relativeTime}
               </span>
             </div>
           </div>
@@ -594,7 +677,7 @@ function ClusterDetailView({
       <div className="mx-auto max-w-5xl space-y-5">
         {isDetailLoading ? (
           <p className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3 text-xs text-[var(--text-muted)]">
-            Loading linked complaints and ticket context...
+            Memuat complaint terkait dan konteks ticket...
           </p>
         ) : null}
         <ComplaintsPanel cluster={cluster} />
@@ -624,12 +707,13 @@ function ClusterDetailView({
 function ComplaintsPanel({ cluster }: { cluster: ManagerActionCluster }) {
   return (
     <Panel
-      countLabel={`${cluster.agentCount} agents`}
+      countLabel={`${cluster.agentCount} agent`}
       icon={<FileText aria-hidden="true" size={15} />}
-      title="Complaints in this cluster"
+      title="Complaints dalam cluster ini"
     >
       <p className="mb-3 text-xs text-[var(--text-muted)]">
-        All sent HEA, waiting manager action and agent closure.
+        Semua sudah mengirim HEA, menunggu tindakan manager dan penutupan oleh
+        agent.
       </p>
       <div className="divide-y divide-[var(--rail-border)] overflow-hidden rounded-lg border border-[var(--rail-border)]">
         {cluster.complaints.map((complaint) => (
@@ -667,25 +751,22 @@ function ComplaintsPanel({ cluster }: { cluster: ManagerActionCluster }) {
 function ContextPanel({ cluster }: { cluster: ManagerActionCluster }) {
   return (
     <Panel
-      countLabel="Retrieved by AI"
+      countLabel="Diambil oleh AI"
       icon={<CheckCircle2 aria-hidden="true" size={15} />}
-      title="Context and references"
+      title="Konteks dan referensi"
     >
       <div className="space-y-3">
-        <ContextRow label="Detected issue" value={cluster.detectedIssue} />
+        <ContextRow label="Isu terdeteksi" value={cluster.detectedIssue} />
         {cluster.affectedRoute ? (
-          <ContextRow label="Affected service" value={cluster.affectedRoute} />
+          <ContextRow label="Layanan terdampak" value={cluster.affectedRoute} />
         ) : null}
-        <ContextRow label="Policy applies" value={cluster.policyApplies} />
+        <ContextRow label="Kebijakan terkait" value={cluster.policyApplies} />
         {cluster.similarPastCase ? (
-          <ContextRow
-            label="Similar past case"
-            value={cluster.similarPastCase}
-          />
+          <ContextRow label="Kasus serupa" value={cluster.similarPastCase} />
         ) : null}
         {cluster.recommendedAction ? (
           <ContextRow
-            label="Recommended action"
+            label="Saran tindakan"
             value={cluster.recommendedAction}
           />
         ) : null}
@@ -730,15 +811,15 @@ function ManagerActionForm({
 }) {
   return (
     <Panel
-      countLabel="Sent to agent ticket inboxes"
+      countLabel="Dikirim ke inbox ticket agent"
       icon={<CheckCircle2 aria-hidden="true" size={15} />}
-      title="Complete action and notify agents"
+      title="Selesaikan tindakan dan beri tahu agent"
       variant="action"
     >
       <div className="space-y-4">
         <label className="block">
           <span className="text-sm font-medium text-[var(--text-muted)]">
-            What action did you take?
+            Tindakan apa yang dilakukan?
           </span>
           <textarea
             className={cx(inputClassName, "mt-2 min-h-[92px] resize-none py-3")}
@@ -746,13 +827,14 @@ function ManagerActionForm({
             value={actionTaken}
           />
           <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">
-            Internal record - agents will see this in their ticket.
+            Catatan internal - agent akan melihatnya di ticket mereka.
           </span>
         </label>
 
         <label className="block">
           <span className="text-sm font-medium text-[var(--text-muted)]">
-            Closure message - sent to each agent, forwarded to their complainer
+            Closure message - dikirim ke setiap agent untuk diteruskan ke
+            pelapor
           </span>
           <textarea
             className={cx(
@@ -766,12 +848,12 @@ function ManagerActionForm({
 
         <div>
           <p className="mb-2 text-sm font-medium text-[var(--text-muted)]">
-            Attachments and references
+            Lampiran dan referensi
           </p>
           <div className="flex flex-col gap-2 lg:flex-row">
             <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 text-xs font-medium text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]">
               <Paperclip aria-hidden="true" size={15} />
-              Attach document
+              Lampirkan dokumen
               <input
                 className="sr-only"
                 multiple
@@ -788,7 +870,7 @@ function ManagerActionForm({
 
             <div className="flex min-w-0 flex-1 gap-2">
               <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Add reference URL</span>
+                <span className="sr-only">Tambah URL referensi</span>
                 <Link2
                   aria-hidden="true"
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -805,7 +887,7 @@ function ManagerActionForm({
                       onAddReference();
                     }
                   }}
-                  placeholder="Add reference URL"
+                  placeholder="Tambah URL referensi"
                   value={referenceInput}
                 />
               </label>
@@ -814,7 +896,7 @@ function ManagerActionForm({
                 onClick={onAddReference}
                 type="button"
               >
-                Add
+                Tambah
               </button>
             </div>
           </div>
@@ -839,7 +921,7 @@ function ManagerActionForm({
 
         <div className="flex flex-col gap-3 border-t border-[var(--rail-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[var(--text-muted)]">
-            Related agents will receive this in their ticket inboxes.
+            Agent terkait akan menerima ini di inbox ticket mereka.
           </p>
           <button
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#1a3f6f] px-5 text-sm font-medium text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -849,8 +931,8 @@ function ManagerActionForm({
           >
             <CheckCircle2 aria-hidden="true" size={16} />
             {isSubmitting
-              ? "Recording action..."
-              : "Complete action & notify agents"}
+              ? "Mencatat tindakan..."
+              : "Selesaikan tindakan & beri tahu agent"}
           </button>
         </div>
       </div>
@@ -871,17 +953,17 @@ function CompletionState({
         <CheckCircle2 aria-hidden="true" size={28} />
       </div>
       <h2 className="mt-4 text-lg font-semibold text-[var(--rail-ink)]">
-        Manager action completed - agents notified
+        Tindakan manager selesai - agent sudah diberi tahu
       </h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--text-muted)]">
-        All related agents have received the closure message in their ticket
-        inbox. Each can now send it to their respective complainer and close the
+        Semua agent terkait sudah menerima closure message di inbox ticket.
+        Masing-masing agent sekarang bisa mengirimkannya ke pelapor dan menutup
         ticket.
       </p>
       <div className="mt-3 inline-flex rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-4 py-1 text-xs font-medium text-[var(--signal-blue)]">
-        {cluster.displayId} &middot; completed by{" "}
+        {cluster.displayId} &middot; diselesaikan oleh{" "}
         {cluster.completedBy ?? MANAGER_NAME} &middot;{" "}
-        {cluster.completedAt ?? "just now"}
+        {cluster.completedAt ?? "baru saja"}
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         {agentNames.map((agentName) => (
@@ -955,18 +1037,51 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 function TableHead({
   children,
   className,
+  sortConfig,
+  sortKey,
+  onSortChange,
 }: {
   children: ReactNode;
   className?: string;
+  sortConfig?: ManagerActionSortConfig;
+  sortKey?: ManagerActionSortKey;
+  onSortChange?: (key: ManagerActionSortKey) => void;
 }) {
+  const isSortable = Boolean(sortKey && sortConfig && onSortChange);
+  const isActive = isSortable && sortConfig?.key === sortKey;
+
   return (
     <th
+      aria-sort={
+        isActive
+          ? sortConfig?.direction === "asc"
+            ? "ascending"
+            : "descending"
+          : undefined
+      }
       className={cx(
         "px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--text-tertiary)]",
         className,
       )}
     >
-      {children}
+      {isSortable && sortKey ? (
+        <button
+          className={cx(
+            "inline-flex items-center gap-1.5 text-left transition hover:text-[var(--signal-blue)]",
+            isActive ? "text-[var(--signal-blue)]" : "",
+          )}
+          onClick={() => onSortChange?.(sortKey)}
+          type="button"
+        >
+          <span>{children}</span>
+          <SortIcon
+            active={Boolean(isActive)}
+            direction={sortConfig?.direction}
+          />
+        </button>
+      ) : (
+        children
+      )}
     </th>
   );
 }
@@ -990,6 +1105,24 @@ function TableCell({
   );
 }
 
+function SortIcon({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction?: SortDirection;
+}) {
+  if (!active) {
+    return <ArrowUpDown aria-hidden="true" size={12} />;
+  }
+
+  return direction === "asc" ? (
+    <ArrowUp aria-hidden="true" size={12} />
+  ) : (
+    <ArrowDown aria-hidden="true" size={12} />
+  );
+}
+
 function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
   const agentNames = getAgentNames(cluster);
 
@@ -997,10 +1130,10 @@ function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
     return (
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-[var(--rail-ink)]">
-          Open detail
+          Buka detail
         </p>
         <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-          Agents load in detail
+          Agent akan dimuat di detail
         </p>
       </div>
     );
@@ -1013,7 +1146,7 @@ function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
         {agentNames.length > 2 ? ` +${agentNames.length - 2}` : ""}
       </p>
       <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-        {cluster.agentCount} agents waiting
+        {cluster.agentCount} agent menunggu
       </p>
     </div>
   );
@@ -1021,10 +1154,10 @@ function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
 
 function formatComplaintCount(cluster: ManagerActionCluster) {
   if (cluster.complaintCount === 0) {
-    return "Open detail for linked complaints";
+    return "Buka detail untuk complaint terkait";
   }
 
-  return `${cluster.complaintCount} complaints in this cluster`;
+  return `${cluster.complaintCount} complaint dalam cluster ini`;
 }
 
 function StatusBadge({ status }: { status: ManagerActionStatus }) {
@@ -1043,10 +1176,10 @@ function CategoryBadge({ category }: { category: ManagerActionCategory }) {
 
 function ComplaintStatusBadge({ status }: { status: ComplaintClusterStatus }) {
   const copy: Record<ComplaintClusterStatus, string> = {
-    closed: "Closed by agent",
-    hea_sent: "HEA sent",
-    ready_to_notify: "Ready to notify",
-    waiting_manager: "HEA sent - waiting manager action",
+    closed: "Ditutup oleh agent",
+    hea_sent: "HEA terkirim",
+    ready_to_notify: "Siap dikabari",
+    waiting_manager: "HEA terkirim - menunggu tindakan manager",
   };
 
   return (
@@ -1098,6 +1231,77 @@ function getAgentNames(cluster: ManagerActionCluster) {
   return Array.from(
     new Set(cluster.complaints.map((complaint) => complaint.agentName)),
   );
+}
+
+function sortManagerClusters(
+  clusters: ManagerActionCluster[],
+  sortConfig: ManagerActionSortConfig,
+) {
+  const direction = sortConfig.direction === "asc" ? 1 : -1;
+
+  return [...clusters].sort((first, second) => {
+    const result = compareManagerSortValues(
+      getManagerClusterSortValue(first, sortConfig.key),
+      getManagerClusterSortValue(second, sortConfig.key),
+    );
+
+    if (result !== 0) {
+      return result * direction;
+    }
+
+    return (
+      compareManagerSortValues(
+        toTime(second.raisedAt),
+        toTime(first.raisedAt),
+      ) || first.displayId.localeCompare(second.displayId)
+    );
+  });
+}
+
+function getManagerClusterSortValue(
+  cluster: ManagerActionCluster,
+  key: ManagerActionSortKey,
+): string | number {
+  if (key === "cluster") {
+    return `${cluster.displayId} ${cluster.title}`;
+  }
+
+  if (key === "category") {
+    return categoryLabel[cluster.category];
+  }
+
+  if (key === "agents") {
+    return cluster.agentCount;
+  }
+
+  if (key === "status") {
+    return managerStatusRank[cluster.status];
+  }
+
+  return toTime(cluster.raisedAt);
+}
+
+function compareManagerSortValues(
+  first: string | number,
+  second: string | number,
+) {
+  if (typeof first === "number" && typeof second === "number") {
+    return first - second;
+  }
+
+  return String(first).localeCompare(String(second), "id", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function toTime(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 const inputClassName =

@@ -1,7 +1,9 @@
-import { Search } from "lucide-react";
+import { ArrowUpDown, Search } from "lucide-react";
 import type {
   FollowUpTicket,
   FollowUpTicketFilter,
+  FollowUpTicketSortConfig,
+  FollowUpTicketSortKey,
 } from "../model/ticket.types";
 import { TicketCard } from "./TicketCard";
 
@@ -9,10 +11,12 @@ interface TicketQueueProps {
   tickets: FollowUpTicket[];
   selectedTicketId: string;
   filter: FollowUpTicketFilter;
+  sortConfig: FollowUpTicketSortConfig;
   searchQuery: string;
   onFilterChange: (filter: FollowUpTicketFilter) => void;
   onSearchChange: (value: string) => void;
   onSelectTicket: (ticketId: string) => void;
+  onSortChange: (key: FollowUpTicketSortKey) => void;
 }
 
 const filters: Array<{ label: string; value: FollowUpTicketFilter }> = [
@@ -22,13 +26,23 @@ const filters: Array<{ label: string; value: FollowUpTicketFilter }> = [
   { label: "Tutup", value: "closed" },
 ];
 
+const sortOptions: Array<{ label: string; value: FollowUpTicketSortKey }> = [
+  { label: "Status", value: "status" },
+  { label: "Pelanggan", value: "customer" },
+  { label: "Kategori", value: "category" },
+  { label: "Prioritas", value: "priority" },
+  { label: "Waktu masuk", value: "submitted" },
+];
+
 export function TicketQueue({
   filter,
   onFilterChange,
   onSearchChange,
   onSelectTicket,
+  onSortChange,
   searchQuery,
   selectedTicketId,
+  sortConfig,
   tickets,
 }: TicketQueueProps) {
   return (
@@ -76,6 +90,34 @@ export function TicketQueue({
               {item.label}
             </button>
           ))}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Urutkan tiket</span>
+            <select
+              className="h-9 w-full rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 text-[11px] font-semibold text-[var(--text-muted)] outline-none transition focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
+              onChange={(event) =>
+                onSortChange(event.target.value as FollowUpTicketSortKey)
+              }
+              value={sortConfig.key}
+            >
+              {sortOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="inline-flex h-9 w-16 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] text-[11px] font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
+            onClick={() => onSortChange(sortConfig.key)}
+            title="Ubah arah urutan"
+            type="button"
+          >
+            <ArrowUpDown aria-hidden="true" size={13} />
+            {sortConfig.direction === "asc" ? "Naik" : "Turun"}
+          </button>
         </div>
       </div>
 

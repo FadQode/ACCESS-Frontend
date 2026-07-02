@@ -55,7 +55,7 @@ export function ComplaintDetail({ complaintId }: ComplaintDetailProps) {
                     className="text-xs font-semibold text-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
                     href="/agent/complaints"
                   >
-                    Back to complaints
+                    Kembali ke Complaints
                   </Link>
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -63,7 +63,7 @@ export function ComplaintDetail({ complaintId }: ComplaintDetailProps) {
                         {complaint.referenceNo}
                       </p>
                       <h1 className="mt-2 text-2xl font-semibold text-[var(--rail-ink)]">
-                        Complaint Detail
+                        Detail Complaint
                       </h1>
                     </div>
                     <ComplaintStatusBadge status={complaint.status} />
@@ -73,7 +73,7 @@ export function ComplaintDetail({ complaintId }: ComplaintDetailProps) {
                 <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_320px]">
                   <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-4">
                     <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
-                      Complaint text
+                      Teks complaint
                     </h2>
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--rail-ink)]">
                       {complaint.complaintText}
@@ -81,18 +81,18 @@ export function ComplaintDetail({ complaintId }: ComplaintDetailProps) {
                   </section>
 
                   <aside className="space-y-3">
-                    <DetailItem label="Category" value={complaint.category} />
-                    <DetailItem label="Source" value={complaint.source} />
+                    <DetailItem label="Kategori" value={complaint.category} />
+                    <DetailItem label="Sumber" value={complaint.source} />
                     <DetailItem
-                      label="Complainer"
+                      label="Pelapor"
                       value={complaint.complainerName ?? "-"}
                     />
                     <DetailItem
-                      label="Contact"
+                      label="Kontak"
                       value={complaint.complainerContact ?? "-"}
                     />
                     <DetailItem
-                      label="Submitted"
+                      label="Masuk"
                       value={
                         complaint.submittedAt ?? complaint.createdAt ?? "-"
                       }
@@ -126,5 +126,5 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Failed to load complaint detail.";
+  return "Detail complaint gagal dimuat.";
 }

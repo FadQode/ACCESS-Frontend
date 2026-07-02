@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
   ChevronRight,
   ExternalLink,
   RefreshCcw,
@@ -9,10 +12,11 @@ import {
   UserRound,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
-import { DashboardNavbar } from "@/core/components/navbar";
+import { DashboardNavbar, type DashboardRole } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useComplaintDetail } from "@/core/dashboard/hooks/use-complaint-detail";
+import { useComplaintStatusCounts } from "@/core/dashboard/hooks/use-complaint-status-counts";
 import { useComplaints } from "@/core/dashboard/hooks/use-complaints";
 import { ApiClientError } from "@/core/dashboard/model/api/client";
 import type {
@@ -26,29 +30,41 @@ type ComplaintStatusFilter =
   | "resolved"
   | "submitted"
   | "waiting_action";
+type SortDirection = "asc" | "desc";
+type ComplaintSortKey =
+  | "complaint"
+  | "source"
+  | "category"
+  | "status"
+  | "handler"
+  | "submitted";
+type ComplaintSortConfig = {
+  key: ComplaintSortKey;
+  direction: SortDirection;
+};
 
 const statusFilters: Array<{
   label: string;
   value: ComplaintStatusFilter;
 }> = [
-  { label: "All", value: "all" },
-  { label: "Submitted", value: "submitted" },
-  { label: "Waiting", value: "waiting_action" },
-  { label: "Resolved", value: "resolved" },
-  { label: "Closed", value: "closed" },
+  { label: "Semua", value: "all" },
+  { label: "Masuk", value: "submitted" },
+  { label: "Menunggu", value: "waiting_action" },
+  { label: "Selesai", value: "resolved" },
+  { label: "Ditutup", value: "closed" },
 ];
 
 const categoryFilters = [
-  { label: "All categories", value: "" },
-  { label: "Delay", value: "delay" },
-  { label: "Refund", value: "refund" },
-  { label: "Cancellation", value: "cancellation" },
-  { label: "Lost item", value: "lost_item" },
-  { label: "Facility", value: "facility" },
-  { label: "Payment", value: "payment" },
-  { label: "Account", value: "account" },
-  { label: "App error", value: "app_error" },
-  { label: "Other", value: "other" },
+  { label: "Semua kategori", value: "" },
+  { label: "Keterlambatan", value: "delay" },
+  { label: "Pengembalian dana", value: "refund" },
+  { label: "Pembatalan", value: "cancellation" },
+  { label: "Barang tertinggal", value: "lost_item" },
+  { label: "Fasilitas", value: "facility" },
+  { label: "Pembayaran", value: "payment" },
+  { label: "Akun", value: "account" },
+  { label: "Kendala aplikasi", value: "app_error" },
+  { label: "Lainnya", value: "other" },
 ];
 
 const sourceLabel: Record<string, string> = {
@@ -56,29 +72,46 @@ const sourceLabel: Record<string, string> = {
   facebook: "Facebook",
   google_play: "Google Play",
   instagram: "Instagram",
-  other: "Other",
+  other: "Lainnya",
   twitter: "Twitter",
   web_form: "Web Form",
 };
 
 const categoryLabel: Record<string, string> = {
-  account: "Account",
-  app_error: "App Error",
-  cancellation: "Cancellation",
-  delay: "Delay",
-  facility: "Facility",
-  lost_item: "Lost Item",
-  other: "Other",
-  payment: "Payment",
-  refund: "Refund",
+  account: "Akun",
+  app_error: "Kendala Aplikasi",
+  cancellation: "Pembatalan",
+  delay: "Keterlambatan",
+  facility: "Fasilitas",
+  lost_item: "Barang Tertinggal",
+  other: "Lainnya",
+  payment: "Pembayaran",
+  refund: "Pengembalian Dana",
 };
 
-export function ComplaintQueue() {
+const complaintStatusRank: Record<string, number> = {
+  submitted: 0,
+  waiting_action: 1,
+  resolved: 2,
+  closed: 3,
+};
+
+type ComplaintQueueProps = {
+  dashboardRole?: DashboardRole;
+};
+
+export function ComplaintQueue({
+  dashboardRole = "agent",
+}: ComplaintQueueProps) {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ComplaintStatusFilter>("all");
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState<ComplaintSortConfig>({
+    direction: "asc",
+    key: "status",
+  });
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(
     null,
   );
@@ -94,6 +127,7 @@ export function ComplaintQueue() {
     [category, page, search, status],
   );
   const complaintsQuery = useComplaints(filters);
+  const statusCountsQuery = useComplaintStatusCounts();
   const complaintDetailQuery = useComplaintDetail(selectedComplaintId ?? "");
   const complaints = complaintsQuery.data?.items ?? [];
   const pagination = complaintsQuery.data?.pagination;
@@ -102,23 +136,28 @@ export function ComplaintQueue() {
     complaints.find((complaint) => complaint.id === selectedComplaintId) ??
     null;
 
-  const statusCounts = useMemo(
-    () => ({
-      all: pagination?.total ?? complaints.length,
-      closed: complaints.filter((complaint) => complaint.status === "closed")
-        .length,
-      resolved: complaints.filter(
-        (complaint) => complaint.status === "resolved",
-      ).length,
-      submitted: complaints.filter(
-        (complaint) => complaint.status === "submitted",
-      ).length,
-      waiting_action: complaints.filter(
-        (complaint) => complaint.status === "waiting_action",
-      ).length,
-    }),
-    [complaints, pagination?.total],
+  const statusCounts = statusCountsQuery.counts;
+
+  const sortedComplaints = useMemo(
+    () => sortComplaints(complaints, sortConfig),
+    [complaints, sortConfig],
   );
+
+  const changeSort = (key: ComplaintSortKey) => {
+    setSortConfig((current) => {
+      if (current.key === key) {
+        return {
+          direction: current.direction === "asc" ? "desc" : "asc",
+          key,
+        };
+      }
+
+      return {
+        direction: key === "submitted" ? "desc" : "asc",
+        key,
+      };
+    });
+  };
 
   const openComplaint = (complaint: Complaint) => {
     setSelectedComplaintId(complaint.id);
@@ -129,41 +168,48 @@ export function ComplaintQueue() {
     setSelectedComplaintId(null);
     window.scrollTo({ behavior: "smooth", top: 0 });
   };
+  const roleLabel =
+    dashboardRole === "manager" ? "Manager layanan" : "Agen layanan";
+  const userName = dashboardRole === "manager" ? "Manager" : "User";
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
       <div className="mx-auto flex max-w-[1680px] flex-col gap-4 lg:flex-row">
         <DashboardSidebar
-          dashboardRole="agent"
+          dashboardRole={dashboardRole}
           isOpen={sidebarOpen}
           onClose={closeSidebar}
           stats={[
-            { label: "Loaded", value: complaints.length.toString() },
-            { label: "Waiting", value: statusCounts.waiting_action.toString() },
+            { label: "Dimuat", value: complaints.length.toString() },
+            {
+              label: "Menunggu",
+              value: statusCounts.waiting_action.toString(),
+            },
             { label: "Total", value: String(pagination?.total ?? 0) },
           ]}
         />
 
         <section className="min-w-0 flex-1 rounded-[22px] bg-[var(--surface-muted)] p-3 sm:p-5">
           <DashboardNavbar
-            dashboardRole="agent"
+            dashboardRole={dashboardRole}
             isSidebarOpen={sidebarOpen}
             onSidebarToggle={toggleSidebar}
-            roleLabel="Agen layanan"
-            userName="User"
+            roleLabel={roleLabel}
+            userName={userName}
           />
 
           <div className="overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] shadow-[var(--shadow-soft)]">
             {!selectedComplaint ? (
               <ComplaintTableView
                 category={category}
-                complaints={complaints}
+                complaints={sortedComplaints}
                 errorMessage={getErrorMessage(complaintsQuery.error)}
                 isError={complaintsQuery.isError}
                 isLoading={complaintsQuery.isLoading}
                 page={page}
                 paginationTotalPages={pagination?.totalPages ?? 1}
                 search={search}
+                sortConfig={sortConfig}
                 status={status}
                 statusCounts={statusCounts}
                 onCategoryChange={(value) => {
@@ -182,6 +228,7 @@ export function ComplaintQueue() {
                   setPage(1);
                   setSearch(value);
                 }}
+                onSortChange={changeSort}
                 onStatusChange={(value) => {
                   setPage(1);
                   setStatus(value);
@@ -210,6 +257,7 @@ function ComplaintTableView({
   page,
   paginationTotalPages,
   search,
+  sortConfig,
   status,
   statusCounts,
   onCategoryChange,
@@ -218,6 +266,7 @@ function ComplaintTableView({
   onPreviousPage,
   onRetry,
   onSearchChange,
+  onSortChange,
   onStatusChange,
 }: {
   category: string;
@@ -228,6 +277,7 @@ function ComplaintTableView({
   page: number;
   paginationTotalPages: number;
   search: string;
+  sortConfig: ComplaintSortConfig;
   status: ComplaintStatusFilter;
   statusCounts: Record<ComplaintStatusFilter, number>;
   onCategoryChange: (category: string) => void;
@@ -236,6 +286,7 @@ function ComplaintTableView({
   onPreviousPage: () => void;
   onRetry: () => void;
   onSearchChange: (search: string) => void;
+  onSortChange: (key: ComplaintSortKey) => void;
   onStatusChange: (status: ComplaintStatusFilter) => void;
 }) {
   return (
@@ -247,7 +298,7 @@ function ComplaintTableView({
               Complaints
             </h1>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Customer reports across public and private channels
+              Laporan pelanggan dari kanal publik dan privat
             </p>
           </div>
 
@@ -256,14 +307,14 @@ function ComplaintTableView({
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.waiting_action}
               </span>{" "}
-              waiting &middot;{" "}
+              menunggu &middot;{" "}
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.resolved}
               </span>{" "}
-              resolved
+              selesai
             </div>
             <label className="relative block w-full sm:w-[260px]">
-              <span className="sr-only">Search complaints</span>
+              <span className="sr-only">Cari complaints</span>
               <Search
                 aria-hidden="true"
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -272,7 +323,7 @@ function ComplaintTableView({
               <input
                 className="h-10 w-full rounded-md border border-[var(--rail-border)] bg-[var(--background)] pl-9 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Search complaints..."
+                placeholder="Cari complaint..."
                 type="search"
                 value={search}
               />
@@ -283,13 +334,13 @@ function ComplaintTableView({
 
       <div className="bg-[var(--surface-muted)] p-4 sm:p-5">
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <MetricCard label="Total complaints" value={statusCounts.all} />
+          <MetricCard label="Total complaint" value={statusCounts.all} />
           <MetricCard
-            label="Waiting action"
+            label="Menunggu aksi"
             value={statusCounts.waiting_action}
           />
           <MetricCard
-            label="Resolved / closed"
+            label="Selesai / ditutup"
             value={statusCounts.resolved + statusCounts.closed}
           />
         </div>
@@ -334,20 +385,62 @@ function ComplaintTableView({
             <table className="w-full min-w-[940px] border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rail-border)] bg-[var(--background)]">
-                  <TableHead className="w-[30%]">Complaint</TableHead>
-                  <TableHead className="w-[12%]">Source</TableHead>
-                  <TableHead className="w-[13%]">Category</TableHead>
-                  <TableHead className="w-[14%]">Status</TableHead>
-                  <TableHead className="w-[17%]">Handler</TableHead>
-                  <TableHead className="w-[10%]">Submitted</TableHead>
-                  <TableHead className="w-[4%] text-right">Action</TableHead>
+                  <TableHead
+                    className="w-[30%]"
+                    sortConfig={sortConfig}
+                    sortKey="complaint"
+                    onSortChange={onSortChange}
+                  >
+                    Complaint
+                  </TableHead>
+                  <TableHead
+                    className="w-[12%]"
+                    sortConfig={sortConfig}
+                    sortKey="source"
+                    onSortChange={onSortChange}
+                  >
+                    Sumber
+                  </TableHead>
+                  <TableHead
+                    className="w-[13%]"
+                    sortConfig={sortConfig}
+                    sortKey="category"
+                    onSortChange={onSortChange}
+                  >
+                    Kategori
+                  </TableHead>
+                  <TableHead
+                    className="w-[14%]"
+                    sortConfig={sortConfig}
+                    sortKey="status"
+                    onSortChange={onSortChange}
+                  >
+                    Status
+                  </TableHead>
+                  <TableHead
+                    className="w-[17%]"
+                    sortConfig={sortConfig}
+                    sortKey="handler"
+                    onSortChange={onSortChange}
+                  >
+                    Penangan
+                  </TableHead>
+                  <TableHead
+                    className="w-[10%]"
+                    sortConfig={sortConfig}
+                    sortKey="submitted"
+                    onSortChange={onSortChange}
+                  >
+                    Masuk
+                  </TableHead>
+                  <TableHead className="w-[4%] text-right">Aksi</TableHead>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <TableState
-                    description="Fetching complaints from backend."
-                    title="Loading complaints..."
+                    description="Mengambil data complaint dari backend."
+                    title="Memuat complaints..."
                   />
                 ) : isError ? (
                   <TableState
@@ -358,11 +451,11 @@ function ComplaintTableView({
                         type="button"
                       >
                         <RefreshCcw aria-hidden="true" size={14} />
-                        Try again
+                        Coba lagi
                       </button>
                     }
                     description={errorMessage}
-                    title="Failed to load complaints"
+                    title="Complaints gagal dimuat"
                   />
                 ) : complaints.length > 0 ? (
                   complaints.map((complaint) => (
@@ -407,8 +500,8 @@ function ComplaintTableView({
                   ))
                 ) : (
                   <TableState
-                    description="Try changing the filter or search keyword."
-                    title="No complaints found"
+                    description="Coba ubah filter atau kata kunci pencarian."
+                    title="Tidak ada complaint yang cocok"
                   />
                 )}
               </tbody>
@@ -423,10 +516,10 @@ function ComplaintTableView({
             onClick={onPreviousPage}
             type="button"
           >
-            Previous
+            Sebelumnya
           </button>
           <span className="text-xs text-[var(--text-muted)]">
-            Page {page} of {paginationTotalPages}
+            Halaman {page} dari {paginationTotalPages}
           </span>
           <button
             className="h-10 rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -434,7 +527,7 @@ function ComplaintTableView({
             onClick={onNextPage}
             type="button"
           >
-            Next
+            Berikutnya
           </button>
         </div>
       </div>
@@ -463,7 +556,7 @@ function ComplaintDetailView({
           type="button"
         >
           <ArrowLeft aria-hidden="true" size={15} />
-          Back to complaints
+          Kembali ke Complaints
         </button>
       </div>
 
@@ -477,12 +570,12 @@ function ComplaintDetailView({
               <StatusBadge status={complaint.status} />
               <CategoryBadge category={complaint.category} />
               <span className="text-xs text-[var(--text-muted)]">
-                {formatSource(complaint)} &middot; submitted{" "}
+                {formatSource(complaint)} &middot; masuk{" "}
                 {formatRelativeDate(complaint.submittedAt)}
               </span>
             </div>
           </div>
-          <Badge>{complaint.trackingToken ?? "No tracking token"}</Badge>
+          <Badge>{complaint.trackingToken ?? "Tanpa tracking token"}</Badge>
         </div>
       </section>
 
@@ -490,19 +583,19 @@ function ComplaintDetailView({
         <div className="space-y-5">
           {isLoadingDetail ? (
             <p className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3 text-xs text-[var(--text-muted)]">
-              Loading complaint detail...
+              Memuat detail complaint...
             </p>
           ) : null}
 
-          <Panel title="Complaint text">
+          <Panel title="Teks complaint">
             <p className="whitespace-pre-wrap text-sm leading-7 text-[var(--rail-ink)]">
               {complaint.complaintText}
             </p>
           </Panel>
 
           <Panel
-            countLabel={`${sessions.length} sessions`}
-            title="Handling status"
+            countLabel={`${sessions.length} sesi`}
+            title="Status penanganan"
           >
             {sessions.length > 0 ? (
               <div className="divide-y divide-[var(--rail-border)] overflow-hidden rounded-lg border border-[var(--rail-border)]">
@@ -521,7 +614,7 @@ function ComplaintDetailView({
                           {formatAbsoluteDate(session.createdAt)}
                         </p>
                       </div>
-                      <Badge>{session.responseTarget ?? "response"}</Badge>
+                      <Badge>{session.responseTarget ?? "respons"}</Badge>
                     </div>
                     {session.finalResponse ? (
                       <p className="mt-3 line-clamp-3 text-xs leading-6 text-[var(--text-muted)]">
@@ -534,11 +627,11 @@ function ComplaintDetailView({
             ) : (
               <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4">
                 <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                  No handling session yet
+                  Belum ada sesi penanganan
                 </p>
                 <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                  Quick response sessions will appear after an agent handles
-                  this complaint.
+                  Sesi Quick Response akan muncul setelah agent menangani
+                  complaint ini.
                 </p>
               </div>
             )}
@@ -547,19 +640,19 @@ function ComplaintDetailView({
 
         <aside className="space-y-5">
           <Panel
-            countLabel={latestSession?.agent?.name ?? "No handler"}
-            title="Reporter and source"
+            countLabel={latestSession?.agent?.name ?? "Belum ada penangan"}
+            title="Pelapor dan sumber"
           >
             <div className="space-y-3">
               <DetailRow
-                label="Complainer"
-                value={complaint.complainerName ?? "Anonymous"}
+                label="Pelapor"
+                value={complaint.complainerName ?? "Anonim"}
               />
               <DetailRow
-                label="Contact"
+                label="Kontak"
                 value={complaint.complainerContact ?? "-"}
               />
-              <DetailRow label="Source" value={formatSource(complaint)} />
+              <DetailRow label="Sumber" value={formatSource(complaint)} />
               <DetailRow label="Handle" value={complaint.sourceHandle ?? "-"} />
               {complaint.sourceUrl ? (
                 <a
@@ -569,15 +662,15 @@ function ComplaintDetailView({
                   target="_blank"
                 >
                   <ExternalLink aria-hidden="true" size={14} />
-                  Open source
+                  Buka sumber
                 </a>
               ) : null}
             </div>
           </Panel>
 
-          <Panel title="Timeline">
+          <Panel title="Linimasa">
             <TimelineItem
-              label="Complaint submitted"
+              label="Complaint masuk"
               time={formatAbsoluteDate(
                 complaint.submittedAt ?? complaint.createdAt,
               )}
@@ -585,13 +678,13 @@ function ComplaintDetailView({
             {sessions.map((session) => (
               <TimelineItem
                 key={session.id}
-                label={`${session.agent?.name ?? "Agent"} handled response`}
+                label={`${session.agent?.name ?? "Agent"} menangani respons`}
                 time={formatAbsoluteDate(session.createdAt)}
               />
             ))}
             {complaint.resolvedAt ? (
               <TimelineItem
-                label="Complaint resolved"
+                label="Complaint selesai"
                 time={formatAbsoluteDate(complaint.resolvedAt)}
                 tone="success"
               />
@@ -629,7 +722,7 @@ function HandlerSummary({ complaint }: { complaint: Complaint }) {
           {complaint.status === "submitted" ? "Belum ditugaskan" : "Agent"}
         </p>
         <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-          Open detail for handler
+          Buka detail penangan
         </p>
       </div>
     </div>
@@ -638,10 +731,10 @@ function HandlerSummary({ complaint }: { complaint: Complaint }) {
 
 function StatusBadge({ status }: { status: string }) {
   const copy: Record<string, string> = {
-    closed: "Closed",
-    resolved: "Resolved",
-    submitted: "Submitted",
-    waiting_action: "Waiting Action",
+    closed: "Ditutup",
+    resolved: "Selesai",
+    submitted: "Masuk",
+    waiting_action: "Menunggu Aksi",
   };
   const classes: Record<string, string> = {
     closed: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
@@ -720,18 +813,51 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 function TableHead({
   children,
   className,
+  sortConfig,
+  sortKey,
+  onSortChange,
 }: {
   children: ReactNode;
   className?: string;
+  sortConfig?: ComplaintSortConfig;
+  sortKey?: ComplaintSortKey;
+  onSortChange?: (key: ComplaintSortKey) => void;
 }) {
+  const isSortable = Boolean(sortKey && sortConfig && onSortChange);
+  const isActive = isSortable && sortConfig?.key === sortKey;
+
   return (
     <th
+      aria-sort={
+        isActive
+          ? sortConfig?.direction === "asc"
+            ? "ascending"
+            : "descending"
+          : undefined
+      }
       className={cx(
         "px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--text-tertiary)]",
         className,
       )}
     >
-      {children}
+      {isSortable && sortKey ? (
+        <button
+          className={cx(
+            "inline-flex items-center gap-1.5 text-left transition hover:text-[var(--signal-blue)]",
+            isActive ? "text-[var(--signal-blue)]" : "",
+          )}
+          onClick={() => onSortChange?.(sortKey)}
+          type="button"
+        >
+          <span>{children}</span>
+          <SortIcon
+            active={Boolean(isActive)}
+            direction={sortConfig?.direction}
+          />
+        </button>
+      ) : (
+        children
+      )}
     </th>
   );
 }
@@ -752,6 +878,24 @@ function TableCell({
     >
       {children}
     </td>
+  );
+}
+
+function SortIcon({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction?: SortDirection;
+}) {
+  if (!active) {
+    return <ArrowUpDown aria-hidden="true" size={12} />;
+  }
+
+  return direction === "asc" ? (
+    <ArrowUp aria-hidden="true" size={12} />
+  ) : (
+    <ArrowDown aria-hidden="true" size={12} />
   );
 }
 
@@ -840,16 +984,95 @@ function formatSource(complaint: Complaint) {
     : source;
 }
 
+function sortComplaints(
+  complaints: Complaint[],
+  sortConfig: ComplaintSortConfig,
+) {
+  const direction = sortConfig.direction === "asc" ? 1 : -1;
+
+  return [...complaints].sort((first, second) => {
+    const result = compareComplaintValues(
+      getComplaintSortValue(first, sortConfig.key),
+      getComplaintSortValue(second, sortConfig.key),
+    );
+
+    if (result !== 0) {
+      return result * direction;
+    }
+
+    return (
+      compareComplaintValues(
+        toTime(second.submittedAt ?? second.createdAt),
+        toTime(first.submittedAt ?? first.createdAt),
+      ) || first.referenceNo.localeCompare(second.referenceNo)
+    );
+  });
+}
+
+function getComplaintSortValue(
+  complaint: Complaint,
+  key: ComplaintSortKey,
+): string | number {
+  if (key === "complaint") {
+    return `${complaint.referenceNo} ${complaint.complaintText}`;
+  }
+
+  if (key === "source") {
+    return formatSource(complaint);
+  }
+
+  if (key === "category") {
+    return categoryLabel[complaint.category] ?? complaint.category;
+  }
+
+  if (key === "status") {
+    return complaintStatusRank[complaint.status] ?? 99;
+  }
+
+  if (key === "handler") {
+    return getComplaintHandlerName(complaint);
+  }
+
+  return toTime(complaint.submittedAt ?? complaint.createdAt);
+}
+
+function getComplaintHandlerName(complaint: Complaint) {
+  return complaint.quickResponseSessions?.[0]?.agent?.name ?? "";
+}
+
+function compareComplaintValues(
+  first: string | number,
+  second: string | number,
+) {
+  if (typeof first === "number" && typeof second === "number") {
+    return first - second;
+  }
+
+  return String(first).localeCompare(String(second), "id", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function toTime(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 function formatOutcome(outcome?: string) {
   const copy: Record<string, string> = {
-    copy_only: "Copied only",
-    escalated: "Escalated",
-    saved_ticket: "Saved ticket",
-    sent_hea_action: "HEA and action requested",
-    sent_resolved: "Resolved response",
+    copy_only: "Hanya disalin",
+    escalated: "Dieskalasi",
+    saved_ticket: "Ticket tersimpan",
+    sent_hea_action: "HEA terkirim dan aksi diminta",
+    sent_resolved: "Respons selesai",
   };
 
-  return outcome ? (copy[outcome] ?? outcome) : "Response session";
+  return outcome ? (copy[outcome] ?? outcome) : "Sesi respons";
 }
 
 function formatAbsoluteDate(value?: string | null) {
@@ -910,7 +1133,7 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Failed to load complaints.";
+  return "Complaints gagal dimuat.";
 }
 
 function cx(...classes: Array<string | false | null | undefined>) {

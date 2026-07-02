@@ -1,10 +1,10 @@
 import type { ComplaintStatus } from "@/core/dashboard/model/types/complaint.types";
 
 const STATUS_LABEL: Record<string, string> = {
-  closed: "Closed",
-  resolved: "Resolved",
-  submitted: "Submitted",
-  waiting_action: "Waiting action",
+  closed: "Ditutup",
+  resolved: "Selesai",
+  submitted: "Masuk",
+  waiting_action: "Menunggu aksi",
 };
 
 export type ComplaintStatusBadgeProps = {

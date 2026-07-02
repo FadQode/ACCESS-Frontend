@@ -98,7 +98,7 @@ export function TicketWorkspace() {
           {workspace.isLoading && !workspace.selectedTicket ? (
             <TicketWorkspaceState
               title="Memuat tickets..."
-              description="Mengambil follow-up ticket dari backend."
+              description="Mengambil ticket tindak lanjut dari backend."
             />
           ) : workspace.errorMessage ? (
             <TicketWorkspaceState
@@ -128,8 +128,10 @@ export function TicketWorkspace() {
                 onFilterChange={workspace.setFilter}
                 onSearchChange={workspace.setSearchQuery}
                 onSelectTicket={workspace.setSelectedTicketId}
+                onSortChange={workspace.setSortKey}
                 searchQuery={workspace.searchQuery}
                 selectedTicketId={workspace.selectedTicketId}
+                sortConfig={workspace.sortConfig}
                 tickets={workspace.tickets}
               />
               <TicketDetail

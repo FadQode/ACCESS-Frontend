@@ -166,13 +166,13 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
       {actionCompleted ? (
         <>
           <RoleMessage
-            label="Action taken - catatan internal"
+            label="Tindakan dilakukan - catatan internal"
             actorRole="manager"
             text={ticket.managerAction.actionTaken ?? "Arahan selesai."}
           />
           <div className="mt-3">
             <RoleMessage
-              label="Closure message - saran balasan pelanggan"
+              label="Pesan penutup - saran balasan pelanggan"
               actorRole="agent"
               quote
               text={
@@ -201,8 +201,8 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
               Hasil tim internal
             </div>
             <p className="text-xs leading-6 text-[var(--text-muted)]">
-              Action taken dipakai sebagai catatan internal. Closure message
-              sudah dimuat sebagai draft balasan akhir di bawah.
+              Tindakan yang dilakukan dipakai sebagai catatan internal. Pesan
+              penutup sudah dimuat sebagai draft balasan akhir di bawah.
             </p>
           </div>
         </>
@@ -330,7 +330,7 @@ function ClosureMessageCard({
             ? "Menandai selesai..."
             : ticket.status === "closed"
               ? "Tiket ditutup"
-              : "Salin Balasan & Tandai Selesai"}
+              : "Salin balasan & tandai selesai"}
         </button>
       </div>
     </WorkflowCard>
