@@ -1,5 +1,5 @@
-import { ComplaintList } from "@/core/dashboard/complaints/complaint-list";
+import { ComplaintQueue } from "@/core/dashboard/complaints/complaint-queue";
 
 export default function AgentComplaintsPage() {
-  return <ComplaintList />;
+  return <ComplaintQueue />;
 }
