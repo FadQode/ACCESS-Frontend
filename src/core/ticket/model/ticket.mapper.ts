@@ -50,6 +50,7 @@ export function mapBackendTicketToFollowUpTicket(
     sourceType: "Follow-up",
     status,
     submittedAt: formatAbsoluteDate(createdAt),
+    submittedAtValue: createdAt,
     username: ticket.referenceNo
       ? `#${ticket.referenceNo}`
       : shortId(ticket.id),

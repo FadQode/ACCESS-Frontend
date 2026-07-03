@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   BookOpen,
   ClipboardCheck,
   Gauge,
@@ -50,8 +51,8 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
     },
     { href: "/agent/tickets", icon: Inbox, label: "Tickets" },
     { href: "/agent/complaints", icon: ClipboardCheck, label: "Complaints" },
+    { href: "/agent/reports", icon: BarChart3, label: "Reports" },
     // { href: "/agent/knowledge", icon: BookOpen, label: "Knowledge" },
-    // { href: "/agent/reports", icon: BarChart3, label: "Reports" },
   ],
   manager: [
     { href: "/manager", icon: LineChart, label: "Overview" },

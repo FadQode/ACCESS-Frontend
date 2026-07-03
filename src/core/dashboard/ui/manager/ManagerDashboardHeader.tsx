@@ -24,11 +24,11 @@ export function ManagerDashboardHeader({
             ACCESS · operations
           </p>
           <h1 className="mt-2 text-2xl font-semibold leading-tight text-[var(--rail-ink)]">
-            Manager overview
+            Overview operasional
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-            Kondisi keluhan, performa tim, dan eskalasi dalam satu tampilan
-            ringkas.
+            Ringkasan cepat untuk total keluhan, penyelesaian, eskalasi, tren
+            komplain, dan distribusi kategori.
           </p>
         </div>
 

@@ -7,7 +7,7 @@ interface ManagerSummarySectionProps {
 
 export function ManagerSummarySection({ metrics }: ManagerSummarySectionProps) {
   return (
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {metrics.map((metric) => (
         <ManagerMetricCard key={metric.id} metric={metric} />
       ))}

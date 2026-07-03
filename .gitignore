@@ -20,6 +20,8 @@
 # production
 /build
 *agents
+!src/app/(protected)/manager/agents/
+!src/app/(protected)/manager/agents/**
 
 # misc
 .DS_Store

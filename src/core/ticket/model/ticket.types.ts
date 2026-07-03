@@ -207,6 +207,7 @@ export interface FollowUpTicket {
   route?: string;
   originalComplaint: string;
   submittedAt: string;
+  submittedAtValue?: string;
   relativeTime: string;
   safeReplyText?: string;
   safeReplyCopiedAt?: string;

@@ -17,7 +17,13 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
@@ -51,6 +57,10 @@ type ManagerActionSortKey =
 type ManagerActionSortConfig = {
   key: ManagerActionSortKey;
   direction: SortDirection;
+};
+type ActionReferenceModalStyle = CSSProperties & {
+  "--action-reference-modal-max-height": string;
+  "--action-reference-modal-top": string;
 };
 
 const statusFilters: Array<{
@@ -1071,6 +1081,41 @@ function AttachReferenceModal({
     useState<ActionRequestReferenceUsageType>("closure_support");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [modalStyle, setModalStyle] = useState<ActionReferenceModalStyle>({
+    "--action-reference-modal-max-height": "calc(100dvh - 32px)",
+    "--action-reference-modal-top": "16px",
+  });
+
+
+
+  useEffect(() => {
+    const updateModalViewport = () => {
+      const viewport = window.visualViewport;
+      const visibleHeight = viewport?.height ?? window.innerHeight;
+
+      setModalStyle({
+        "--action-reference-modal-max-height": `${Math.max(
+          120,
+          visibleHeight - 32,
+        )}px`,
+        "--action-reference-modal-top": `${(visibleHeight - Math.min(visibleHeight - 32, 600)) / 2}px`,
+      });
+    };
+
+    updateModalViewport();
+
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", updateModalViewport);
+    viewport?.addEventListener("scroll", updateModalViewport);
+    window.addEventListener("resize", updateModalViewport);
+
+    return () => {
+      viewport?.removeEventListener("resize", updateModalViewport);
+      viewport?.removeEventListener("scroll", updateModalViewport);
+      window.removeEventListener("resize", updateModalViewport);
+    };
+  }, []);
+
   const referencesQuery = useReferences({
     limit: 20,
     page: 1,
@@ -1105,9 +1150,12 @@ function AttachReferenceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]">
-      <section className="sticky top-4 mx-auto max-h-[calc(100vh-32px)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
-        <header className="flex items-center justify-between gap-3 border-b border-[var(--rail-border)] px-4 py-3">
+    <div
+      className="fixed inset-0 z-50 overflow-hidden bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]"
+      style={modalStyle}
+    >
+      <section className="fixed left-1/2 top-[var(--action-reference-modal-top)] flex max-h-[var(--action-reference-modal-max-height)] w-[calc(100vw-32px)] max-w-2xl -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--rail-border)] bg-white px-4 py-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--signal-blue)]">
               {actionRequestId}
@@ -1126,7 +1174,7 @@ function AttachReferenceModal({
           </button>
         </header>
 
-        <div className="space-y-4 p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
           <label className="relative block">
             <span className="sr-only">Cari referensi</span>
             <Search
@@ -1177,7 +1225,7 @@ function AttachReferenceModal({
             </label>
           </div>
 
-          <div className="max-h-[360px] space-y-2 overflow-y-auto rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-2">
+          <div className="min-h-36 flex-1 space-y-2 overflow-y-auto rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-2">
             {referencesQuery.isLoading ? (
               <div className="flex items-center gap-2 px-3 py-6 text-xs text-[var(--text-muted)]">
                 <LoaderCircle
@@ -1216,7 +1264,7 @@ function AttachReferenceModal({
             </p>
           ) : null}
 
-          <div className="flex justify-end gap-2 border-t border-[var(--rail-border)] pt-4">
+          <div className="shrink-0 flex justify-end gap-2 border-t border-[var(--rail-border)] pt-4">
             <button
               className="h-10 rounded-lg border border-[var(--rail-border)] px-4 text-xs font-semibold text-[var(--text-muted)]"
               onClick={onClose}

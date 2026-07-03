@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  type CSSProperties,
   type FormEvent,
   type ReactNode,
   useEffect,
@@ -56,10 +57,14 @@ type ModalState =
   | { type: "archive"; reference: ReferenceItem }
   | null;
 type SortDirection = "asc" | "desc";
-type ReferenceSortKey = "title" | "type" | "tags" | "uploadedBy";
+type ReferenceSortKey = "createdAt" | "tags" | "title" | "type" | "uploadedBy";
 type ReferenceSortConfig = {
   key: ReferenceSortKey;
   direction: SortDirection;
+};
+type ReferenceModalStyle = CSSProperties & {
+  "--reference-modal-max-height": string;
+  "--reference-modal-top": string;
 };
 
 const CATEGORY_OPTIONS: Array<{ label: string; value: ReferenceCategory }> = [
@@ -447,6 +452,14 @@ function ReferenceTable({
                 onSortChange={onSortChange}
               />
             </th>
+            <th className="border-b border-[var(--rail-border)] px-3 py-3 font-semibold">
+              <SortButton
+                label="Ditambahkan"
+                sortConfig={sortConfig}
+                sortKey="createdAt"
+                onSortChange={onSortChange}
+              />
+            </th>
             <th className="w-24 border-b border-[var(--rail-border)] px-3 py-3 text-right font-semibold">
               Aksi
             </th>
@@ -488,6 +501,9 @@ function ReferenceTable({
               </td>
               <td className="border-b border-[var(--rail-border)] px-3 py-4 text-xs font-semibold text-[var(--text-muted)]">
                 {getReferenceOwner(reference)}
+              </td>
+              <td className="whitespace-nowrap border-b border-[var(--rail-border)] px-3 py-4 text-xs font-semibold text-[var(--text-muted)]">
+                {formatReferenceDate(reference.createdAt)}
               </td>
               <td className="border-b border-[var(--rail-border)] px-3 py-4 text-right">
                 <div
@@ -921,19 +937,48 @@ function ModalShell({
   onClose: () => void;
   title: string;
 }) {
+  const [modalStyle, setModalStyle] = useState<ReferenceModalStyle>({
+    "--reference-modal-max-height": "calc(100dvh - 32px)",
+    "--reference-modal-top": "16px",
+  });
+
+
+
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const updateModalViewport = () => {
+      const viewport = window.visualViewport;
+      const visibleHeight = viewport?.height ?? window.innerHeight;
+
+      setModalStyle({
+        "--reference-modal-max-height": `${Math.max(
+          120,
+          visibleHeight - 32,
+        )}px`,
+        "--reference-modal-top": `${(visibleHeight - Math.min(visibleHeight - 32, 600)) / 2}px`,
+      });
+    };
+
+    updateModalViewport();
+
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", updateModalViewport);
+    viewport?.addEventListener("scroll", updateModalViewport);
+    window.addEventListener("resize", updateModalViewport);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      viewport?.removeEventListener("resize", updateModalViewport);
+      viewport?.removeEventListener("scroll", updateModalViewport);
+      window.removeEventListener("resize", updateModalViewport);
     };
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(19,35,31,0.42)] p-4 pt-6 backdrop-blur-[2px] sm:pt-10">
-      <section className="sticky top-4 mx-auto max-h-[calc(100vh-32px)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
-        <header className="flex items-center justify-between gap-3 border-b border-[var(--rail-border)] px-4 py-3">
+    <div
+      className="fixed inset-0 z-50 overflow-hidden bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]"
+      style={modalStyle}
+    >
+      <section className="fixed left-1/2 top-[var(--reference-modal-top)] flex max-h-[var(--reference-modal-max-height)] w-[calc(100vw-32px)] max-w-2xl -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--rail-border)] bg-white px-4 py-3">
           <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
             {title}
           </h2>
@@ -946,7 +991,7 @@ function ModalShell({
             <X aria-hidden="true" size={14} />
           </button>
         </header>
-        <div className="p-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
       </section>
     </div>
   );
@@ -1108,13 +1153,9 @@ function sortReferences(
   const direction = sortConfig.direction === "asc" ? 1 : -1;
 
   return [...references].sort((first, second) => {
-    const result = getReferenceSortValue(first, sortConfig.key).localeCompare(
+    const result = compareReferenceSortValues(
+      getReferenceSortValue(first, sortConfig.key),
       getReferenceSortValue(second, sortConfig.key),
-      "id",
-      {
-        numeric: true,
-        sensitivity: "base",
-      },
     );
 
     return result * direction;
@@ -1124,7 +1165,11 @@ function sortReferences(
 function getReferenceSortValue(
   reference: ReferenceItem,
   key: ReferenceSortKey,
-) {
+): number | string {
+  if (key === "createdAt") {
+    return toTime(reference.createdAt);
+  }
+
   if (key === "type") {
     return reference.displayType;
   }
@@ -1138,6 +1183,49 @@ function getReferenceSortValue(
   }
 
   return reference.title;
+}
+
+function compareReferenceSortValues(
+  first: number | string,
+  second: number | string,
+) {
+  if (typeof first === "number" && typeof second === "number") {
+    return first - second;
+  }
+
+  return String(first).localeCompare(String(second), "id", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function formatReferenceDate(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function toTime(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function parseTags(value: string) {

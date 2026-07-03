@@ -345,8 +345,8 @@ function sortFollowUpTickets(
 
     return (
       compareTicketSortValues(
-        toTime(second.submittedAt),
-        toTime(first.submittedAt),
+        toTime(second.submittedAtValue ?? second.submittedAt),
+        toTime(first.submittedAtValue ?? first.submittedAt),
       ) || first.displayId.localeCompare(second.displayId)
     );
   });
@@ -372,7 +372,7 @@ function getTicketSortValue(
     return ticketPriorityRank[ticket.priority];
   }
 
-  return toTime(ticket.submittedAt);
+  return toTime(ticket.submittedAtValue ?? ticket.submittedAt);
 }
 
 function compareTicketSortValues(
@@ -394,6 +394,40 @@ function toTime(value?: string | null) {
     return 0;
   }
 
-  const time = new Date(value).getTime();
+  const normalized = normalizeIndonesianDate(value);
+  const time = new Date(normalized).getTime();
   return Number.isNaN(time) ? 0 : time;
+}
+
+function normalizeIndonesianDate(value: string) {
+  const monthMap: Record<string, string> = {
+    Agu: "Aug",
+    Agustus: "Aug",
+    Apr: "Apr",
+    April: "Apr",
+    Des: "Dec",
+    Desember: "Dec",
+    Feb: "Feb",
+    Februari: "Feb",
+    Jan: "Jan",
+    Januari: "Jan",
+    Jul: "Jul",
+    Juli: "Jul",
+    Jun: "Jun",
+    Juni: "Jun",
+    Mar: "Mar",
+    Maret: "Mar",
+    Mei: "May",
+    Nov: "Nov",
+    November: "Nov",
+    Okt: "Oct",
+    Oktober: "Oct",
+    Sep: "Sep",
+    September: "Sep",
+  };
+
+  return value.replace(
+    /\b(Januari|Jan|Februari|Feb|Maret|Mar|April|Apr|Mei|Juni|Jun|Juli|Jul|Agustus|Agu|September|Sep|Oktober|Okt|November|Nov|Desember|Des)\b/g,
+    (month) => monthMap[month] ?? month,
+  );
 }
