@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Eye, EyeOff, Info, RefreshCcw } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Info, RefreshCcw, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
@@ -9,7 +9,9 @@ import { LoadingOverlay } from "@/core/components/feedback/loading-overlay";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
+import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
 import { useTicketWorkspace } from "../hooks/useTicketWorkspace";
+import type { AttachedReferenceForTicket } from "../model/ticket.types";
 import { TicketAssistPanel } from "./TicketAssistPanel";
 import { TicketDetail } from "./TicketDetail";
 import { TicketQueue } from "./TicketQueue";
@@ -18,12 +20,56 @@ export function TicketWorkspace() {
   const workspace = useTicketWorkspace();
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
+  const fileUrlMutation = useReferenceFileUrl();
   const [navbarVisible, setNavbarVisible] = useState(true);
   const [assistPanelOpen, setAssistPanelOpen] = useState(false);
+  const [referencePreview, setReferencePreview] =
+    useState<AttachedReferenceForTicket | null>(null);
+  const [referenceFeedback, setReferenceFeedback] = useState({
+    description: "",
+    open: false,
+    title: "",
+  });
 
   const activeTicketCount = workspace.readyCount + workspace.waitingCount;
   const isAdminFinalClosure = sessionUser?.role === "admin";
   const canPerformFinalClosure = sessionUser?.role !== "manager";
+
+  const openManagerReference = async (
+    reference: AttachedReferenceForTicket,
+  ) => {
+    if (reference.displayType === "link") {
+      if (reference.url) {
+        window.open(reference.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      setReferenceFeedback({
+        description: "Link referensi tidak tersedia.",
+        open: true,
+        title: "Referensi tidak bisa dibuka",
+      });
+      return;
+    }
+
+    if (reference.displayType === "file") {
+      try {
+        const fileUrl = await fileUrlMutation.mutateAsync(
+          reference.referenceSourceId,
+        );
+        window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+      } catch {
+        setReferenceFeedback({
+          description: "Gagal membuka file referensi. Silakan coba lagi.",
+          open: true,
+          title: "Referensi tidak bisa dibuka",
+        });
+      }
+      return;
+    }
+
+    setReferencePreview(reference);
+  };
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
@@ -42,6 +88,17 @@ export function TicketWorkspace() {
         open={workspace.finalClosureFeedback.open}
         title={workspace.finalClosureFeedback.title}
         variant={workspace.finalClosureFeedback.variant}
+      />
+      <FeedbackDialog
+        description={referenceFeedback.description}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReferenceFeedback((current) => ({ ...current, open: false }));
+          }
+        }}
+        open={referenceFeedback.open}
+        title={referenceFeedback.title}
+        variant="error"
       />
       <div className="mx-auto flex max-w-[1600px] flex-col gap-4 lg:flex-row">
         <DashboardSidebar
@@ -137,11 +194,15 @@ export function TicketWorkspace() {
               <TicketDetail
                 closureDraft={workspace.closureDraft}
                 canPerformFinalClosure={canPerformFinalClosure}
+                closureContextWarning={workspace.closureContextWarning}
                 hasCopiedClosure={workspace.hasCopiedClosure}
                 isAdminFinalClosure={isAdminFinalClosure}
                 isFinalClosurePending={workspace.isFinalClosurePending}
                 onClosureDraftChange={workspace.setClosureDraft}
                 onCopyClosureAndClose={workspace.copyClosureAndClose}
+                onOpenManagerReference={(reference) => {
+                  void openManagerReference(reference);
+                }}
                 ticket={workspace.selectedTicket}
               />
               {assistPanelOpen ? (
@@ -154,7 +215,75 @@ export function TicketWorkspace() {
           )}
         </section>
       </div>
+      {referencePreview ? (
+        <ReferencePreviewModal
+          onClose={() => setReferencePreview(null)}
+          reference={referencePreview}
+        />
+      ) : null}
     </main>
+  );
+}
+
+function ReferencePreviewModal({
+  onClose,
+  reference,
+}: {
+  onClose: () => void;
+  reference: AttachedReferenceForTicket;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]">
+      <section className="max-h-[calc(100vh-32px)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
+        <header className="flex items-center justify-between gap-3 border-b border-[var(--rail-border)] px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--signal-blue)]">
+              Preview referensi
+            </p>
+            <h2 className="truncate text-sm font-semibold text-[var(--rail-ink)]">
+              {reference.title}
+            </h2>
+          </div>
+          <button
+            aria-label="Tutup preview referensi"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--rail-border)] text-[var(--text-muted)]"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={14} />
+          </button>
+        </header>
+        <div className="space-y-3 p-4">
+          <PreviewRow label="Usage type" value={reference.usageType} />
+          <PreviewRow label="Catatan" value={reference.note ?? "-"} />
+          <PreviewRow
+            label="Tag"
+            value={reference.tags.length > 0 ? reference.tags.join(", ") : "-"}
+          />
+          <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+              Konten / Snapshot
+            </p>
+            <p className="whitespace-pre-wrap text-sm leading-7 text-[var(--rail-ink)]">
+              {reference.content ??
+                reference.snapshotText ??
+                "Konten referensi tidak tersedia di closure context."}
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PreviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-3 rounded-lg bg-[var(--background)] p-3 text-xs">
+      <span className="w-24 shrink-0 text-[var(--text-muted)]">{label}</span>
+      <span className="min-w-0 flex-1 break-words font-semibold text-[var(--rail-ink)]">
+        {value}
+      </span>
+    </div>
   );
 }
 

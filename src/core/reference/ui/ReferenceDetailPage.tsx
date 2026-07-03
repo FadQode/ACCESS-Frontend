@@ -66,7 +66,7 @@ export function ReferenceDetailPage({
             dashboardRole={dashboardRole}
             isSidebarOpen={sidebarOpen}
             onSidebarToggle={toggleSidebar}
-            roleLabel="Reference detail"
+            roleLabel="Detail referensi"
             userName={sessionUser?.name ?? "User"}
           />
 
@@ -121,7 +121,7 @@ function ReferenceDetailCard({
           href={`/${dashboardRole}/references`}
         >
           <ArrowLeft aria-hidden="true" size={14} />
-          Kembali ke references
+          Kembali ke referensi
         </Link>
         <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -130,14 +130,14 @@ function ReferenceDetailCard({
               {reference.displayType === "file"
                 ? "File"
                 : reference.displayType === "link"
-                  ? "Link"
-                  : "Text"}
+                  ? "Tautan"
+                  : "Teks"}
             </span>
             <h1 className="mt-3 text-2xl font-semibold text-[var(--rail-ink)]">
               {reference.title}
             </h1>
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Uploaded by {getReferenceOwner(reference)}
+              Dibuat oleh {getReferenceOwner(reference)}
             </p>
           </div>
           {reference.displayType !== "text" ? (
@@ -157,22 +157,22 @@ function ReferenceDetailCard({
       <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[1fr_260px]">
         <article className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-4">
           <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
-            Description
+            Deskripsi
           </h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--text-muted)]">
             {reference.description || "Tidak ada deskripsi."}
           </p>
         </article>
         <aside className="space-y-3">
-          <InfoTile label="Category" value={reference.category ?? "-"} />
-          <InfoTile label="Version" value={reference.version} />
+          <InfoTile label="Kategori" value={reference.category ?? "-"} />
+          <InfoTile label="Versi" value={reference.version} />
           <InfoTile
             label="File"
             value={reference.fileName ?? reference.mimeType ?? "-"}
           />
           <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-              Tags
+              Tag
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {reference.tags.length > 0 ? (
@@ -208,11 +208,11 @@ function ReferenceUnavailable({
         size={26}
       />
       <h1 className="mt-3 text-lg font-semibold text-[var(--rail-ink)]">
-        Reference not available.
+        Referensi tidak tersedia.
       </h1>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
-        This reference may be archived, drafted, or you may not have permission
-        to access it.
+        Referensi ini mungkin sudah diarsipkan, masih berupa draf, atau Anda
+        tidak memiliki akses untuk membukanya.
       </p>
       <Link
         className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-xs font-semibold text-white"
@@ -240,7 +240,7 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
-    return error.status === 404 ? "Reference not available." : error.message;
+    return error.status === 404 ? "Referensi tidak tersedia." : error.message;
   }
 
   if (error instanceof Error) {

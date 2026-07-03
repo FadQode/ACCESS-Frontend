@@ -1099,7 +1099,7 @@ function ComplaintInputForm({
           type="button"
         >
           <Sparkles aria-hidden="true" size={15} />
-          Buat ulang balasan
+          Buat Balasan
         </button>
       </div>
     </div>
@@ -2153,7 +2153,7 @@ function getSubmitErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Failed to save quick response. Please check the form and try again.";
+  return "Gagal menyimpan quick response. Periksa form lalu coba lagi.";
 }
 
 function getQuickResponseFieldErrors(error: ZodError) {

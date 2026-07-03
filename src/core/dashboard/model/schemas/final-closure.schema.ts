@@ -1,6 +1,16 @@
 import { z } from "zod";
 import { quickResponseTargetSchema } from "./quick-response.schema";
 
+const quickResponseReferenceUsageTypeSchema = z.enum([
+  "response_basis",
+  "template_used",
+  "policy_support",
+  "known_issue",
+  "previous_resolution",
+  "action_closure",
+  "closure_support",
+]);
+
 const nullableTextSchema = z
   .string()
   .trim()
@@ -10,6 +20,19 @@ const nullableTextSchema = z
 
 export const finalClosureSchema = z.object({
   complaintId: z.string().trim().min(1, "Complaint wajib dipilih."),
+  references: z
+    .array(
+      z.object({
+        note: nullableTextSchema,
+        referenceSourceId: z.string().trim().min(1),
+        selectionSource: z
+          .enum(["agent_selected", "manager_attached"])
+          .optional(),
+        usageType: quickResponseReferenceUsageTypeSchema,
+      }),
+    )
+    .max(10, "Maksimal 10 referensi dapat dicatat.")
+    .optional(),
   response: z.object({
     finalResponse: z
       .string()

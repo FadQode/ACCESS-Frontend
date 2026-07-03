@@ -310,24 +310,36 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
         "Halo Kak Siti, kami ingin menginformasikan bahwa setelah berkoordinasi dengan tim operasional, pengembalian dana penuh untuk perjalanan Kakak pada 17 Mei telah disetujui. Dana akan dikembalikan dalam 3-5 hari kerja ke metode pembayaran asal. Terima kasih atas kesabaran Kakak, dan mohon maaf sekali lagi atas ketidaknyamanan yang terjadi.",
       references: [
         {
-          id: "ref-delay-sop",
-          type: "sop",
+          displayType: "text",
+          referenceLinkId: "ref-delay-sop",
+          referenceSourceId: "ref-delay-sop",
+          sourceType: "sop",
+          tags: ["delay"],
           title: "SOP - penanganan keterlambatan v2.1",
-          summary:
+          usageType: "closure_support",
+          snapshotText:
             "Keterlambatan di atas 120 menit membutuhkan konfirmasi operasional.",
         },
         {
-          id: "ref-delay-past",
-          type: "past_ticket",
+          displayType: "text",
+          referenceLinkId: "ref-delay-past",
+          referenceSourceId: "ref-delay-past",
+          sourceType: "previous_action",
+          tags: ["past_case"],
           title: "Tiket sebelumnya #0712",
-          summary:
+          usageType: "evidence",
+          snapshotText:
             "Keterlambatan rute yang sama disetujui untuk pengembalian dana penuh pada Maret 2026.",
         },
         {
-          id: "ref-delay-policy",
-          type: "policy",
+          displayType: "text",
+          referenceLinkId: "ref-delay-policy",
+          referenceSourceId: "ref-delay-policy",
+          sourceType: "policy",
+          tags: ["policy"],
           title: "Kebijakan pengembalian dana v3.2",
-          summary:
+          usageType: "policy_support",
+          snapshotText:
             "Pengembalian dana diproses ke metode pembayaran asal setelah disetujui.",
         },
       ],
@@ -397,10 +409,14 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
         "Halo Pak Budi, setelah pengecekan internal, pengajuan jadwal ulang Bapak telah disetujui tanpa biaya tambahan karena perubahan jadwal berasal dari pihak operator. Silakan lanjutkan melalui kanal bantuan resmi agar tim kami dapat membantu memilih jadwal pengganti yang tersedia.",
       references: [
         {
-          id: "ref-cancel-policy",
-          type: "policy",
+          displayType: "text",
+          referenceLinkId: "ref-cancel-policy",
+          referenceSourceId: "ref-cancel-policy",
+          sourceType: "policy",
+          tags: ["cancellation"],
           title: "Kebijakan jadwal ulang v2.4",
-          summary:
+          usageType: "policy_support",
+          snapshotText:
             "Perubahan dari operator memenuhi syarat untuk jadwal ulang gratis.",
         },
       ],
@@ -456,10 +472,14 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
         "Halo Kak Dewi, terima kasih sudah menunggu. Tim fasilitas sudah dijadwalkan melakukan pengecekan unit AC gerbong di depo tujuan, dan voucher pemulihan layanan telah disetujui untuk penumpang terdampak. Mohon maaf atas ketidaknyamanan selama perjalanan.",
       references: [
         {
-          id: "ref-facility-note",
-          type: "manager_note",
+          displayType: "text",
+          referenceLinkId: "ref-facility-note",
+          referenceSourceId: "ref-facility-note",
+          sourceType: "internal_note",
+          tags: ["facility"],
           title: "Catatan penugasan fasilitas",
-          summary: "Pemeriksaan depo ditugaskan kepada tim fasilitas.",
+          usageType: "internal_note",
+          snapshotText: "Pemeriksaan depo ditugaskan kepada tim fasilitas.",
         },
       ],
     },
@@ -512,10 +532,15 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
         "Halo Pak Ahmad, pengembalian dana Bapak telah dikonfirmasi berhasil dikembalikan ke metode pembayaran asal. Terima kasih atas kesabaran Bapak.",
       references: [
         {
-          id: "ref-refund-confirmation",
-          type: "manager_note",
+          displayType: "text",
+          referenceLinkId: "ref-refund-confirmation",
+          referenceSourceId: "ref-refund-confirmation",
+          sourceType: "internal_note",
+          tags: ["refund"],
           title: "Konfirmasi pengembalian dana",
-          summary: "Tim keuangan mengonfirmasi pengembalian dana berhasil.",
+          usageType: "evidence",
+          snapshotText:
+            "Tim keuangan mengonfirmasi pengembalian dana berhasil.",
         },
       ],
     },
@@ -567,10 +592,14 @@ export const mockFollowUpTickets: FollowUpTicket[] = [
       status: "pending",
       references: [
         {
-          id: "ref-payment-sop",
-          type: "sop",
+          displayType: "text",
+          referenceLinkId: "ref-payment-sop",
+          referenceSourceId: "ref-payment-sop",
+          sourceType: "sop",
+          tags: ["payment"],
           title: "SOP verifikasi pembayaran",
-          summary:
+          usageType: "action_basis",
+          snapshotText:
             "Pembayaran berhasil tanpa penerbitan tiket membutuhkan pengecekan tim keuangan.",
         },
       ],

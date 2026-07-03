@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useFinalClosure } from "@/core/dashboard/hooks/use-final-closure";
 import { useTicketDetail } from "@/core/dashboard/hooks/use-ticket-detail";
 import { useTickets } from "@/core/dashboard/hooks/use-tickets";
+import { mapActionRequestUsageToQuickResponseUsage } from "@/core/reference/model/mappers/reference-usage.mapper";
 import { mapBackendTicketToFollowUpTicket } from "../model/ticket.mapper";
 import type {
   FollowUpTicket,
@@ -12,6 +13,7 @@ import type {
   FollowUpTicketSortKey,
   FollowUpTicketStatus,
 } from "../model/ticket.types";
+import { useTicketClosureContext } from "./useTicketClosureContext";
 
 type FinalClosureFeedback = {
   open: boolean;
@@ -63,6 +65,7 @@ export function useTicketWorkspace() {
     string | null
   >(null);
   const selectedTicketQuery = useTicketDetail(selectedTicketId || null);
+  const closureContextQuery = useTicketClosureContext(selectedTicketId || null);
 
   const mappedTickets = useMemo(
     () =>
@@ -95,15 +98,32 @@ export function useTicketWorkspace() {
       mappedTickets.find((ticket) => ticket.id === selectedTicketId) ??
       mappedTickets[0];
 
+    let ticket = listTicket;
+
     if (
       selectedTicketQuery.data &&
       selectedTicketQuery.data.id === selectedTicketId
     ) {
-      return mapBackendTicketToFollowUpTicket(selectedTicketQuery.data);
+      ticket = mapBackendTicketToFollowUpTicket(selectedTicketQuery.data);
     }
 
-    return listTicket;
-  }, [mappedTickets, selectedTicketId, selectedTicketQuery.data]);
+    if (ticket && closureContextQuery.data) {
+      return {
+        ...ticket,
+        managerAction: {
+          ...ticket.managerAction,
+          references: closureContextQuery.data.attachedReferences,
+        },
+      };
+    }
+
+    return ticket;
+  }, [
+    closureContextQuery.data,
+    mappedTickets,
+    selectedTicketId,
+    selectedTicketQuery.data,
+  ]);
 
   useEffect(() => {
     setClosureDraft(selectedTicket?.closureMessage ?? "");
@@ -193,6 +213,20 @@ export function useTicketWorkspace() {
     }
 
     const finalResponse = closureDraft.trim();
+    const references =
+      closureContextQuery.isSuccess &&
+      selectedTicket.managerAction.references.length > 0
+        ? selectedTicket.managerAction.references
+            .slice(0, 10)
+            .map((reference) => ({
+              note: reference.note ?? null,
+              referenceSourceId: reference.referenceSourceId,
+              selectionSource: "manager_attached" as const,
+              usageType: mapActionRequestUsageToQuickResponseUsage(
+                reference.usageType,
+              ),
+            }))
+        : undefined;
 
     try {
       await navigator.clipboard.writeText(finalResponse);
@@ -214,7 +248,9 @@ export function useTicketWorkspace() {
           finalResponse,
           outcome: "sent_resolved",
           responseTarget: "public_reply",
+          selectedTakeAction: selectedTicket.managerAction.actionTaken,
         },
+        references,
         ticketId: selectedTicket.id,
       });
       setClosureCopiedTicketId(selectedTicket.id);
@@ -228,6 +264,7 @@ export function useTicketWorkspace() {
       await Promise.all([
         ticketsQuery.refetch(),
         selectedTicketQuery.refetch(),
+        closureContextQuery.refetch(),
       ]);
     } catch (error) {
       setFinalClosureFeedback({
@@ -268,6 +305,12 @@ export function useTicketWorkspace() {
     closedCount,
     hasCopiedClosure: closureCopiedTicketId === selectedTicketId,
     isFinalClosurePending: finalClosureMutation.isPending,
+    closureContextWarning:
+      closureContextQuery.isError && selectedTicketId
+        ? "Gagal memuat referensi terkait. Final closure tetap bisa dilanjutkan, tetapi referensi tidak akan ikut tercatat."
+        : selectedTicket && selectedTicket.managerAction.references.length > 10
+          ? "Maksimal 10 referensi dapat dicatat pada final closure. Hanya 10 referensi pertama yang akan ikut tercatat."
+          : "",
     finalClosureFeedback,
     dismissFinalClosureFeedback,
     copyClosureAndClose,

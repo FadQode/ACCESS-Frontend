@@ -182,8 +182,14 @@ export interface ManagerActionResult {
   completedAt?: string;
   actionTaken?: string;
   closureDraft?: string;
-  references: TicketReference[];
+  references: AttachedReferenceForTicket[];
 }
+
+export type AttachedReferenceForTicket = AttachedActionRequestReference;
+
+export type TicketClosureContext = {
+  attachedReferences: AttachedReferenceForTicket[];
+};
 
 export interface FollowUpTicket {
   id: string;
@@ -213,3 +219,5 @@ export interface FollowUpTicket {
   priority: "low" | "medium" | "high" | "urgent";
   activityLog: FollowUpTicketActivity[];
 }
+
+import type { AttachedActionRequestReference } from "@/core/reference/model/types/reference-attachment.types";

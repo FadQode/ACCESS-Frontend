@@ -25,12 +25,7 @@ export type ComplaintSource =
   | "app_store"
   | "other";
 
-export type ReferenceType =
-  | "sop"
-  | "policy"
-  | "past_ticket"
-  | "document"
-  | "url";
+export type ReferenceType = "file" | "link" | "text";
 
 export interface ManagerClusterComplaint {
   id: string;
@@ -46,9 +41,14 @@ export interface ManagerClusterComplaint {
 
 export interface ManagerActionReference {
   id: string;
+  referenceSourceId: string;
   type: ReferenceType;
   title: string;
   summary?: string;
+  usageType: string;
+  note?: string | null;
+  tags: string[];
+  url?: string | null;
 }
 
 export interface ManagerActionCluster {

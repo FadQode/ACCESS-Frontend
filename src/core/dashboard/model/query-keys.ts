@@ -11,9 +11,11 @@ export const queryKeys = {
     all: ["action-requests"] as const,
     detail: (id: string) => ["action-requests", "detail", id] as const,
     list: (filters: unknown) => ["action-requests", "list", filters] as const,
+    references: (id: string) => ["action-requests", "references", id] as const,
   },
   tickets: {
     all: ["tickets"] as const,
+    closureContext: (id: string) => ["tickets", "closure-context", id] as const,
     detail: (id: string) => ["tickets", "detail", id] as const,
     list: (filters: unknown) => ["tickets", "list", filters] as const,
   },

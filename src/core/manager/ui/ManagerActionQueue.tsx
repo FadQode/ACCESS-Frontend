@@ -7,10 +7,15 @@ import {
   ArrowUpDown,
   CheckCircle2,
   ChevronRight,
+  ExternalLink,
   FileText,
   Link2,
+  LoaderCircle,
   Paperclip,
+  Plus,
   Search,
+  Trash2,
+  X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
@@ -27,6 +32,12 @@ import type {
   ManagerActionReference,
   ManagerActionStatus,
 } from "@/core/manager/model/manager-action.types";
+import { useAttachReferenceToActionRequest } from "@/core/reference/hooks/use-attach-reference-to-action-request";
+import { useDetachReferenceFromActionRequest } from "@/core/reference/hooks/use-detach-reference-from-action-request";
+import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
+import { useReferences } from "@/core/reference/hooks/use-references";
+import type { ReferenceItem } from "@/core/reference/model/types/reference.types";
+import type { ActionRequestReferenceUsageType } from "@/core/reference/model/types/reference-attachment.types";
 
 const MANAGER_NAME = "Mgr. Dina";
 
@@ -92,6 +103,22 @@ const managerStatusRank: Record<ManagerActionStatus, number> = {
   done: 2,
 };
 
+const usageTypeOptions: Array<{
+  label: string;
+  value: ActionRequestReferenceUsageType;
+}> = [
+  { label: "Dukungan Balasan Penutup", value: "closure_support" },
+  { label: "Bukti / Konteks", value: "evidence" },
+  { label: "Dasar Tindakan", value: "action_basis" },
+  { label: "Dukungan Kebijakan", value: "policy_support" },
+  { label: "Link Terkait", value: "related_link" },
+  { label: "Catatan Internal", value: "internal_note" },
+];
+
+const usageTypeLabel = Object.fromEntries(
+  usageTypeOptions.map((item) => [item.value, item.label]),
+) as Record<ActionRequestReferenceUsageType, string>;
+
 export function ManagerActionQueue() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(
@@ -105,13 +132,21 @@ export function ManagerActionQueue() {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionTaken, setActionTaken] = useState("");
   const [closureMessage, setClosureMessage] = useState("");
-  const [documentNames, setDocumentNames] = useState<string[]>([]);
-  const [referenceInput, setReferenceInput] = useState("");
-  const [draftReferences, setDraftReferences] = useState<string[]>([]);
+  const [attachModalOpen, setAttachModalOpen] = useState(false);
+  const [detachReference, setDetachReference] =
+    useState<ManagerActionReference | null>(null);
   const [formError, setFormError] = useState("");
+  const [referenceFeedback, setReferenceFeedback] = useState("");
   const actionRequestsQuery = useActionRequests();
   const actionRequestDetailQuery = useActionRequestDetail(selectedClusterId);
   const takeActionMutation = useTakeAction();
+  const attachReferenceMutation = useAttachReferenceToActionRequest(
+    selectedClusterId ?? "",
+  );
+  const detachReferenceMutation = useDetachReferenceFromActionRequest(
+    selectedClusterId ?? "",
+  );
+  const fileUrlMutation = useReferenceFileUrl();
 
   const clusters = useMemo(
     () =>
@@ -218,10 +253,8 @@ export function ManagerActionQueue() {
     setSelectedClusterId(cluster.id);
     setActionTaken(cluster.actionTaken);
     setClosureMessage(cluster.closureMessage);
-    setDocumentNames([]);
-    setDraftReferences([]);
-    setReferenceInput("");
     setFormError("");
+    setReferenceFeedback("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -231,15 +264,56 @@ export function ManagerActionQueue() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const addReference = () => {
-    const trimmed = referenceInput.trim();
+  const openAttachedReference = async (reference: ManagerActionReference) => {
+    setReferenceFeedback("");
 
-    if (!trimmed) {
+    if (reference.type === "link") {
+      if (reference.url) {
+        window.open(reference.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      setReferenceFeedback("Link referensi tidak tersedia.");
       return;
     }
 
-    setDraftReferences((current) => [...current, trimmed]);
-    setReferenceInput("");
+    if (reference.type === "file") {
+      try {
+        const fileUrl = await fileUrlMutation.mutateAsync(
+          reference.referenceSourceId,
+        );
+        window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+      } catch {
+        setReferenceFeedback(
+          "Gagal membuka file referensi. Silakan coba lagi.",
+        );
+      }
+      return;
+    }
+
+    window.open(
+      `/manager/references/${reference.referenceSourceId}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const confirmDetachReference = async () => {
+    if (!selectedClusterId || !detachReference) {
+      return;
+    }
+
+    try {
+      await detachReferenceMutation.mutateAsync(detachReference.id);
+      setReferenceFeedback("Referensi berhasil dilepas dari action request.");
+      setDetachReference(null);
+    } catch (error) {
+      setReferenceFeedback(
+        error instanceof Error
+          ? error.message
+          : "Gagal melepas referensi. Silakan coba lagi.",
+      );
+    }
   };
 
   const completeAction = async () => {
@@ -331,24 +405,51 @@ export function ManagerActionQueue() {
                 actionTaken={actionTaken}
                 closureMessage={closureMessage}
                 cluster={selectedCluster}
-                documentNames={documentNames}
-                draftReferences={draftReferences}
                 formError={formError}
                 isDetailLoading={actionRequestDetailQuery.isFetching}
+                isOpeningReference={fileUrlMutation.isPending}
                 isSubmitting={takeActionMutation.isPending}
-                referenceInput={referenceInput}
+                referenceFeedback={referenceFeedback}
                 onActionTakenChange={setActionTaken}
-                onAddReference={addReference}
                 onBack={closeCluster}
                 onClosureMessageChange={setClosureMessage}
                 onCompleteAction={completeAction}
-                onDocumentNamesChange={setDocumentNames}
-                onReferenceInputChange={setReferenceInput}
+                onDetachReference={setDetachReference}
+                onOpenAttachReferences={() => setAttachModalOpen(true)}
+                onOpenReference={(reference) => {
+                  void openAttachedReference(reference);
+                }}
               />
             )}
           </div>
         </section>
       </div>
+      {attachModalOpen && selectedCluster ? (
+        <AttachReferenceModal
+          actionRequestId={selectedCluster.id}
+          attachedReferenceSourceIds={selectedCluster.references.map(
+            (reference) => reference.referenceSourceId,
+          )}
+          isPending={attachReferenceMutation.isPending}
+          onAttach={async (input) => {
+            await attachReferenceMutation.mutateAsync(input);
+            setReferenceFeedback("Referensi berhasil dilampirkan.");
+            setAttachModalOpen(false);
+          }}
+          onClose={() => setAttachModalOpen(false)}
+        />
+      ) : null}
+
+      {detachReference ? (
+        <DetachReferenceDialog
+          isPending={detachReferenceMutation.isPending}
+          onClose={() => setDetachReference(null)}
+          onConfirm={() => {
+            void confirmDetachReference();
+          }}
+          reference={detachReference}
+        />
+      ) : null}
     </main>
   );
 }
@@ -604,36 +705,34 @@ function ClusterDetailView({
   actionTaken,
   closureMessage,
   cluster,
-  documentNames,
-  draftReferences,
   formError,
   isDetailLoading,
+  isOpeningReference,
   isSubmitting,
-  referenceInput,
+  referenceFeedback,
   onActionTakenChange,
-  onAddReference,
   onBack,
   onClosureMessageChange,
   onCompleteAction,
-  onDocumentNamesChange,
-  onReferenceInputChange,
+  onDetachReference,
+  onOpenAttachReferences,
+  onOpenReference,
 }: {
   actionTaken: string;
   closureMessage: string;
   cluster: ManagerActionCluster;
-  documentNames: string[];
-  draftReferences: string[];
   formError: string;
   isDetailLoading: boolean;
+  isOpeningReference: boolean;
   isSubmitting: boolean;
-  referenceInput: string;
+  referenceFeedback: string;
   onActionTakenChange: (value: string) => void;
-  onAddReference: () => void;
   onBack: () => void;
   onClosureMessageChange: (value: string) => void;
   onCompleteAction: () => void;
-  onDocumentNamesChange: (names: string[]) => void;
-  onReferenceInputChange: (value: string) => void;
+  onDetachReference: (reference: ManagerActionReference) => void;
+  onOpenAttachReferences: () => void;
+  onOpenReference: (reference: ManagerActionReference) => void;
 }) {
   const isDone = cluster.status === "done";
   const agentNames = getAgentNames(cluster);
@@ -681,22 +780,23 @@ function ClusterDetailView({
           </p>
         ) : null}
         <ComplaintsPanel cluster={cluster} />
-        <ContextPanel cluster={cluster} />
+        <ContextPanel
+          cluster={cluster}
+          isOpeningReference={isOpeningReference}
+          referenceFeedback={referenceFeedback}
+          onDetachReference={onDetachReference}
+          onOpenAttachReferences={onOpenAttachReferences}
+          onOpenReference={onOpenReference}
+        />
         {!isDone ? (
           <ManagerActionForm
             actionTaken={actionTaken}
             closureMessage={closureMessage}
-            documentNames={documentNames}
-            draftReferences={draftReferences}
             formError={formError}
             isSubmitting={isSubmitting}
-            referenceInput={referenceInput}
             onActionTakenChange={onActionTakenChange}
-            onAddReference={onAddReference}
             onClosureMessageChange={onClosureMessageChange}
             onCompleteAction={onCompleteAction}
-            onDocumentNamesChange={onDocumentNamesChange}
-            onReferenceInputChange={onReferenceInputChange}
           />
         ) : null}
       </div>
@@ -748,10 +848,24 @@ function ComplaintsPanel({ cluster }: { cluster: ManagerActionCluster }) {
   );
 }
 
-function ContextPanel({ cluster }: { cluster: ManagerActionCluster }) {
+function ContextPanel({
+  cluster,
+  isOpeningReference,
+  referenceFeedback,
+  onDetachReference,
+  onOpenAttachReferences,
+  onOpenReference,
+}: {
+  cluster: ManagerActionCluster;
+  isOpeningReference: boolean;
+  referenceFeedback: string;
+  onDetachReference: (reference: ManagerActionReference) => void;
+  onOpenAttachReferences: () => void;
+  onOpenReference: (reference: ManagerActionReference) => void;
+}) {
   return (
     <Panel
-      countLabel="Diambil oleh AI"
+      countLabel={`${cluster.references.length} referensi`}
       icon={<CheckCircle2 aria-hidden="true" size={15} />}
       title="Konteks dan referensi"
     >
@@ -771,10 +885,49 @@ function ContextPanel({ cluster }: { cluster: ManagerActionCluster }) {
           />
         ) : null}
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {cluster.references.map((reference) => (
-          <ReferencePill key={reference.id} reference={reference} />
-        ))}
+      <div className="mt-4 border-t border-[var(--rail-border)] pt-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-[var(--rail-ink)]">
+              Referensi Terkait
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Referensi ini akan muncul di ticket agent melalui closure context.
+            </p>
+          </div>
+          <button
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--rail-ink)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--signal-blue)]"
+            onClick={onOpenAttachReferences}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={14} />
+            Tambah Referensi
+          </button>
+        </div>
+
+        {referenceFeedback ? (
+          <p className="mb-3 rounded-lg border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 py-2 text-xs text-[var(--signal-blue)]">
+            {referenceFeedback}
+          </p>
+        ) : null}
+
+        {cluster.references.length > 0 ? (
+          <div className="grid gap-2">
+            {cluster.references.map((reference) => (
+              <ReferencePill
+                isOpening={isOpeningReference}
+                key={reference.id}
+                reference={reference}
+                onDetach={() => onDetachReference(reference)}
+                onOpen={() => onOpenReference(reference)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4 text-xs leading-6 text-[var(--text-muted)]">
+            Belum ada referensi yang dilampirkan manager.
+          </div>
+        )}
       </div>
     </Panel>
   );
@@ -783,31 +936,19 @@ function ContextPanel({ cluster }: { cluster: ManagerActionCluster }) {
 function ManagerActionForm({
   actionTaken,
   closureMessage,
-  documentNames,
-  draftReferences,
   formError,
   isSubmitting,
-  referenceInput,
   onActionTakenChange,
-  onAddReference,
   onClosureMessageChange,
   onCompleteAction,
-  onDocumentNamesChange,
-  onReferenceInputChange,
 }: {
   actionTaken: string;
   closureMessage: string;
-  documentNames: string[];
-  draftReferences: string[];
   formError: string;
   isSubmitting: boolean;
-  referenceInput: string;
   onActionTakenChange: (value: string) => void;
-  onAddReference: () => void;
   onClosureMessageChange: (value: string) => void;
   onCompleteAction: () => void;
-  onDocumentNamesChange: (names: string[]) => void;
-  onReferenceInputChange: (value: string) => void;
 }) {
   return (
     <Panel
@@ -845,73 +986,6 @@ function ManagerActionForm({
             value={closureMessage}
           />
         </label>
-
-        <div>
-          <p className="mb-2 text-sm font-medium text-[var(--text-muted)]">
-            Lampiran dan referensi
-          </p>
-          <div className="flex flex-col gap-2 lg:flex-row">
-            <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 text-xs font-medium text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]">
-              <Paperclip aria-hidden="true" size={15} />
-              Lampirkan dokumen
-              <input
-                className="sr-only"
-                multiple
-                onChange={(event) =>
-                  onDocumentNamesChange(
-                    Array.from(event.target.files ?? []).map(
-                      (file) => file.name,
-                    ),
-                  )
-                }
-                type="file"
-              />
-            </label>
-
-            <div className="flex min-w-0 flex-1 gap-2">
-              <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Tambah URL referensi</span>
-                <Link2
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
-                  size={15}
-                />
-                <input
-                  className={cx(inputClassName, "h-10 pl-9 text-xs")}
-                  onChange={(event) =>
-                    onReferenceInputChange(event.target.value)
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      onAddReference();
-                    }
-                  }}
-                  placeholder="Tambah URL referensi"
-                  value={referenceInput}
-                />
-              </label>
-              <button
-                className="h-10 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 text-xs font-medium text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
-                onClick={onAddReference}
-                type="button"
-              >
-                Tambah
-              </button>
-            </div>
-          </div>
-
-          {documentNames.length > 0 || draftReferences.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {documentNames.map((name) => (
-                <Badge key={name}>{name}</Badge>
-              ))}
-              {draftReferences.map((reference) => (
-                <Badge key={reference}>{reference}</Badge>
-              ))}
-            </div>
-          ) : null}
-        </div>
 
         {formError ? (
           <p className="rounded-md border border-[var(--signal-red-soft)] bg-[var(--signal-red-soft)] px-3 py-2 text-xs font-medium text-[var(--signal-red-dark)]">
@@ -971,6 +1045,314 @@ function CompletionState({
         ))}
       </div>
     </section>
+  );
+}
+
+function AttachReferenceModal({
+  actionRequestId,
+  attachedReferenceSourceIds,
+  isPending,
+  onAttach,
+  onClose,
+}: {
+  actionRequestId: string;
+  attachedReferenceSourceIds: string[];
+  isPending: boolean;
+  onAttach: (input: {
+    referenceSourceId: string;
+    usageType: ActionRequestReferenceUsageType;
+    note?: string | null;
+  }) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [selectedReferenceId, setSelectedReferenceId] = useState("");
+  const [usageType, setUsageType] =
+    useState<ActionRequestReferenceUsageType>("closure_support");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const referencesQuery = useReferences({
+    limit: 20,
+    page: 1,
+    query,
+    status: "active",
+  });
+  const attachedIds = useMemo(
+    () => new Set(attachedReferenceSourceIds),
+    [attachedReferenceSourceIds],
+  );
+
+  const attachSelectedReference = async () => {
+    if (!selectedReferenceId) {
+      setError("Pilih referensi terlebih dahulu.");
+      return;
+    }
+
+    try {
+      setError("");
+      await onAttach({
+        note: note.trim() || null,
+        referenceSourceId: selectedReferenceId,
+        usageType,
+      });
+    } catch (attachError) {
+      setError(
+        attachError instanceof Error
+          ? attachError.message
+          : "Gagal melampirkan referensi. Silakan coba lagi.",
+      );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]">
+      <section className="sticky top-4 mx-auto max-h-[calc(100vh-32px)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
+        <header className="flex items-center justify-between gap-3 border-b border-[var(--rail-border)] px-4 py-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--signal-blue)]">
+              {actionRequestId}
+            </p>
+            <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
+              Tambah Referensi ke Action Request
+            </h2>
+          </div>
+          <button
+            aria-label="Tutup modal"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--rail-border)] text-[var(--text-muted)]"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={14} />
+          </button>
+        </header>
+
+        <div className="space-y-4 p-4">
+          <label className="relative block">
+            <span className="sr-only">Cari referensi</span>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+              size={15}
+            />
+            <input
+              className={cx(inputClassName, "h-10 pl-9 text-xs")}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Cari judul atau isi referensi"
+              type="search"
+              value={query}
+            />
+          </label>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">
+                Usage type
+              </span>
+              <select
+                className={cx(inputClassName, "mt-1 h-10 text-xs")}
+                onChange={(event) =>
+                  setUsageType(
+                    event.target.value as ActionRequestReferenceUsageType,
+                  )
+                }
+                value={usageType}
+              >
+                {usageTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">
+                Catatan
+              </span>
+              <input
+                className={cx(inputClassName, "mt-1 h-10 text-xs")}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Opsional"
+                value={note}
+              />
+            </label>
+          </div>
+
+          <div className="max-h-[360px] space-y-2 overflow-y-auto rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-2">
+            {referencesQuery.isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-6 text-xs text-[var(--text-muted)]">
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="animate-spin"
+                  size={14}
+                />
+                Memuat referensi...
+              </div>
+            ) : (referencesQuery.data?.items ?? []).length > 0 ? (
+              referencesQuery.data?.items.map((reference) => {
+                const alreadyAttached = attachedIds.has(reference.id);
+                const selected = selectedReferenceId === reference.id;
+
+                return (
+                  <ReferencePickerRow
+                    alreadyAttached={alreadyAttached}
+                    key={reference.id}
+                    reference={reference}
+                    selected={selected}
+                    onSelect={() => setSelectedReferenceId(reference.id)}
+                  />
+                );
+              })
+            ) : (
+              <p className="px-3 py-6 text-center text-xs text-[var(--text-muted)]">
+                Semua referensi yang tersedia sudah dilampirkan atau tidak ada
+                referensi aktif yang cocok.
+              </p>
+            )}
+          </div>
+
+          {error ? (
+            <p className="rounded-lg border border-[var(--signal-red-soft)] bg-[var(--signal-red-soft)] px-3 py-2 text-xs text-[var(--signal-red-dark)]">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="flex justify-end gap-2 border-t border-[var(--rail-border)] pt-4">
+            <button
+              className="h-10 rounded-lg border border-[var(--rail-border)] px-4 text-xs font-semibold text-[var(--text-muted)]"
+              onClick={onClose}
+              type="button"
+            >
+              Batal
+            </button>
+            <button
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
+              disabled={isPending}
+              onClick={() => {
+                void attachSelectedReference();
+              }}
+              type="button"
+            >
+              {isPending ? (
+                <>
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="animate-spin"
+                    size={14}
+                  />
+                  Melampirkan...
+                </>
+              ) : (
+                "Lampirkan"
+              )}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ReferencePickerRow({
+  alreadyAttached,
+  onSelect,
+  reference,
+  selected,
+}: {
+  alreadyAttached: boolean;
+  onSelect: () => void;
+  reference: ReferenceItem;
+  selected: boolean;
+}) {
+  return (
+    <button
+      className={cx(
+        "w-full rounded-lg border p-3 text-left transition",
+        selected
+          ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)]"
+          : "border-[var(--rail-border)] bg-white",
+        alreadyAttached
+          ? "cursor-not-allowed opacity-60"
+          : "hover:border-[var(--signal-blue)]",
+      )}
+      disabled={alreadyAttached}
+      onClick={onSelect}
+      type="button"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[var(--rail-ink)]">
+            {reference.title}
+          </p>
+          <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+            {reference.displayType === "file"
+              ? "File"
+              : reference.displayType === "link"
+                ? "Tautan"
+                : "Teks"}
+            {reference.tags.length > 0 ? ` - ${reference.tags.join(", ")}` : ""}
+          </p>
+        </div>
+        {alreadyAttached ? (
+          <span className="shrink-0 rounded-full bg-[var(--surface-muted)] px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
+            Sudah dilampirkan
+          </span>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+function DetachReferenceDialog({
+  isPending,
+  onClose,
+  onConfirm,
+  reference,
+}: {
+  isPending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  reference: ManagerActionReference;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]">
+      <section className="w-full max-w-md rounded-xl border border-[var(--rail-border)] bg-white p-4 shadow-[var(--shadow-soft)]">
+        <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
+          Lepas referensi?
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+          Referensi "{reference.title}" hanya akan dilepas dari action request,
+          bukan dihapus dari library.
+        </p>
+        <div className="mt-5 flex justify-end gap-2 border-t border-[var(--rail-border)] pt-4">
+          <button
+            className="h-10 rounded-lg border border-[var(--rail-border)] px-4 text-xs font-semibold text-[var(--text-muted)]"
+            onClick={onClose}
+            type="button"
+          >
+            Batal
+          </button>
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--signal-red)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--signal-red-dark)] disabled:opacity-60"
+            disabled={isPending}
+            onClick={onConfirm}
+            type="button"
+          >
+            {isPending ? (
+              <>
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="animate-spin"
+                  size={14}
+                />
+                Melepas...
+              </>
+            ) : (
+              "Lepas"
+            )}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1200,11 +1582,66 @@ function ContextRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReferencePill({ reference }: { reference: ManagerActionReference }) {
+function ReferencePill({
+  isOpening,
+  onDetach,
+  onOpen,
+  reference,
+}: {
+  isOpening: boolean;
+  onDetach: () => void;
+  onOpen: () => void;
+  reference: ManagerActionReference;
+}) {
+  const Icon = reference.type === "file" ? Paperclip : Link2;
+
   return (
-    <span className="inline-flex min-h-7 items-center rounded-full border border-[#b5d4f4] bg-[#e6f1fb] px-3 py-1 text-[11px] font-medium text-[#0c447c]">
-      {reference.title}
-    </span>
+    <article className="flex flex-col gap-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--signal-blue-soft)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-blue)]">
+            <Icon aria-hidden="true" size={12} />
+            {reference.type === "file"
+              ? "File"
+              : reference.type === "link"
+                ? "Tautan"
+                : "Teks"}
+          </span>
+          <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
+            {usageTypeLabel[
+              reference.usageType as ActionRequestReferenceUsageType
+            ] ?? reference.usageType}
+          </span>
+        </div>
+        <p className="truncate text-sm font-semibold text-[var(--rail-ink)]">
+          {reference.title}
+        </p>
+        {reference.note ? (
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">
+            {reference.note}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <button
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--rail-border)] bg-white px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)] disabled:opacity-50"
+          disabled={isOpening}
+          onClick={onOpen}
+          type="button"
+        >
+          <ExternalLink aria-hidden="true" size={13} />
+          Lihat
+        </button>
+        <button
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--signal-red-soft)] bg-white px-3 text-xs font-semibold text-[var(--signal-red-dark)] transition hover:bg-[var(--signal-red-soft)]"
+          onClick={onDetach}
+          type="button"
+        >
+          <Trash2 aria-hidden="true" size={13} />
+          Lepas
+        </button>
+      </div>
+    </article>
   );
 }
 

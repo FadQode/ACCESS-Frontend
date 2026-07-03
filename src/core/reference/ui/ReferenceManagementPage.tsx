@@ -38,7 +38,10 @@ import { useReferenceTags } from "../hooks/use-reference-tags";
 import { useReferences } from "../hooks/use-references";
 import { useUpdateReference } from "../hooks/use-update-reference";
 import { getReferenceOwner } from "../model/mappers/reference.mapper";
-import { referenceFormSchema } from "../model/schemas/reference.schema";
+import {
+  MAX_REFERENCE_FILE_SIZE_BYTES,
+  referenceFormSchema,
+} from "../model/schemas/reference.schema";
 import type {
   GetReferencesParams,
   ReferenceCategory,
@@ -60,15 +63,15 @@ type ReferenceSortConfig = {
 };
 
 const CATEGORY_OPTIONS: Array<{ label: string; value: ReferenceCategory }> = [
-  { label: "Delay", value: "delay" },
-  { label: "Refund", value: "refund" },
-  { label: "Cancellation", value: "cancellation" },
-  { label: "Lost item", value: "lost_item" },
-  { label: "Facility", value: "facility" },
-  { label: "Payment", value: "payment" },
-  { label: "Account", value: "account" },
-  { label: "App error", value: "app_error" },
-  { label: "Other", value: "other" },
+  { label: "Keterlambatan", value: "delay" },
+  { label: "Pengembalian Dana", value: "refund" },
+  { label: "Pembatalan", value: "cancellation" },
+  { label: "Barang Hilang", value: "lost_item" },
+  { label: "Fasilitas", value: "facility" },
+  { label: "Pembayaran", value: "payment" },
+  { label: "Akun", value: "account" },
+  { label: "Gangguan Aplikasi", value: "app_error" },
+  { label: "Lainnya", value: "other" },
 ];
 
 const TYPE_OPTIONS: Array<{
@@ -76,7 +79,7 @@ const TYPE_OPTIONS: Array<{
   value: Extract<ReferenceSourceType, "external_link" | "uploaded_file">;
 }> = [
   { label: "File", value: "uploaded_file" },
-  { label: "Link", value: "external_link" },
+  { label: "Tautan", value: "external_link" },
 ];
 const ACCEPTED_REFERENCE_FILE_TYPES = [
   ".pdf",
@@ -88,6 +91,7 @@ const ACCEPTED_REFERENCE_FILE_TYPES = [
   ".docx",
 ].join(",");
 const ACCEPTED_REFERENCE_FILE_LABEL = "PDF, TXT, PNG, JPG/JPEG, DOC, atau DOCX";
+const MAX_REFERENCE_FILE_SIZE_LABEL = "5 MB";
 
 export function ReferenceManagementPage({
   dashboardRole,
@@ -143,7 +147,7 @@ export function ReferenceManagementPage({
 
     if (reference.displayType === "link") {
       if (!reference.url) {
-        setFeedback("Reference link is not available.");
+        setFeedback("Link referensi tidak tersedia.");
         return;
       }
 
@@ -156,7 +160,7 @@ export function ReferenceManagementPage({
         const fileUrl = await fileUrlMutation.mutateAsync(reference.id);
         window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
       } catch {
-        setFeedback("Failed to open reference file. Please try again.");
+        setFeedback("Gagal membuka file referensi. Silakan coba lagi.");
       }
       return;
     }
@@ -198,8 +202,8 @@ export function ReferenceManagementPage({
             onSidebarToggle={toggleSidebar}
             roleLabel={
               dashboardRole === "manager"
-                ? "Manager references"
-                : "Agent references"
+                ? "Referensi manager"
+                : "Referensi agent"
             }
             userName={sessionUser?.name ?? "User"}
           />
@@ -209,10 +213,10 @@ export function ReferenceManagementPage({
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--signal-blue)]">
-                    Reference library
+                    Pustaka referensi
                   </p>
                   <h1 className="mt-2 text-2xl font-semibold text-[var(--rail-ink)]">
-                    References
+                    Referensi
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
                     Materi internal aktif dari backend untuk panduan
@@ -233,7 +237,7 @@ export function ReferenceManagementPage({
 
               <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_180px_180px]">
                 <label className="relative">
-                  <span className="sr-only">Cari references</span>
+                  <span className="sr-only">Cari referensi</span>
                   <Search
                     aria-hidden="true"
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -245,7 +249,7 @@ export function ReferenceManagementPage({
                       setPage(1);
                       setQuery(event.target.value);
                     }}
-                    placeholder="Cari title atau isi reference"
+                    placeholder="Cari judul atau isi referensi"
                     type="search"
                     value={query}
                   />
@@ -413,7 +417,7 @@ function ReferenceTable({
           <tr className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
             <th className="border-b border-[var(--rail-border)] px-3 py-3 font-semibold">
               <SortButton
-                label="Title"
+                label="Judul"
                 sortConfig={sortConfig}
                 sortKey="title"
                 onSortChange={onSortChange}
@@ -421,7 +425,7 @@ function ReferenceTable({
             </th>
             <th className="border-b border-[var(--rail-border)] px-3 py-3 font-semibold">
               <SortButton
-                label="Type"
+                label="Tipe"
                 sortConfig={sortConfig}
                 sortKey="type"
                 onSortChange={onSortChange}
@@ -429,7 +433,7 @@ function ReferenceTable({
             </th>
             <th className="border-b border-[var(--rail-border)] px-3 py-3 font-semibold">
               <SortButton
-                label="Tags"
+                label="Tag"
                 sortConfig={sortConfig}
                 sortKey="tags"
                 onSortChange={onSortChange}
@@ -437,14 +441,14 @@ function ReferenceTable({
             </th>
             <th className="border-b border-[var(--rail-border)] px-3 py-3 font-semibold">
               <SortButton
-                label="Uploaded By"
+                label="Dibuat Oleh"
                 sortConfig={sortConfig}
                 sortKey="uploadedBy"
                 onSortChange={onSortChange}
               />
             </th>
             <th className="w-24 border-b border-[var(--rail-border)] px-3 py-3 text-right font-semibold">
-              Actions
+              Aksi
             </th>
           </tr>
         </thead>
@@ -492,7 +496,7 @@ function ReferenceTable({
                 >
                   <button
                     aria-expanded={openMenuId === reference.id}
-                    aria-label="Buka actions"
+                    aria-label="Buka aksi"
                     className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--rail-border)] text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
                     onClick={() =>
                       setOpenMenuId((current) =>
@@ -585,7 +589,7 @@ function ReferenceTypeBadge({ reference }: { reference: ReferenceItem }) {
   const isFile = reference.displayType === "file";
   const isLink = reference.displayType === "link";
   const Icon = isFile ? FileText : isLink ? Link2 : FileText;
-  const label = isFile ? "File" : isLink ? "Link" : "Text";
+  const label = isFile ? "File" : isLink ? "Tautan" : "Teks";
 
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--rail-border)] bg-[var(--background)] px-2.5 py-1 text-[10px] font-semibold text-[var(--rail-ink)]">
@@ -662,7 +666,7 @@ function ReferenceFormModal({
     try {
       if (isEditing && reference) {
         if (title.trim().length === 0) {
-          setError("Title wajib diisi.");
+          setError("Judul wajib diisi.");
           return;
         }
 
@@ -738,7 +742,7 @@ function ReferenceFormModal({
       <form className="space-y-4" onSubmit={(event) => void submitForm(event)}>
         {!isEditing ? (
           <div>
-            <RequiredFieldLabel label="Type" />
+            <RequiredFieldLabel label="Tipe" />
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(["link", "file"] as const).map((item) => (
                 <button
@@ -751,14 +755,14 @@ function ReferenceFormModal({
                   onClick={() => setFormMode(item)}
                   type="button"
                 >
-                  {item === "link" ? "Link" : "File"}
+                  {item === "link" ? "Tautan" : "File"}
                 </button>
               ))}
             </div>
           </div>
         ) : null}
 
-        <FormField label="Title" required>
+        <FormField label="Judul" required>
           <input
             className={fieldClassName}
             onChange={(event) => setTitle(event.target.value)}
@@ -766,7 +770,7 @@ function ReferenceFormModal({
           />
         </FormField>
 
-        <FormField label="Description">
+        <FormField label="Deskripsi">
           <textarea
             className={`${fieldClassName} min-h-24 resize-none py-3`}
             onChange={(event) => setDescription(event.target.value)}
@@ -795,7 +799,7 @@ function ReferenceFormModal({
         ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Category">
+          <FormField label="Kategori">
             <select
               className={fieldClassName}
               onChange={(event) =>
@@ -811,7 +815,7 @@ function ReferenceFormModal({
               ))}
             </select>
           </FormField>
-          <FormField label="Tags">
+          <FormField label="Tag">
             <input
               className={fieldClassName}
               onChange={(event) => setTagsInput(event.target.value)}
@@ -959,22 +963,28 @@ function FileUploadField({
   onFileChange: (file?: File) => void;
   required?: boolean;
 }) {
+  const isTooLarge = Boolean(file && file.size > MAX_REFERENCE_FILE_SIZE_BYTES);
+
   return (
     <div>
       <RequiredFieldLabel label="File" required={required} />
       <label
         className={`mt-2 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-4 py-5 text-center transition ${
-          file
-            ? "border-[var(--signal-green)] bg-[var(--signal-green-soft)]"
-            : "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] hover:bg-white"
+          isTooLarge
+            ? "border-[var(--signal-red)] bg-[var(--signal-red-soft)]"
+            : file
+              ? "border-[var(--signal-green)] bg-[var(--signal-green-soft)]"
+              : "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] hover:bg-white"
         }`}
         htmlFor={inputId}
       >
         <span
           className={`flex h-11 w-11 items-center justify-center rounded-full ${
-            file
-              ? "bg-[var(--signal-green)] text-white"
-              : "bg-white text-[var(--signal-blue)]"
+            isTooLarge
+              ? "bg-[var(--signal-red)] text-white"
+              : file
+                ? "bg-[var(--signal-green)] text-white"
+                : "bg-white text-[var(--signal-blue)]"
           }`}
         >
           <UploadCloud aria-hidden="true" size={20} />
@@ -983,12 +993,14 @@ function FileUploadField({
           {file ? file.name : "Pilih file referensi"}
         </span>
         <span className="mt-1 max-w-md text-xs leading-5 text-[var(--text-muted)]">
-          {file
-            ? `${formatFileSize(file.size)} - klik untuk mengganti file`
-            : `File yang diterima: ${ACCEPTED_REFERENCE_FILE_LABEL}.`}
+          {isTooLarge
+            ? `${formatFileSize(file?.size ?? 0)} melebihi batas maksimal ${MAX_REFERENCE_FILE_SIZE_LABEL}.`
+            : file
+              ? `${formatFileSize(file.size)} - klik untuk mengganti file`
+              : `File yang diterima: ${ACCEPTED_REFERENCE_FILE_LABEL}. Maksimal ${MAX_REFERENCE_FILE_SIZE_LABEL}.`}
         </span>
         <span className="mt-3 rounded-full border border-[var(--rail-border)] bg-white px-3 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
-          Browse file
+          Pilih file
         </span>
       </label>
       <input
@@ -999,8 +1011,8 @@ function FileUploadField({
         type="file"
       />
       <p className="mt-2 text-[11px] leading-5 text-[var(--text-tertiary)]">
-        Hindari file executable atau arsip terkompresi. Gunakan dokumen, gambar,
-        atau data tabular yang aman dibuka tim operasional.
+        Hindari file executable atau arsip terkompresi. Gunakan dokumen atau
+        gambar yang aman dibuka tim operasional.
       </p>
     </div>
   );
@@ -1077,7 +1089,7 @@ function ReferenceTableSkeleton() {
           className="animate-spin text-[var(--signal-blue)]"
           size={16}
         />
-        Loading references...
+        Memuat referensi...
       </div>
       {rows.map((row) => (
         <div

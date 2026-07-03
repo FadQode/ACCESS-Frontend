@@ -125,19 +125,7 @@ function buildManagerAction(
   }
 
   return {
-    references: ticket.actionRequest
-      ? [
-          {
-            id: ticket.actionRequest.id,
-            summary:
-              ticket.actionRequest.clusterLabel ??
-              ticket.actionRequest.referenceNo ??
-              "Action request is waiting for manager review.",
-            title: ticket.actionRequest.referenceNo ?? "Action request",
-            type: "manager_note",
-          },
-        ]
-      : [],
+    references: [],
     status: "pending",
   };
 }

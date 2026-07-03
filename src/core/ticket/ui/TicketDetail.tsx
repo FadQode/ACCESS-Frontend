@@ -8,7 +8,10 @@ import {
   Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { FollowUpTicket } from "../model/ticket.types";
+import type {
+  AttachedReferenceForTicket,
+  FollowUpTicket,
+} from "../model/ticket.types";
 import { CATEGORY_LABELS, CategoryBadge, StatusBadge } from "./TicketCard";
 
 type ActorRole = "customer" | "agent" | "manager" | "internal" | "platform";
@@ -20,8 +23,10 @@ interface TicketDetailProps {
   hasCopiedClosure: boolean;
   isAdminFinalClosure: boolean;
   isFinalClosurePending: boolean;
+  closureContextWarning: string;
   onClosureDraftChange: (value: string) => void;
   onCopyClosureAndClose: () => void;
+  onOpenManagerReference: (reference: AttachedReferenceForTicket) => void;
 }
 
 export function TicketDetail({
@@ -30,8 +35,10 @@ export function TicketDetail({
   hasCopiedClosure,
   isAdminFinalClosure,
   isFinalClosurePending,
+  closureContextWarning,
   onClosureDraftChange,
   onCopyClosureAndClose,
+  onOpenManagerReference,
   ticket,
 }: TicketDetailProps) {
   const canClose =
@@ -80,6 +87,11 @@ export function TicketDetail({
           <OriginalComplaintCard ticket={ticket} />
           <PreviousSafeReplyCard ticket={ticket} />
           <ManagerActionCard ticket={ticket} />
+          <ManagerReferencesCard
+            onOpenReference={onOpenManagerReference}
+            ticket={ticket}
+            warning={closureContextWarning}
+          />
           <ClosureMessageCard
             canClose={canClose}
             closureDraft={closureDraft}
@@ -178,16 +190,6 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
               }
             />
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {ticket.managerAction.references.map((reference) => (
-              <span
-                className="rounded-full border border-[var(--rail-border)] bg-[var(--background)] px-2.5 py-1 text-[10px] font-semibold text-[var(--text-muted)]"
-                key={reference.id}
-              >
-                {reference.title}
-              </span>
-            ))}
-          </div>
           <div className="mt-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
             <div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-[var(--rail-ink)]">
               <Wrench
@@ -209,6 +211,69 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
           actorRole="internal"
           text="Menunggu arahan manager. Balasan akhir belum tersedia."
         />
+      )}
+    </WorkflowCard>
+  );
+}
+
+function ManagerReferencesCard({
+  onOpenReference,
+  ticket,
+  warning,
+}: {
+  onOpenReference: (reference: AttachedReferenceForTicket) => void;
+  ticket: FollowUpTicket;
+  warning: string;
+}) {
+  return (
+    <WorkflowCard
+      actorName={ticket.managerAction.managerName ?? "Manajer"}
+      eyebrow="Konteks final closure"
+      actorRole="manager"
+      title="Referensi dari Manager"
+    >
+      {warning ? (
+        <div className="mb-3 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-amber-dark)]">
+          {warning}
+        </div>
+      ) : null}
+      {ticket.managerAction.references.length > 0 ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {ticket.managerAction.references.map((reference) => (
+            <button
+              className="min-h-24 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3 text-left transition hover:border-[var(--signal-blue)] hover:bg-white"
+              key={reference.referenceLinkId}
+              onClick={() => onOpenReference(reference)}
+              type="button"
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="rounded-full bg-[var(--signal-blue-soft)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-blue)]">
+                  {referenceDisplayLabel[reference.displayType]}
+                </span>
+                <ExternalLink
+                  aria-hidden="true"
+                  className="text-[var(--text-tertiary)]"
+                  size={13}
+                />
+              </div>
+              <p className="line-clamp-2 text-xs font-semibold leading-5 text-[var(--rail-ink)]">
+                {reference.title}
+              </p>
+              <p className="mt-1 text-[11px] leading-5 text-[var(--text-muted)]">
+                {usageTypeLabel[reference.usageType] ?? reference.usageType}
+              </p>
+              {reference.note ? (
+                <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-[var(--text-tertiary)]">
+                  {reference.note}
+                </p>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4 text-xs leading-6 text-[var(--text-muted)]">
+          Belum ada referensi yang dilampirkan manager.
+        </div>
       )}
     </WorkflowCard>
   );
@@ -367,6 +432,24 @@ function WorkflowCard({
     </article>
   );
 }
+
+const referenceDisplayLabel: Record<
+  AttachedReferenceForTicket["displayType"],
+  string
+> = {
+  file: "File",
+  link: "Tautan",
+  text: "Teks",
+};
+
+const usageTypeLabel: Record<string, string> = {
+  action_basis: "Dasar tindakan",
+  closure_support: "Dukungan balasan penutup",
+  evidence: "Bukti / konteks",
+  internal_note: "Catatan internal",
+  policy_support: "Dukungan kebijakan",
+  related_link: "Link terkait",
+};
 
 function RoleMessage({
   label,

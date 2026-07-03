@@ -1,3 +1,5 @@
+import type { AttachedActionRequestReference } from "@/core/reference/model/types/reference-attachment.types";
+
 export type ActionRequestStatus =
   | "action_planned"
   | "action_taken"
@@ -22,6 +24,7 @@ export type ActionRequest = {
   createdAt?: string;
   updatedAt?: string;
   linkedComplaints?: ActionRequestLinkedComplaint[];
+  references: AttachedActionRequestReference[];
 };
 
 export type ActionRequestLinkedComplaint = {

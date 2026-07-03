@@ -1,3 +1,4 @@
+import type { FinalClosureReferenceInput } from "@/core/reference/model/types/reference-attachment.types";
 import type {
   QuickResponseOutcome,
   QuickResponseTarget,
@@ -16,6 +17,7 @@ export type FinalClosureRequest = {
     finalResponse: string;
     outcome: Extract<QuickResponseOutcome, "sent_resolved">;
   };
+  references?: FinalClosureReferenceInput[];
 };
 
 export type FinalClosureResponse = {

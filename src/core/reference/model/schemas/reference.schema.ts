@@ -38,6 +38,7 @@ export const referenceCategorySchema = z.enum([
 export const referenceStatusSchema = z.enum(["active", "draft", "archived"]);
 
 const nullableStringSchema = z.string().nullable().optional();
+export const MAX_REFERENCE_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 export const rawReferenceSchema = z
   .object({
@@ -146,6 +147,18 @@ export const referenceFormSchema = z
       context.addIssue({
         code: "custom",
         message: "File wajib dipilih.",
+        path: ["file"],
+      });
+    }
+
+    if (
+      value.mode === "file" &&
+      value.file &&
+      value.file.size > MAX_REFERENCE_FILE_SIZE_BYTES
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Ukuran file maksimal 5 MB.",
         path: ["file"],
       });
     }

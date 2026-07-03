@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
 import { ProfileMenu } from "@/core/auth/profile-menu";

@@ -141,6 +141,7 @@ export async function createComplaintQuickResponse(
     {
       finalResponse: payload.response.finalResponse,
       outcome: payload.response.outcome,
+      references: payload.references,
       responseTarget: payload.response.responseTarget,
       responseTone: payload.response.responseTone,
       selectedApologize: payload.response.selectedApologize,
