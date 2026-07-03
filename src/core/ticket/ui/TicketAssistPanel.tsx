@@ -101,13 +101,15 @@ export function TicketAssistPanel({ onClose, ticket }: TicketAssistPanelProps) {
             {ticket.managerAction.references.map((reference) => (
               <p
                 className="rounded-md bg-[var(--background)] p-2 text-[11px] leading-5 text-[var(--text-muted)]"
-                key={reference.id}
+                key={reference.referenceLinkId}
               >
                 <span className="font-semibold text-[var(--rail-ink)]">
                   {reference.title}
                 </span>
                 <br />
-                {reference.summary}
+                {reference.note ??
+                  reference.snapshotText ??
+                  reference.usageType}
               </p>
             ))}
           </div>

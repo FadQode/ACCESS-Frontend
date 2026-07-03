@@ -140,6 +140,20 @@ export type ExternalChannel =
 
 export type FollowUpTicketFilter = "all" | "waiting" | "ready" | "closed";
 
+export type FollowUpTicketSortKey =
+  | "status"
+  | "customer"
+  | "category"
+  | "priority"
+  | "submitted";
+
+export type FollowUpTicketSortDirection = "asc" | "desc";
+
+export interface FollowUpTicketSortConfig {
+  key: FollowUpTicketSortKey;
+  direction: FollowUpTicketSortDirection;
+}
+
 export interface TicketReference {
   id: string;
   type: "sop" | "policy" | "past_ticket" | "manager_note";
@@ -168,11 +182,18 @@ export interface ManagerActionResult {
   completedAt?: string;
   actionTaken?: string;
   closureDraft?: string;
-  references: TicketReference[];
+  references: AttachedReferenceForTicket[];
 }
+
+export type AttachedReferenceForTicket = AttachedActionRequestReference;
+
+export type TicketClosureContext = {
+  attachedReferences: AttachedReferenceForTicket[];
+};
 
 export interface FollowUpTicket {
   id: string;
+  complaintId: string;
   displayId: string;
   status: FollowUpTicketStatus;
   category: FollowUpTicketCategory;
@@ -186,6 +207,7 @@ export interface FollowUpTicket {
   route?: string;
   originalComplaint: string;
   submittedAt: string;
+  submittedAtValue?: string;
   relativeTime: string;
   safeReplyText?: string;
   safeReplyCopiedAt?: string;
@@ -198,3 +220,5 @@ export interface FollowUpTicket {
   priority: "low" | "medium" | "high" | "urgent";
   activityLog: FollowUpTicketActivity[];
 }
+
+import type { AttachedActionRequestReference } from "@/core/reference/model/types/reference-attachment.types";

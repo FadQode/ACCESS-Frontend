@@ -1,8 +1,8 @@
-import type { ComplaintCategorySummary } from "../../model/manager-dashboard.types";
+import type { ComplaintCategoryBreakdown } from "../../model/types/dashboard.types";
 import { ComplaintCategoryItem } from "./ComplaintCategoryItem";
 
 interface ComplaintCategoryCardProps {
-  categories: ComplaintCategorySummary[];
+  categories: ComplaintCategoryBreakdown[];
 }
 
 export function ComplaintCategoryCard({
@@ -20,7 +20,7 @@ export function ComplaintCategoryCard({
       </div>
       <div className="grid gap-4">
         {categories.map((category) => (
-          <ComplaintCategoryItem category={category} key={category.id} />
+          <ComplaintCategoryItem category={category} key={category.category} />
         ))}
       </div>
     </section>

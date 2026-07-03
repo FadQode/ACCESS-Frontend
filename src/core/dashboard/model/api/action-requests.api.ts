@@ -12,6 +12,7 @@ import type {
   PaginatedData,
   PaginationMeta,
 } from "@/core/dashboard/model/types/api.types";
+import { rawActionRequestReferenceSchema } from "@/core/reference/model/schemas/reference-attachment.schema";
 
 const idSchema = z
   .union([z.string(), z.number()])
@@ -68,6 +69,7 @@ const rawActionRequestSchema = z
     manager_id: idSchema.nullable().optional(),
     referenceNo: z.string().optional(),
     reference_no: z.string().optional(),
+    references: z.array(rawActionRequestReferenceSchema).optional(),
     resolvedAt: z.string().nullable().optional(),
     resolved_at: z.string().nullable().optional(),
     raisedAt: z.string().optional(),
@@ -99,6 +101,7 @@ const rawActionRequestSchema = z
     managerId: value.managerId ?? value.manager_id,
     raisedAt: value.raisedAt ?? value.raised_at,
     referenceNo: value.referenceNo ?? value.reference_no,
+    references: value.references ?? [],
     resolvedAt: value.resolvedAt ?? value.resolved_at,
     status: normalizeActionRequestStatus(value.status),
     updatedAt: value.updatedAt ?? value.updated_at,

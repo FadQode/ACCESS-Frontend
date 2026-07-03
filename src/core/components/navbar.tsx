@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
 import { ProfileMenu } from "@/core/auth/profile-menu";
@@ -114,12 +114,7 @@ export function DashboardNavbar({
 
       <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
         {controls}
-        <IconButton label="Buka pengaturan">
-          <Settings aria-hidden="true" size={16} />
-        </IconButton>
-        <IconButton label="Lihat notifikasi" notification>
-          <Bell aria-hidden="true" size={16} />
-        </IconButton>
+
         <ProfileMenu
           fallbackRoleLabel={resolvedRoleLabel}
           fallbackUserName={resolvedUserName}

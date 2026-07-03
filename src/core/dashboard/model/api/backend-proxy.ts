@@ -2,7 +2,7 @@ import axios, { type AxiosError } from "axios";
 import { type NextRequest, NextResponse } from "next/server";
 
 type ProxyOptions = {
-  method: "GET" | "PATCH" | "POST";
+  method: "DELETE" | "GET" | "PATCH" | "POST";
   request: NextRequest;
   path: string;
 };
@@ -29,12 +29,12 @@ async function readProxyBody(
     return undefined;
   }
 
-  const body = await request.text();
+  const body = await request.arrayBuffer();
 
-  return body || undefined;
+  return body.byteLength > 0 ? Buffer.from(body) : undefined;
 }
 
-function createForwardHeaders(request: NextRequest, body: string | undefined) {
+function createForwardHeaders(request: NextRequest, body: Buffer | undefined) {
   const headers: Record<string, string> = {
     Accept: "application/json",
   };

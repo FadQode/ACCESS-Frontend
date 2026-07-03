@@ -2,11 +2,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { takeAction } from "@/core/dashboard/model/api/action-requests.api";
-import { queryKeys } from "@/core/dashboard/model/query-keys";
 import type {
   ActionRequest,
   TakeActionRequest,
 } from "@/core/dashboard/model/types/action-request.types";
+import { invalidateDashboardWorkflow } from "./invalidate-dashboard-workflow";
 
 type TakeActionVariables = {
   id: string;
@@ -19,12 +19,12 @@ export function useTakeAction() {
   return useMutation<ActionRequest, Error, TakeActionVariables>({
     mutationFn: ({ id, input }) => takeAction(id, input),
     mutationKey: ["action-requests", "take-action"],
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.actionRequests.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actionRequests.detail(variables.id),
+    onSuccess: async (_data, variables) => {
+      await invalidateDashboardWorkflow(queryClient, {
+        actionRequestId: variables.id,
+        includeActionRequests: true,
+        includeTickets: true,
       });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all });
     },
   });
 }

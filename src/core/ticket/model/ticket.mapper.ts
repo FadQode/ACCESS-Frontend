@@ -29,6 +29,7 @@ export function mapBackendTicketToFollowUpTicket(
       ? formatAbsoluteDate(ticket.closureSentAt)
       : undefined,
     closureMessage,
+    complaintId: ticket.complaintId,
     customerInitials: "PA",
     customerName: "Pelanggan ACCESS",
     displayId: ticket.referenceNo ?? shortId(ticket.id),
@@ -49,6 +50,7 @@ export function mapBackendTicketToFollowUpTicket(
     sourceType: "Follow-up",
     status,
     submittedAt: formatAbsoluteDate(createdAt),
+    submittedAtValue: createdAt,
     username: ticket.referenceNo
       ? `#${ticket.referenceNo}`
       : shortId(ticket.id),
@@ -124,19 +126,7 @@ function buildManagerAction(
   }
 
   return {
-    references: ticket.actionRequest
-      ? [
-          {
-            id: ticket.actionRequest.id,
-            summary:
-              ticket.actionRequest.clusterLabel ??
-              ticket.actionRequest.referenceNo ??
-              "Action request is waiting for manager review.",
-            title: ticket.actionRequest.referenceNo ?? "Action request",
-            type: "manager_note",
-          },
-        ]
-      : [],
+    references: [],
     status: "pending",
   };
 }

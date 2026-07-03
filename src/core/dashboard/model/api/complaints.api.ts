@@ -62,6 +62,88 @@ const rawComplaintSchema = z
     updatedAt: value.updatedAt ?? value.updated_at,
   }));
 
+const rawQuickResponseSessionSchema = z
+  .object({
+    agent: z
+      .object({
+        email: z.string().optional(),
+        id: z
+          .union([z.string(), z.number()])
+          .transform((value) => String(value)),
+        name: z.string().optional(),
+      })
+      .optional(),
+    createdAt: z.string().optional(),
+    created_at: z.string().optional(),
+    finalResponse: z.string().nullable().optional(),
+    final_response: z.string().nullable().optional(),
+    id: z.union([z.string(), z.number()]).transform((value) => String(value)),
+    outcome: z.string().optional(),
+    responseTarget: z.string().optional(),
+    responseTone: z.string().nullable().optional(),
+    response_target: z.string().optional(),
+    response_tone: z.string().nullable().optional(),
+    selectedApologize: z.string().nullable().optional(),
+    selectedEmpathize: z.string().nullable().optional(),
+    selectedHear: z.string().nullable().optional(),
+    selectedTakeAction: z.string().nullable().optional(),
+    selected_apologize: z.string().nullable().optional(),
+    selected_empathize: z.string().nullable().optional(),
+    selected_hear: z.string().nullable().optional(),
+    selected_take_action: z.string().nullable().optional(),
+    sourceChannel: z.string().optional(),
+    sourceHandle: z.string().nullable().optional(),
+    source_channel: z.string().optional(),
+    source_handle: z.string().nullable().optional(),
+    updatedAt: z.string().optional(),
+    updated_at: z.string().optional(),
+  })
+  .transform((value) => ({
+    agent: value.agent
+      ? {
+          email: value.agent.email ?? "",
+          id: value.agent.id,
+          name: value.agent.name ?? value.agent.email ?? "Agent",
+        }
+      : undefined,
+    createdAt: value.createdAt ?? value.created_at,
+    finalResponse: value.finalResponse ?? value.final_response,
+    id: value.id,
+    outcome: value.outcome,
+    responseTarget: value.responseTarget ?? value.response_target,
+    responseTone: value.responseTone ?? value.response_tone,
+    selectedApologize: value.selectedApologize ?? value.selected_apologize,
+    selectedEmpathize: value.selectedEmpathize ?? value.selected_empathize,
+    selectedHear: value.selectedHear ?? value.selected_hear,
+    selectedTakeAction: value.selectedTakeAction ?? value.selected_take_action,
+    sourceChannel: value.sourceChannel ?? value.source_channel,
+    sourceHandle: value.sourceHandle ?? value.source_handle,
+    updatedAt: value.updatedAt ?? value.updated_at,
+  }));
+
+const complaintDetailResponseSchema = z
+  .union([
+    rawComplaintSchema,
+    z.object({
+      complaint: rawComplaintSchema,
+      quickResponseSessions: z.array(rawQuickResponseSessionSchema).optional(),
+      quick_response_sessions: z
+        .array(rawQuickResponseSessionSchema)
+        .optional(),
+    }),
+  ])
+  .transform<Complaint>((value) => {
+    if ("complaint" in value) {
+      return {
+        ...value.complaint,
+        quickResponseSessions:
+          value.quickResponseSessions ?? value.quick_response_sessions ?? [],
+      };
+    }
+
+    return value;
+  });
+
 const paginationSchema = z
   .object({
     limit: z.number().optional(),
@@ -137,5 +219,5 @@ export async function getComplaints(
 export async function getComplaintById(id: string): Promise<Complaint> {
   const response = await apiClient.get<unknown>(`/complaints/${id}`);
 
-  return rawComplaintSchema.parse(response);
+  return complaintDetailResponseSchema.parse(response);
 }

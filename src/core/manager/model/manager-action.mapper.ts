@@ -3,6 +3,7 @@ import type {
   ComplaintClusterStatus,
   ManagerActionCategory,
   ManagerActionCluster,
+  ManagerActionReference,
 } from "@/core/manager/model/manager-action.types";
 
 export function mapActionRequestToManagerCluster(
@@ -49,7 +50,7 @@ export function mapActionRequestToManagerCluster(
     policyApplies: "Review against applicable operational policy.",
     raisedAt: actionRequest.raisedAt ?? actionRequest.createdAt ?? "",
     recommendedAction: actionRequest.actionTaken ?? undefined,
-    references: [],
+    references: actionRequest.references.map(mapActionRequestReference),
     relativeTime: formatRelativeTime(
       actionRequest.raisedAt ?? actionRequest.createdAt,
     ),
@@ -58,6 +59,22 @@ export function mapActionRequestToManagerCluster(
       : undefined,
     status: mapActionRequestStatusToDisplayStatus(actionRequest.status),
     title: actionRequest.clusterLabel,
+  };
+}
+
+function mapActionRequestReference(
+  reference: ActionRequest["references"][number],
+): ManagerActionReference {
+  return {
+    id: reference.referenceLinkId,
+    note: reference.note,
+    referenceSourceId: reference.referenceSourceId,
+    summary: reference.snapshotText ?? reference.note ?? undefined,
+    tags: reference.tags,
+    title: reference.title,
+    type: reference.displayType,
+    url: reference.url,
+    usageType: reference.usageType,
   };
 }
 

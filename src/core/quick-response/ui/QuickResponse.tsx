@@ -45,7 +45,7 @@ type ResponseTarget =
   | "app-review"
   | "internal-note";
 type Tone = "formal" | "friendly" | "concise";
-type OutcomeId = "copy" | "resolved" | "ticket";
+type OutcomeId = "resolved" | "ticket";
 type CompletionState = "saved" | "resolved" | "follow-up";
 type BuilderKey = "hear" | "empathize" | "apologize" | "takeAction";
 type QuickResponseFieldErrors = Partial<
@@ -101,19 +101,6 @@ const sourceOptions: Option[] = [
   { value: "google-play", label: "Google Play" },
   { value: "app-store", label: "App Store" },
   { value: "other", label: "Lainnya" },
-];
-
-const targetOptions: { value: ResponseTarget; label: string }[] = [
-  { value: "public-reply", label: "Balasan publik" },
-  { value: "direct-message", label: "DM / pesan pribadi" },
-  { value: "app-review", label: "Ulasan aplikasi" },
-  { value: "internal-note", label: "Catatan internal" },
-];
-
-const toneOptions: { value: Tone; label: string }[] = [
-  { value: "formal", label: "Formal" },
-  { value: "friendly", label: "Ramah" },
-  { value: "concise", label: "Ringkas" },
 ];
 
 const defaultComplaint =
@@ -414,7 +401,7 @@ export function QuickResponse() {
   const [complaintText, setComplaintText] = useState(defaultComplaint);
   const [responseTarget, setResponseTarget] =
     useState<ResponseTarget>("public-reply");
-  const [tone, setTone] = useState<Tone>("formal");
+  const tone: Tone = "formal";
   const [inputExpanded, setInputExpanded] = useState(true);
   const [inputDirty, setInputDirty] = useState(false);
   const [isBuildingResponse, setIsBuildingResponse] = useState(false);
@@ -458,8 +445,6 @@ export function QuickResponse() {
   );
 
   const sourceLabel = labelFor(sourceOptions, source);
-  const targetLabel = labelFor(targetOptions, responseTarget);
-  const toneLabel = labelFor(toneOptions, tone);
   const isReviewSource = source === "google-play" || source === "app-store";
   const canGenerate = complaintText.trim().length > 0;
   const flowLocked = inputDirty;
@@ -479,14 +464,6 @@ export function QuickResponse() {
 
   const outcomeOptions = useMemo(
     () => [
-      {
-        id: "copy" as const,
-        title: "Salin saja",
-        description:
-          "Simpan sesi quick response dan salin balasan untuk dikirim manual ke pelanggan.",
-        recommended: false,
-        icon: <Copy aria-hidden="true" size={18} />,
-      },
       {
         id: "resolved" as const,
         title: "Salin & Selesaikan",
@@ -591,11 +568,6 @@ export function QuickResponse() {
     setCompletionState(null);
     setCreatedResult(null);
     setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
-  };
-
-  const handleToneChange = (nextTone: Tone) => {
-    setTone(nextTone);
-    markInputDirty();
   };
 
   const handleCopyReview = async () => {
@@ -725,7 +697,6 @@ export function QuickResponse() {
     setRating("1");
     setComplaintText("");
     setResponseTarget("public-reply");
-    setTone("formal");
     setInputExpanded(true);
     setInputDirty(false);
     setSelectedOutcome(null);
@@ -821,17 +792,8 @@ export function QuickResponse() {
                   </p>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[420px]">
+                <div className="grid gap-2 sm:grid-cols-1 xl:min-w-[180px]">
                   <MetricPill label="Platform" value={sourceLabel} />
-                  <MetricPill label="Tujuan" value={targetLabel} />
-                  <MetricPill
-                    label="Aturan hasil"
-                    value={
-                      completionState === "resolved"
-                        ? "Tanpa tiket"
-                        : "Buat tiket jika belum selesai"
-                    }
-                  />
                 </div>
               </div>
             </header>
@@ -843,9 +805,7 @@ export function QuickResponse() {
                 isActive={currentStep === 1 || inputExpanded}
                 isComplete={!inputExpanded && complaintText.trim().length > 0}
                 meta={
-                  complaintText.trim()
-                    ? `${sourceLabel} - ${targetLabel} - ${toneLabel}`
-                    : "Menunggu input keluhan"
+                  complaintText.trim() ? sourceLabel : "Menunggu input keluhan"
                 }
                 number={1}
                 title="Input"
@@ -887,28 +847,19 @@ export function QuickResponse() {
                       setRating(value);
                       markInputDirty();
                     }}
-                    onResponseTargetChange={(value) => {
-                      setResponseTarget(value);
-                      markInputDirty();
-                    }}
                     onSourceChange={handleSourceChange}
-                    onToneChange={handleToneChange}
                     onUsernameChange={(value) => {
                       setUsername(value);
                       markInputDirty();
                     }}
                     rating={rating}
-                    responseTarget={responseTarget}
                     source={source}
-                    tone={tone}
                     username={username}
                   />
                 ) : (
                   <InputSummary
                     complaintText={complaintText}
-                    responseTarget={targetLabel}
                     source={sourceLabel}
-                    tone={toneLabel}
                     username={username}
                   />
                 )}
@@ -972,7 +923,6 @@ export function QuickResponse() {
                   onContinue={() => setCurrentStep(4)}
                   onCopy={handleCopyReview}
                   source={sourceLabel}
-                  target={targetLabel}
                 />
               </StepCard>
 
@@ -1025,14 +975,10 @@ function ComplaintInputForm({
   onExternalUrlChange,
   onGenerate,
   onRatingChange,
-  onResponseTargetChange,
   onSourceChange,
-  onToneChange,
   onUsernameChange,
   rating,
-  responseTarget,
   source,
-  tone,
   username,
 }: {
   canGenerate: boolean;
@@ -1046,14 +992,10 @@ function ComplaintInputForm({
   onExternalUrlChange: (value: string) => void;
   onGenerate: () => void;
   onRatingChange: (value: string) => void;
-  onResponseTargetChange: (value: ResponseTarget) => void;
   onSourceChange: (value: string) => void;
-  onToneChange: (value: Tone) => void;
   onUsernameChange: (value: string) => void;
   rating: string;
-  responseTarget: ResponseTarget;
   source: string;
-  tone: Tone;
   username: string;
 }) {
   return (
@@ -1064,7 +1006,7 @@ function ComplaintInputForm({
         </WarningBanner>
       ) : null}
 
-      <FieldLabel label="Kanal sumber">
+      <FieldLabel label="Kanal sumber" required>
         <SegmentedButtons
           options={sourceOptions}
           value={source}
@@ -1111,7 +1053,7 @@ function ComplaintInputForm({
       </div>
 
       {isReviewSource ? (
-        <FieldLabel label="Rating ulasan">
+        <FieldLabel label="Rating ulasan" required>
           <select
             className={inputClass}
             onChange={(event) => onRatingChange(event.target.value)}
@@ -1126,7 +1068,7 @@ function ComplaintInputForm({
         </FieldLabel>
       ) : null}
 
-      <FieldLabel label="Isi keluhan">
+      <FieldLabel label="Isi keluhan" required>
         <textarea
           className={`${textareaClass} min-h-[132px]`}
           onChange={(event) => onComplaintTextChange(event.target.value)}
@@ -1139,22 +1081,6 @@ function ComplaintInputForm({
         {fieldErrors.complaintText ? (
           <FieldError>{fieldErrors.complaintText}</FieldError>
         ) : null}
-      </FieldLabel>
-
-      <FieldLabel label="Tujuan balasan">
-        <SegmentedButtons
-          options={targetOptions}
-          value={responseTarget}
-          onChange={(value) => onResponseTargetChange(value as ResponseTarget)}
-        />
-      </FieldLabel>
-
-      <FieldLabel label="Gaya bahasa">
-        <SegmentedButtons
-          options={toneOptions}
-          value={tone}
-          onChange={(value) => onToneChange(value as Tone)}
-        />
       </FieldLabel>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1173,7 +1099,7 @@ function ComplaintInputForm({
           type="button"
         >
           <Sparkles aria-hidden="true" size={15} />
-          Buat ulang balasan
+          Buat Balasan
         </button>
       </div>
     </div>
@@ -1182,15 +1108,11 @@ function ComplaintInputForm({
 
 function InputSummary({
   complaintText,
-  responseTarget,
   source,
-  tone,
   username,
 }: {
   complaintText: string;
-  responseTarget: string;
   source: string;
-  tone: string;
   username: string;
 }) {
   return (
@@ -1201,8 +1123,6 @@ function InputSummary({
       <div className="mt-3 flex flex-wrap gap-2">
         <ContextBadge>{source}</ContextBadge>
         {username ? <ContextBadge>{username}</ContextBadge> : null}
-        <ContextBadge>{responseTarget}</ContextBadge>
-        <ContextBadge>{tone}</ContextBadge>
       </div>
     </div>
   );
@@ -1308,7 +1228,6 @@ function ReviewStep({
   onContinue,
   onCopy,
   source,
-  target,
 }: {
   copiedLabel: string;
   finalResponseError?: string;
@@ -1319,14 +1238,13 @@ function ReviewStep({
   onContinue: () => void;
   onCopy: () => void;
   source: string;
-  target: string;
 }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex min-h-8 w-fit items-center gap-2 rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 text-xs font-semibold text-[var(--signal-blue)]">
           <MessageSquareText aria-hidden="true" size={14} />
-          Disesuaikan untuk {source} - {target}
+          Disesuaikan untuk {source}
         </span>
         <button className={secondaryButtonClass} onClick={onBack} type="button">
           <ArrowLeft aria-hidden="true" size={13} />
@@ -1357,7 +1275,7 @@ function ReviewStep({
         </div>
       </section>
 
-      <FieldLabel label="Balasan akhir" note="boleh diedit">
+      <FieldLabel label="Balasan akhir" note="boleh diedit" required>
         <textarea
           className={`${textareaClass} min-h-[180px] border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]`}
           onChange={(event) => onChangeFinalResponse(event.target.value)}
@@ -1460,7 +1378,7 @@ function OutcomeStep({
       ) : null}
       {permissionError ? <FieldError>{permissionError}</FieldError> : null}
 
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-2">
         {options.map((option) => (
           <button
             className={`min-h-[154px] rounded-lg border p-4 text-left transition ${
@@ -1954,15 +1872,22 @@ function FieldLabel({
   children,
   label,
   note,
+  required = false,
 }: {
   children: ReactNode;
   label: string;
   note?: string;
+  required?: boolean;
 }) {
   return (
     <div>
       <p className="text-xs font-semibold text-[var(--rail-ink)]">
         {label}
+        {required ? (
+          <span aria-hidden="true" className="ml-1 text-[var(--signal-red)]">
+            *
+          </span>
+        ) : null}
         {note ? (
           <span className="font-normal text-[var(--text-tertiary)]">
             {" "}
@@ -2228,7 +2153,7 @@ function getSubmitErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Failed to save quick response. Please check the form and try again.";
+  return "Gagal menyimpan quick response. Periksa form lalu coba lagi.";
 }
 
 function getQuickResponseFieldErrors(error: ZodError) {

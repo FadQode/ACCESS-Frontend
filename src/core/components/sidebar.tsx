@@ -10,7 +10,6 @@ import {
   LogOut,
   MessageSquareText,
   Route,
-  ShieldCheck,
   Users,
   X,
 } from "lucide-react";
@@ -45,15 +44,15 @@ interface NavigationItem {
 const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
   agent: [
     { href: "/agent", icon: Gauge, label: "Dashboard" },
-    { href: "/agent/complaints", icon: ClipboardCheck, label: "Complaints" },
     {
       href: "/agent/quick-response",
       icon: MessageSquareText,
       label: "Quick Response",
     },
     { href: "/agent/tickets", icon: Inbox, label: "Tickets" },
-    { href: "/agent/knowledge", icon: BookOpen, label: "Knowledge" },
+    { href: "/agent/complaints", icon: ClipboardCheck, label: "Complaints" },
     { href: "/agent/reports", icon: BarChart3, label: "Reports" },
+    // { href: "/agent/knowledge", icon: BookOpen, label: "Knowledge" },
   ],
   manager: [
     { href: "/manager", icon: LineChart, label: "Overview" },
@@ -62,10 +61,11 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
       icon: ClipboardCheck,
       label: "Action Queue",
     },
+    { href: "/manager/references", icon: BookOpen, label: "References" },
     { href: "/manager/agents", icon: Users, label: "Agents" },
-    { href: "/manager/compliance", icon: ClipboardCheck, label: "Compliance" },
-    { href: "/manager/analytics", icon: BarChart3, label: "Analytics" },
-    { href: "/manager/risk", icon: ShieldCheck, label: "Risk" },
+    { href: "/manager/complaints", icon: ClipboardCheck, label: "Complaints" },
+    // { href: "/manager/analytics", icon: BarChart3, label: "Analytics" },
+    // { href: "/manager/risk", icon: ShieldCheck, label: "Risk" },
   ],
 };
 
@@ -78,7 +78,6 @@ export function DashboardSidebar({
   dashboardRole,
   isOpen = false,
   onClose,
-  stats = [],
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const logout = useLogout();
@@ -183,18 +182,6 @@ export function DashboardSidebar({
               })}
             </ul>
           </nav>
-
-          {stats.length > 0 ? (
-            <div className="mt-6 grid grid-cols-1 gap-2">
-              {stats.map((stat) => (
-                <SidebarStat
-                  key={stat.label}
-                  label={stat.label}
-                  value={stat.value}
-                />
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <div className="mt-3 border-t border-[var(--rail-border)] pt-3">
@@ -209,18 +196,5 @@ export function DashboardSidebar({
         </div>
       </aside>
     </>
-  );
-}
-
-function SidebarStat({ label, value }: DashboardSidebarStat) {
-  return (
-    <div className="rounded-2xl border border-[var(--rail-border)] bg-[var(--background)] p-3">
-      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--text-muted)]">
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-semibold text-[var(--rail-ink)]">
-        {value}
-      </p>
-    </div>
   );
 }

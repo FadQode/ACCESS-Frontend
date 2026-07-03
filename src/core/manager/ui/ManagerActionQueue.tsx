@@ -1,15 +1,29 @@
 "use client";
 
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
   CheckCircle2,
   ChevronRight,
+  ExternalLink,
   FileText,
   Link2,
+  LoaderCircle,
   Paperclip,
+  Plus,
   Search,
+  Trash2,
+  X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
@@ -24,28 +38,50 @@ import type {
   ManagerActionReference,
   ManagerActionStatus,
 } from "@/core/manager/model/manager-action.types";
+import { useAttachReferenceToActionRequest } from "@/core/reference/hooks/use-attach-reference-to-action-request";
+import { useDetachReferenceFromActionRequest } from "@/core/reference/hooks/use-detach-reference-from-action-request";
+import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
+import { useReferences } from "@/core/reference/hooks/use-references";
+import type { ReferenceItem } from "@/core/reference/model/types/reference.types";
+import type { ActionRequestReferenceUsageType } from "@/core/reference/model/types/reference-attachment.types";
 
 const MANAGER_NAME = "Mgr. Dina";
+
+type SortDirection = "asc" | "desc";
+type ManagerActionSortKey =
+  | "cluster"
+  | "category"
+  | "agents"
+  | "status"
+  | "raised";
+type ManagerActionSortConfig = {
+  key: ManagerActionSortKey;
+  direction: SortDirection;
+};
+type ActionReferenceModalStyle = CSSProperties & {
+  "--action-reference-modal-max-height": string;
+  "--action-reference-modal-top": string;
+};
 
 const statusFilters: Array<{
   value: "all" | ManagerActionStatus;
   label: string;
 }> = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "done", label: "Done" },
+  { value: "all", label: "Semua" },
+  { value: "pending", label: "Menunggu" },
+  { value: "in_progress", label: "Diproses" },
+  { value: "done", label: "Selesai" },
 ];
 
 const categoryLabel: Record<ManagerActionCategory, string> = {
-  app_issue: "App Issue",
-  cancellation: "Cancellation",
-  delay: "Delay",
-  facility: "Facility",
-  lost_item: "Lost Item",
-  other: "Other",
-  payment: "Payment",
-  refund: "Refund",
+  app_issue: "Kendala Aplikasi",
+  cancellation: "Pembatalan",
+  delay: "Keterlambatan",
+  facility: "Fasilitas",
+  lost_item: "Barang Tertinggal",
+  other: "Lainnya",
+  payment: "Pembayaran",
+  refund: "Pengembalian Dana",
 };
 
 const categoryBadgeClass: Record<ManagerActionCategory, string> = {
@@ -60,9 +96,9 @@ const categoryBadgeClass: Record<ManagerActionCategory, string> = {
 };
 
 const statusLabel: Record<ManagerActionStatus, string> = {
-  done: "Done",
-  in_progress: "In Progress",
-  pending: "Pending",
+  done: "Selesai",
+  in_progress: "Diproses",
+  pending: "Menunggu",
 };
 
 const statusBadgeClass: Record<ManagerActionStatus, string> = {
@@ -71,22 +107,56 @@ const statusBadgeClass: Record<ManagerActionStatus, string> = {
   pending: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
 };
 
+const managerStatusRank: Record<ManagerActionStatus, number> = {
+  pending: 0,
+  in_progress: 1,
+  done: 2,
+};
+
+const usageTypeOptions: Array<{
+  label: string;
+  value: ActionRequestReferenceUsageType;
+}> = [
+  { label: "Dukungan Balasan Penutup", value: "closure_support" },
+  { label: "Bukti / Konteks", value: "evidence" },
+  { label: "Dasar Tindakan", value: "action_basis" },
+  { label: "Dukungan Kebijakan", value: "policy_support" },
+  { label: "Link Terkait", value: "related_link" },
+  { label: "Catatan Internal", value: "internal_note" },
+];
+
+const usageTypeLabel = Object.fromEntries(
+  usageTypeOptions.map((item) => [item.value, item.label]),
+) as Record<ActionRequestReferenceUsageType, string>;
+
 export function ManagerActionQueue() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(
     null,
   );
   const [filter, setFilter] = useState<"all" | ManagerActionStatus>("all");
+  const [sortConfig, setSortConfig] = useState<ManagerActionSortConfig>({
+    direction: "asc",
+    key: "status",
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [actionTaken, setActionTaken] = useState("");
   const [closureMessage, setClosureMessage] = useState("");
-  const [documentNames, setDocumentNames] = useState<string[]>([]);
-  const [referenceInput, setReferenceInput] = useState("");
-  const [draftReferences, setDraftReferences] = useState<string[]>([]);
+  const [attachModalOpen, setAttachModalOpen] = useState(false);
+  const [detachReference, setDetachReference] =
+    useState<ManagerActionReference | null>(null);
   const [formError, setFormError] = useState("");
+  const [referenceFeedback, setReferenceFeedback] = useState("");
   const actionRequestsQuery = useActionRequests();
   const actionRequestDetailQuery = useActionRequestDetail(selectedClusterId);
   const takeActionMutation = useTakeAction();
+  const attachReferenceMutation = useAttachReferenceToActionRequest(
+    selectedClusterId ?? "",
+  );
+  const detachReferenceMutation = useDetachReferenceFromActionRequest(
+    selectedClusterId ?? "",
+  );
+  const fileUrlMutation = useReferenceFileUrl();
 
   const clusters = useMemo(
     () =>
@@ -133,7 +203,7 @@ export function ManagerActionQueue() {
   const visibleClusters = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return clusters.filter((cluster) => {
+    const filteredClusters = clusters.filter((cluster) => {
       const matchesFilter = filter === "all" || cluster.status === filter;
       const searchableText = [
         cluster.displayId,
@@ -157,7 +227,25 @@ export function ManagerActionQueue() {
 
       return matchesFilter && (!query || searchableText.includes(query));
     });
-  }, [clusters, filter, searchQuery]);
+
+    return sortManagerClusters(filteredClusters, sortConfig);
+  }, [clusters, filter, searchQuery, sortConfig]);
+
+  const changeSort = (key: ManagerActionSortKey) => {
+    setSortConfig((current) => {
+      if (current.key === key) {
+        return {
+          direction: current.direction === "asc" ? "desc" : "asc",
+          key,
+        };
+      }
+
+      return {
+        direction: key === "raised" ? "desc" : "asc",
+        key,
+      };
+    });
+  };
 
   const statusCounts = useMemo(() => {
     return {
@@ -175,10 +263,8 @@ export function ManagerActionQueue() {
     setSelectedClusterId(cluster.id);
     setActionTaken(cluster.actionTaken);
     setClosureMessage(cluster.closureMessage);
-    setDocumentNames([]);
-    setDraftReferences([]);
-    setReferenceInput("");
     setFormError("");
+    setReferenceFeedback("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -188,15 +274,56 @@ export function ManagerActionQueue() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const addReference = () => {
-    const trimmed = referenceInput.trim();
+  const openAttachedReference = async (reference: ManagerActionReference) => {
+    setReferenceFeedback("");
 
-    if (!trimmed) {
+    if (reference.type === "link") {
+      if (reference.url) {
+        window.open(reference.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      setReferenceFeedback("Link referensi tidak tersedia.");
       return;
     }
 
-    setDraftReferences((current) => [...current, trimmed]);
-    setReferenceInput("");
+    if (reference.type === "file") {
+      try {
+        const fileUrl = await fileUrlMutation.mutateAsync(
+          reference.referenceSourceId,
+        );
+        window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+      } catch {
+        setReferenceFeedback(
+          "Gagal membuka file referensi. Silakan coba lagi.",
+        );
+      }
+      return;
+    }
+
+    window.open(
+      `/manager/references/${reference.referenceSourceId}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const confirmDetachReference = async () => {
+    if (!selectedClusterId || !detachReference) {
+      return;
+    }
+
+    try {
+      await detachReferenceMutation.mutateAsync(detachReference.id);
+      setReferenceFeedback("Referensi berhasil dilepas dari action request.");
+      setDetachReference(null);
+    } catch (error) {
+      setReferenceFeedback(
+        error instanceof Error
+          ? error.message
+          : "Gagal melepas referensi. Silakan coba lagi.",
+      );
+    }
   };
 
   const completeAction = async () => {
@@ -206,7 +333,7 @@ export function ManagerActionQueue() {
 
     if (actionTaken.trim().length < 5 || closureMessage.trim().length < 5) {
       setFormError(
-        "Please fill action taken and closure message before submitting.",
+        "Isi tindakan yang dilakukan dan pesan penutup sebelum mengirim.",
       );
       return;
     }
@@ -224,7 +351,7 @@ export function ManagerActionQueue() {
       setFormError(
         error instanceof Error
           ? error.message
-          : "Failed to record action. Please try again.",
+          : "Gagal mencatat tindakan. Coba lagi.",
       );
     }
   };
@@ -246,7 +373,7 @@ export function ManagerActionQueue() {
           isOpen={sidebarOpen}
           onClose={closeSidebar}
           stats={[
-            { label: "Pending", value: statusCounts.pending.toString() },
+            { label: "Menunggu", value: statusCounts.pending.toString() },
             { label: "Clusters", value: clusters.length.toString() },
             { label: "Complaints", value: totalComplaints.toString() },
           ]}
@@ -271,6 +398,7 @@ export function ManagerActionQueue() {
                 filter={filter}
                 isLoading={actionRequestsQuery.isLoading}
                 searchQuery={searchQuery}
+                sortConfig={sortConfig}
                 statusCounts={statusCounts}
                 totalAgents={totalAgents}
                 totalComplaints={totalComplaints}
@@ -280,30 +408,58 @@ export function ManagerActionQueue() {
                   void actionRequestsQuery.refetch();
                 }}
                 onSearchChange={setSearchQuery}
+                onSortChange={changeSort}
               />
             ) : (
               <ClusterDetailView
                 actionTaken={actionTaken}
                 closureMessage={closureMessage}
                 cluster={selectedCluster}
-                documentNames={documentNames}
-                draftReferences={draftReferences}
                 formError={formError}
                 isDetailLoading={actionRequestDetailQuery.isFetching}
+                isOpeningReference={fileUrlMutation.isPending}
                 isSubmitting={takeActionMutation.isPending}
-                referenceInput={referenceInput}
+                referenceFeedback={referenceFeedback}
                 onActionTakenChange={setActionTaken}
-                onAddReference={addReference}
                 onBack={closeCluster}
                 onClosureMessageChange={setClosureMessage}
                 onCompleteAction={completeAction}
-                onDocumentNamesChange={setDocumentNames}
-                onReferenceInputChange={setReferenceInput}
+                onDetachReference={setDetachReference}
+                onOpenAttachReferences={() => setAttachModalOpen(true)}
+                onOpenReference={(reference) => {
+                  void openAttachedReference(reference);
+                }}
               />
             )}
           </div>
         </section>
       </div>
+      {attachModalOpen && selectedCluster ? (
+        <AttachReferenceModal
+          actionRequestId={selectedCluster.id}
+          attachedReferenceSourceIds={selectedCluster.references.map(
+            (reference) => reference.referenceSourceId,
+          )}
+          isPending={attachReferenceMutation.isPending}
+          onAttach={async (input) => {
+            await attachReferenceMutation.mutateAsync(input);
+            setReferenceFeedback("Referensi berhasil dilampirkan.");
+            setAttachModalOpen(false);
+          }}
+          onClose={() => setAttachModalOpen(false)}
+        />
+      ) : null}
+
+      {detachReference ? (
+        <DetachReferenceDialog
+          isPending={detachReferenceMutation.isPending}
+          onClose={() => setDetachReference(null)}
+          onConfirm={() => {
+            void confirmDetachReference();
+          }}
+          reference={detachReference}
+        />
+      ) : null}
     </main>
   );
 }
@@ -314,6 +470,7 @@ function QueueTableView({
   filter,
   isLoading,
   searchQuery,
+  sortConfig,
   statusCounts,
   totalAgents,
   totalComplaints,
@@ -321,12 +478,14 @@ function QueueTableView({
   onOpenCluster,
   onRetry,
   onSearchChange,
+  onSortChange,
 }: {
   clusters: ManagerActionCluster[];
   errorMessage: string;
   filter: "all" | ManagerActionStatus;
   isLoading: boolean;
   searchQuery: string;
+  sortConfig: ManagerActionSortConfig;
   statusCounts: Record<"all" | ManagerActionStatus, number>;
   totalAgents: number;
   totalComplaints: number;
@@ -334,6 +493,7 @@ function QueueTableView({
   onOpenCluster: (cluster: ManagerActionCluster) => void;
   onRetry: () => void;
   onSearchChange: (query: string) => void;
+  onSortChange: (key: ManagerActionSortKey) => void;
 }) {
   return (
     <div className="page-transition">
@@ -344,7 +504,7 @@ function QueueTableView({
               Action Queue
             </h1>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Clusters awaiting manager action
+              Cluster yang menunggu tindakan manager
             </p>
           </div>
 
@@ -353,18 +513,18 @@ function QueueTableView({
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.pending}
               </span>{" "}
-              pending &middot;{" "}
+              menunggu &middot;{" "}
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.in_progress}
               </span>{" "}
-              in progress &middot;{" "}
+              diproses &middot;{" "}
               <span className="font-semibold text-[var(--rail-ink)]">
                 {statusCounts.done}
               </span>{" "}
-              done
+              selesai
             </div>
             <label className="relative block w-full sm:w-[240px]">
-              <span className="sr-only">Search clusters</span>
+              <span className="sr-only">Cari cluster</span>
               <Search
                 aria-hidden="true"
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
@@ -373,7 +533,7 @@ function QueueTableView({
               <input
                 className="h-10 w-full rounded-md border border-[var(--rail-border)] bg-[var(--background)] pl-9 pr-3 text-xs text-[var(--rail-ink)] outline-none transition placeholder:text-[var(--text-tertiary)] focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)]"
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Search clusters..."
+                placeholder="Cari cluster..."
                 type="search"
                 value={searchQuery}
               />
@@ -384,9 +544,9 @@ function QueueTableView({
 
       <div className="bg-[var(--surface-muted)] p-4 sm:p-5">
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <MetricCard label="Complaint clusters" value={statusCounts.all} />
-          <MetricCard label="Affected complaints" value={totalComplaints} />
-          <MetricCard label="Agents waiting" value={totalAgents} />
+          <MetricCard label="Cluster complaint" value={statusCounts.all} />
+          <MetricCard label="Complaint terdampak" value={totalComplaints} />
+          <MetricCard label="Agent menunggu" value={totalAgents} />
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -415,12 +575,47 @@ function QueueTableView({
             <table className="w-full min-w-[820px] border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rail-border)] bg-[var(--background)]">
-                  <TableHead className="w-[34%]">Cluster</TableHead>
-                  <TableHead className="w-[14%]">Category</TableHead>
-                  <TableHead className="w-[18%]">Agents</TableHead>
-                  <TableHead className="w-[14%]">Status</TableHead>
-                  <TableHead className="w-[12%]">Raised</TableHead>
-                  <TableHead className="w-[8%] text-right">Action</TableHead>
+                  <TableHead
+                    className="w-[34%]"
+                    sortConfig={sortConfig}
+                    sortKey="cluster"
+                    onSortChange={onSortChange}
+                  >
+                    Cluster
+                  </TableHead>
+                  <TableHead
+                    className="w-[14%]"
+                    sortConfig={sortConfig}
+                    sortKey="category"
+                    onSortChange={onSortChange}
+                  >
+                    Kategori
+                  </TableHead>
+                  <TableHead
+                    className="w-[18%]"
+                    sortConfig={sortConfig}
+                    sortKey="agents"
+                    onSortChange={onSortChange}
+                  >
+                    Agent
+                  </TableHead>
+                  <TableHead
+                    className="w-[14%]"
+                    sortConfig={sortConfig}
+                    sortKey="status"
+                    onSortChange={onSortChange}
+                  >
+                    Status
+                  </TableHead>
+                  <TableHead
+                    className="w-[12%]"
+                    sortConfig={sortConfig}
+                    sortKey="raised"
+                    onSortChange={onSortChange}
+                  >
+                    Masuk
+                  </TableHead>
+                  <TableHead className="w-[8%] text-right">Aksi</TableHead>
                 </tr>
               </thead>
               <tbody>
@@ -428,10 +623,10 @@ function QueueTableView({
                   <tr>
                     <td className="px-4 py-12 text-center" colSpan={6}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                        Loading action requests...
+                        Memuat action requests...
                       </p>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
-                        Fetching manager action clusters from backend.
+                        Mengambil cluster tindakan manager dari backend.
                       </p>
                     </td>
                   </tr>
@@ -439,7 +634,7 @@ function QueueTableView({
                   <tr>
                     <td className="px-4 py-12 text-center" colSpan={6}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                        Failed to load action requests.
+                        Action requests gagal dimuat.
                       </p>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
                         {errorMessage}
@@ -449,7 +644,7 @@ function QueueTableView({
                         onClick={onRetry}
                         type="button"
                       >
-                        Try again
+                        Coba lagi
                       </button>
                     </td>
                   </tr>
@@ -498,11 +693,11 @@ function QueueTableView({
                   <tr>
                     <td className="px-4 py-12 text-center" colSpan={6}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                        No action requests yet
+                        Belum ada action request
                       </p>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
-                        Manager action requests will appear here when agents
-                        request follow-up actions.
+                        Action request akan muncul di sini setelah agent meminta
+                        tindak lanjut.
                       </p>
                     </td>
                   </tr>
@@ -520,36 +715,34 @@ function ClusterDetailView({
   actionTaken,
   closureMessage,
   cluster,
-  documentNames,
-  draftReferences,
   formError,
   isDetailLoading,
+  isOpeningReference,
   isSubmitting,
-  referenceInput,
+  referenceFeedback,
   onActionTakenChange,
-  onAddReference,
   onBack,
   onClosureMessageChange,
   onCompleteAction,
-  onDocumentNamesChange,
-  onReferenceInputChange,
+  onDetachReference,
+  onOpenAttachReferences,
+  onOpenReference,
 }: {
   actionTaken: string;
   closureMessage: string;
   cluster: ManagerActionCluster;
-  documentNames: string[];
-  draftReferences: string[];
   formError: string;
   isDetailLoading: boolean;
+  isOpeningReference: boolean;
   isSubmitting: boolean;
-  referenceInput: string;
+  referenceFeedback: string;
   onActionTakenChange: (value: string) => void;
-  onAddReference: () => void;
   onBack: () => void;
   onClosureMessageChange: (value: string) => void;
   onCompleteAction: () => void;
-  onDocumentNamesChange: (names: string[]) => void;
-  onReferenceInputChange: (value: string) => void;
+  onDetachReference: (reference: ManagerActionReference) => void;
+  onOpenAttachReferences: () => void;
+  onOpenReference: (reference: ManagerActionReference) => void;
 }) {
   const isDone = cluster.status === "done";
   const agentNames = getAgentNames(cluster);
@@ -563,7 +756,7 @@ function ClusterDetailView({
           type="button"
         >
           <ArrowLeft aria-hidden="true" size={15} />
-          Back to action queue
+          Kembali ke Action Queue
         </button>
       </div>
 
@@ -577,9 +770,8 @@ function ClusterDetailView({
               <CategoryBadge category={cluster.category} />
               <StatusBadge status={cluster.status} />
               <span className="text-xs text-[var(--text-muted)]">
-                {cluster.complaintCount} complaints &middot;{" "}
-                {cluster.agentCount} agents waiting &middot; raised{" "}
-                {cluster.relativeTime}
+                {cluster.complaintCount} complaint &middot; {cluster.agentCount}{" "}
+                agent menunggu &middot; masuk {cluster.relativeTime}
               </span>
             </div>
           </div>
@@ -594,26 +786,27 @@ function ClusterDetailView({
       <div className="mx-auto max-w-5xl space-y-5">
         {isDetailLoading ? (
           <p className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 py-3 text-xs text-[var(--text-muted)]">
-            Loading linked complaints and ticket context...
+            Memuat complaint terkait dan konteks ticket...
           </p>
         ) : null}
         <ComplaintsPanel cluster={cluster} />
-        <ContextPanel cluster={cluster} />
+        <ContextPanel
+          cluster={cluster}
+          isOpeningReference={isOpeningReference}
+          referenceFeedback={referenceFeedback}
+          onDetachReference={onDetachReference}
+          onOpenAttachReferences={onOpenAttachReferences}
+          onOpenReference={onOpenReference}
+        />
         {!isDone ? (
           <ManagerActionForm
             actionTaken={actionTaken}
             closureMessage={closureMessage}
-            documentNames={documentNames}
-            draftReferences={draftReferences}
             formError={formError}
             isSubmitting={isSubmitting}
-            referenceInput={referenceInput}
             onActionTakenChange={onActionTakenChange}
-            onAddReference={onAddReference}
             onClosureMessageChange={onClosureMessageChange}
             onCompleteAction={onCompleteAction}
-            onDocumentNamesChange={onDocumentNamesChange}
-            onReferenceInputChange={onReferenceInputChange}
           />
         ) : null}
       </div>
@@ -624,12 +817,13 @@ function ClusterDetailView({
 function ComplaintsPanel({ cluster }: { cluster: ManagerActionCluster }) {
   return (
     <Panel
-      countLabel={`${cluster.agentCount} agents`}
+      countLabel={`${cluster.agentCount} agent`}
       icon={<FileText aria-hidden="true" size={15} />}
-      title="Complaints in this cluster"
+      title="Complaints dalam cluster ini"
     >
       <p className="mb-3 text-xs text-[var(--text-muted)]">
-        All sent HEA, waiting manager action and agent closure.
+        Semua sudah mengirim HEA, menunggu tindakan manager dan penutupan oleh
+        agent.
       </p>
       <div className="divide-y divide-[var(--rail-border)] overflow-hidden rounded-lg border border-[var(--rail-border)]">
         {cluster.complaints.map((complaint) => (
@@ -664,36 +858,86 @@ function ComplaintsPanel({ cluster }: { cluster: ManagerActionCluster }) {
   );
 }
 
-function ContextPanel({ cluster }: { cluster: ManagerActionCluster }) {
+function ContextPanel({
+  cluster,
+  isOpeningReference,
+  referenceFeedback,
+  onDetachReference,
+  onOpenAttachReferences,
+  onOpenReference,
+}: {
+  cluster: ManagerActionCluster;
+  isOpeningReference: boolean;
+  referenceFeedback: string;
+  onDetachReference: (reference: ManagerActionReference) => void;
+  onOpenAttachReferences: () => void;
+  onOpenReference: (reference: ManagerActionReference) => void;
+}) {
   return (
     <Panel
-      countLabel="Retrieved by AI"
+      countLabel={`${cluster.references.length} referensi`}
       icon={<CheckCircle2 aria-hidden="true" size={15} />}
-      title="Context and references"
+      title="Konteks dan referensi"
     >
       <div className="space-y-3">
-        <ContextRow label="Detected issue" value={cluster.detectedIssue} />
+        <ContextRow label="Isu terdeteksi" value={cluster.detectedIssue} />
         {cluster.affectedRoute ? (
-          <ContextRow label="Affected service" value={cluster.affectedRoute} />
+          <ContextRow label="Layanan terdampak" value={cluster.affectedRoute} />
         ) : null}
-        <ContextRow label="Policy applies" value={cluster.policyApplies} />
+        <ContextRow label="Kebijakan terkait" value={cluster.policyApplies} />
         {cluster.similarPastCase ? (
-          <ContextRow
-            label="Similar past case"
-            value={cluster.similarPastCase}
-          />
+          <ContextRow label="Kasus serupa" value={cluster.similarPastCase} />
         ) : null}
         {cluster.recommendedAction ? (
           <ContextRow
-            label="Recommended action"
+            label="Saran tindakan"
             value={cluster.recommendedAction}
           />
         ) : null}
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {cluster.references.map((reference) => (
-          <ReferencePill key={reference.id} reference={reference} />
-        ))}
+      <div className="mt-4 border-t border-[var(--rail-border)] pt-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-[var(--rail-ink)]">
+              Referensi Terkait
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Referensi ini akan muncul di ticket agent melalui closure context.
+            </p>
+          </div>
+          <button
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--rail-ink)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--signal-blue)]"
+            onClick={onOpenAttachReferences}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={14} />
+            Tambah Referensi
+          </button>
+        </div>
+
+        {referenceFeedback ? (
+          <p className="mb-3 rounded-lg border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 py-2 text-xs text-[var(--signal-blue)]">
+            {referenceFeedback}
+          </p>
+        ) : null}
+
+        {cluster.references.length > 0 ? (
+          <div className="grid gap-2">
+            {cluster.references.map((reference) => (
+              <ReferencePill
+                isOpening={isOpeningReference}
+                key={reference.id}
+                reference={reference}
+                onDetach={() => onDetachReference(reference)}
+                onOpen={() => onOpenReference(reference)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4 text-xs leading-6 text-[var(--text-muted)]">
+            Belum ada referensi yang dilampirkan manager.
+          </div>
+        )}
       </div>
     </Panel>
   );
@@ -702,43 +946,31 @@ function ContextPanel({ cluster }: { cluster: ManagerActionCluster }) {
 function ManagerActionForm({
   actionTaken,
   closureMessage,
-  documentNames,
-  draftReferences,
   formError,
   isSubmitting,
-  referenceInput,
   onActionTakenChange,
-  onAddReference,
   onClosureMessageChange,
   onCompleteAction,
-  onDocumentNamesChange,
-  onReferenceInputChange,
 }: {
   actionTaken: string;
   closureMessage: string;
-  documentNames: string[];
-  draftReferences: string[];
   formError: string;
   isSubmitting: boolean;
-  referenceInput: string;
   onActionTakenChange: (value: string) => void;
-  onAddReference: () => void;
   onClosureMessageChange: (value: string) => void;
   onCompleteAction: () => void;
-  onDocumentNamesChange: (names: string[]) => void;
-  onReferenceInputChange: (value: string) => void;
 }) {
   return (
     <Panel
-      countLabel="Sent to agent ticket inboxes"
+      countLabel="Dikirim ke inbox ticket agent"
       icon={<CheckCircle2 aria-hidden="true" size={15} />}
-      title="Complete action and notify agents"
+      title="Selesaikan tindakan dan beri tahu agent"
       variant="action"
     >
       <div className="space-y-4">
         <label className="block">
           <span className="text-sm font-medium text-[var(--text-muted)]">
-            What action did you take?
+            Tindakan apa yang dilakukan?
           </span>
           <textarea
             className={cx(inputClassName, "mt-2 min-h-[92px] resize-none py-3")}
@@ -746,13 +978,14 @@ function ManagerActionForm({
             value={actionTaken}
           />
           <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">
-            Internal record - agents will see this in their ticket.
+            Catatan internal - agent akan melihatnya di ticket mereka.
           </span>
         </label>
 
         <label className="block">
           <span className="text-sm font-medium text-[var(--text-muted)]">
-            Closure message - sent to each agent, forwarded to their complainer
+            Closure message - dikirim ke setiap agent untuk diteruskan ke
+            pelapor
           </span>
           <textarea
             className={cx(
@@ -764,73 +997,6 @@ function ManagerActionForm({
           />
         </label>
 
-        <div>
-          <p className="mb-2 text-sm font-medium text-[var(--text-muted)]">
-            Attachments and references
-          </p>
-          <div className="flex flex-col gap-2 lg:flex-row">
-            <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 text-xs font-medium text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]">
-              <Paperclip aria-hidden="true" size={15} />
-              Attach document
-              <input
-                className="sr-only"
-                multiple
-                onChange={(event) =>
-                  onDocumentNamesChange(
-                    Array.from(event.target.files ?? []).map(
-                      (file) => file.name,
-                    ),
-                  )
-                }
-                type="file"
-              />
-            </label>
-
-            <div className="flex min-w-0 flex-1 gap-2">
-              <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Add reference URL</span>
-                <Link2
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
-                  size={15}
-                />
-                <input
-                  className={cx(inputClassName, "h-10 pl-9 text-xs")}
-                  onChange={(event) =>
-                    onReferenceInputChange(event.target.value)
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      onAddReference();
-                    }
-                  }}
-                  placeholder="Add reference URL"
-                  value={referenceInput}
-                />
-              </label>
-              <button
-                className="h-10 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-4 text-xs font-medium text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
-                onClick={onAddReference}
-                type="button"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          {documentNames.length > 0 || draftReferences.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {documentNames.map((name) => (
-                <Badge key={name}>{name}</Badge>
-              ))}
-              {draftReferences.map((reference) => (
-                <Badge key={reference}>{reference}</Badge>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
         {formError ? (
           <p className="rounded-md border border-[var(--signal-red-soft)] bg-[var(--signal-red-soft)] px-3 py-2 text-xs font-medium text-[var(--signal-red-dark)]">
             {formError}
@@ -839,7 +1005,7 @@ function ManagerActionForm({
 
         <div className="flex flex-col gap-3 border-t border-[var(--rail-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[var(--text-muted)]">
-            Related agents will receive this in their ticket inboxes.
+            Agent terkait akan menerima ini di inbox ticket mereka.
           </p>
           <button
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#1a3f6f] px-5 text-sm font-medium text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -849,8 +1015,8 @@ function ManagerActionForm({
           >
             <CheckCircle2 aria-hidden="true" size={16} />
             {isSubmitting
-              ? "Recording action..."
-              : "Complete action & notify agents"}
+              ? "Mencatat tindakan..."
+              : "Selesaikan tindakan & beri tahu agent"}
           </button>
         </div>
       </div>
@@ -871,17 +1037,17 @@ function CompletionState({
         <CheckCircle2 aria-hidden="true" size={28} />
       </div>
       <h2 className="mt-4 text-lg font-semibold text-[var(--rail-ink)]">
-        Manager action completed - agents notified
+        Tindakan manager selesai - agent sudah diberi tahu
       </h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--text-muted)]">
-        All related agents have received the closure message in their ticket
-        inbox. Each can now send it to their respective complainer and close the
+        Semua agent terkait sudah menerima closure message di inbox ticket.
+        Masing-masing agent sekarang bisa mengirimkannya ke pelapor dan menutup
         ticket.
       </p>
       <div className="mt-3 inline-flex rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-4 py-1 text-xs font-medium text-[var(--signal-blue)]">
-        {cluster.displayId} &middot; completed by{" "}
+        {cluster.displayId} &middot; diselesaikan oleh{" "}
         {cluster.completedBy ?? MANAGER_NAME} &middot;{" "}
-        {cluster.completedAt ?? "just now"}
+        {cluster.completedAt ?? "baru saja"}
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         {agentNames.map((agentName) => (
@@ -889,6 +1055,350 @@ function CompletionState({
         ))}
       </div>
     </section>
+  );
+}
+
+function AttachReferenceModal({
+  actionRequestId,
+  attachedReferenceSourceIds,
+  isPending,
+  onAttach,
+  onClose,
+}: {
+  actionRequestId: string;
+  attachedReferenceSourceIds: string[];
+  isPending: boolean;
+  onAttach: (input: {
+    referenceSourceId: string;
+    usageType: ActionRequestReferenceUsageType;
+    note?: string | null;
+  }) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [selectedReferenceId, setSelectedReferenceId] = useState("");
+  const [usageType, setUsageType] =
+    useState<ActionRequestReferenceUsageType>("closure_support");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const [modalStyle, setModalStyle] = useState<ActionReferenceModalStyle>({
+    "--action-reference-modal-max-height": "calc(100dvh - 32px)",
+    "--action-reference-modal-top": "16px",
+  });
+
+  useEffect(() => {
+    const updateModalViewport = () => {
+      const viewport = window.visualViewport;
+      const visibleHeight = viewport?.height ?? window.innerHeight;
+
+      setModalStyle({
+        "--action-reference-modal-max-height": `${Math.max(
+          120,
+          visibleHeight - 32,
+        )}px`,
+        "--action-reference-modal-top": `${(visibleHeight - Math.min(visibleHeight - 32, 600)) / 2}px`,
+      });
+    };
+
+    updateModalViewport();
+
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", updateModalViewport);
+    viewport?.addEventListener("scroll", updateModalViewport);
+    window.addEventListener("resize", updateModalViewport);
+
+    return () => {
+      viewport?.removeEventListener("resize", updateModalViewport);
+      viewport?.removeEventListener("scroll", updateModalViewport);
+      window.removeEventListener("resize", updateModalViewport);
+    };
+  }, []);
+
+  const referencesQuery = useReferences({
+    limit: 20,
+    page: 1,
+    query,
+    status: "active",
+  });
+  const attachedIds = useMemo(
+    () => new Set(attachedReferenceSourceIds),
+    [attachedReferenceSourceIds],
+  );
+
+  const attachSelectedReference = async () => {
+    if (!selectedReferenceId) {
+      setError("Pilih referensi terlebih dahulu.");
+      return;
+    }
+
+    try {
+      setError("");
+      await onAttach({
+        note: note.trim() || null,
+        referenceSourceId: selectedReferenceId,
+        usageType,
+      });
+    } catch (attachError) {
+      setError(
+        attachError instanceof Error
+          ? attachError.message
+          : "Gagal melampirkan referensi. Silakan coba lagi.",
+      );
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 overflow-hidden bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]"
+      style={modalStyle}
+    >
+      <section className="fixed left-1/2 top-[var(--action-reference-modal-top)] flex max-h-[var(--action-reference-modal-max-height)] w-[calc(100vw-32px)] max-w-2xl -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--rail-border)] bg-white px-4 py-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--signal-blue)]">
+              {actionRequestId}
+            </p>
+            <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
+              Tambah Referensi ke Action Request
+            </h2>
+          </div>
+          <button
+            aria-label="Tutup modal"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--rail-border)] text-[var(--text-muted)]"
+            onClick={onClose}
+            type="button"
+          >
+            <X aria-hidden="true" size={14} />
+          </button>
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+          <label className="relative block">
+            <span className="sr-only">Cari referensi</span>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+              size={15}
+            />
+            <input
+              className={cx(inputClassName, "h-10 pl-9 text-xs")}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Cari judul atau isi referensi"
+              type="search"
+              value={query}
+            />
+          </label>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">
+                Usage type
+              </span>
+              <select
+                className={cx(inputClassName, "mt-1 h-10 text-xs")}
+                onChange={(event) =>
+                  setUsageType(
+                    event.target.value as ActionRequestReferenceUsageType,
+                  )
+                }
+                value={usageType}
+              >
+                {usageTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">
+                Catatan
+              </span>
+              <input
+                className={cx(inputClassName, "mt-1 h-10 text-xs")}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Opsional"
+                value={note}
+              />
+            </label>
+          </div>
+
+          <div className="min-h-36 flex-1 space-y-2 overflow-y-auto rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-2">
+            {referencesQuery.isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-6 text-xs text-[var(--text-muted)]">
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="animate-spin"
+                  size={14}
+                />
+                Memuat referensi...
+              </div>
+            ) : (referencesQuery.data?.items ?? []).length > 0 ? (
+              referencesQuery.data?.items.map((reference) => {
+                const alreadyAttached = attachedIds.has(reference.id);
+                const selected = selectedReferenceId === reference.id;
+
+                return (
+                  <ReferencePickerRow
+                    alreadyAttached={alreadyAttached}
+                    key={reference.id}
+                    reference={reference}
+                    selected={selected}
+                    onSelect={() => setSelectedReferenceId(reference.id)}
+                  />
+                );
+              })
+            ) : (
+              <p className="px-3 py-6 text-center text-xs text-[var(--text-muted)]">
+                Semua referensi yang tersedia sudah dilampirkan atau tidak ada
+                referensi aktif yang cocok.
+              </p>
+            )}
+          </div>
+
+          {error ? (
+            <p className="rounded-lg border border-[var(--signal-red-soft)] bg-[var(--signal-red-soft)] px-3 py-2 text-xs text-[var(--signal-red-dark)]">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="shrink-0 flex justify-end gap-2 border-t border-[var(--rail-border)] pt-4">
+            <button
+              className="h-10 rounded-lg border border-[var(--rail-border)] px-4 text-xs font-semibold text-[var(--text-muted)]"
+              onClick={onClose}
+              type="button"
+            >
+              Batal
+            </button>
+            <button
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
+              disabled={isPending}
+              onClick={() => {
+                void attachSelectedReference();
+              }}
+              type="button"
+            >
+              {isPending ? (
+                <>
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="animate-spin"
+                    size={14}
+                  />
+                  Melampirkan...
+                </>
+              ) : (
+                "Lampirkan"
+              )}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ReferencePickerRow({
+  alreadyAttached,
+  onSelect,
+  reference,
+  selected,
+}: {
+  alreadyAttached: boolean;
+  onSelect: () => void;
+  reference: ReferenceItem;
+  selected: boolean;
+}) {
+  return (
+    <button
+      className={cx(
+        "w-full rounded-lg border p-3 text-left transition",
+        selected
+          ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)]"
+          : "border-[var(--rail-border)] bg-white",
+        alreadyAttached
+          ? "cursor-not-allowed opacity-60"
+          : "hover:border-[var(--signal-blue)]",
+      )}
+      disabled={alreadyAttached}
+      onClick={onSelect}
+      type="button"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[var(--rail-ink)]">
+            {reference.title}
+          </p>
+          <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+            {reference.displayType === "file"
+              ? "File"
+              : reference.displayType === "link"
+                ? "Tautan"
+                : "Teks"}
+            {reference.tags.length > 0 ? ` - ${reference.tags.join(", ")}` : ""}
+          </p>
+        </div>
+        {alreadyAttached ? (
+          <span className="shrink-0 rounded-full bg-[var(--surface-muted)] px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
+            Sudah dilampirkan
+          </span>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+function DetachReferenceDialog({
+  isPending,
+  onClose,
+  onConfirm,
+  reference,
+}: {
+  isPending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  reference: ManagerActionReference;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]">
+      <section className="w-full max-w-md rounded-xl border border-[var(--rail-border)] bg-white p-4 shadow-[var(--shadow-soft)]">
+        <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
+          Lepas referensi?
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+          Referensi "{reference.title}" hanya akan dilepas dari action request,
+          bukan dihapus dari library.
+        </p>
+        <div className="mt-5 flex justify-end gap-2 border-t border-[var(--rail-border)] pt-4">
+          <button
+            className="h-10 rounded-lg border border-[var(--rail-border)] px-4 text-xs font-semibold text-[var(--text-muted)]"
+            onClick={onClose}
+            type="button"
+          >
+            Batal
+          </button>
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--signal-red)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--signal-red-dark)] disabled:opacity-60"
+            disabled={isPending}
+            onClick={onConfirm}
+            type="button"
+          >
+            {isPending ? (
+              <>
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="animate-spin"
+                  size={14}
+                />
+                Melepas...
+              </>
+            ) : (
+              "Lepas"
+            )}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -955,18 +1465,51 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 function TableHead({
   children,
   className,
+  sortConfig,
+  sortKey,
+  onSortChange,
 }: {
   children: ReactNode;
   className?: string;
+  sortConfig?: ManagerActionSortConfig;
+  sortKey?: ManagerActionSortKey;
+  onSortChange?: (key: ManagerActionSortKey) => void;
 }) {
+  const isSortable = Boolean(sortKey && sortConfig && onSortChange);
+  const isActive = isSortable && sortConfig?.key === sortKey;
+
   return (
     <th
+      aria-sort={
+        isActive
+          ? sortConfig?.direction === "asc"
+            ? "ascending"
+            : "descending"
+          : undefined
+      }
       className={cx(
         "px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--text-tertiary)]",
         className,
       )}
     >
-      {children}
+      {isSortable && sortKey ? (
+        <button
+          className={cx(
+            "inline-flex items-center gap-1.5 text-left transition hover:text-[var(--signal-blue)]",
+            isActive ? "text-[var(--signal-blue)]" : "",
+          )}
+          onClick={() => onSortChange?.(sortKey)}
+          type="button"
+        >
+          <span>{children}</span>
+          <SortIcon
+            active={Boolean(isActive)}
+            direction={sortConfig?.direction}
+          />
+        </button>
+      ) : (
+        children
+      )}
     </th>
   );
 }
@@ -990,6 +1533,24 @@ function TableCell({
   );
 }
 
+function SortIcon({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction?: SortDirection;
+}) {
+  if (!active) {
+    return <ArrowUpDown aria-hidden="true" size={12} />;
+  }
+
+  return direction === "asc" ? (
+    <ArrowUp aria-hidden="true" size={12} />
+  ) : (
+    <ArrowDown aria-hidden="true" size={12} />
+  );
+}
+
 function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
   const agentNames = getAgentNames(cluster);
 
@@ -997,10 +1558,10 @@ function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
     return (
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-[var(--rail-ink)]">
-          Open detail
+          Buka detail
         </p>
         <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-          Agents load in detail
+          Agent akan dimuat di detail
         </p>
       </div>
     );
@@ -1013,7 +1574,7 @@ function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
         {agentNames.length > 2 ? ` +${agentNames.length - 2}` : ""}
       </p>
       <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-        {cluster.agentCount} agents waiting
+        {cluster.agentCount} agent menunggu
       </p>
     </div>
   );
@@ -1021,10 +1582,10 @@ function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
 
 function formatComplaintCount(cluster: ManagerActionCluster) {
   if (cluster.complaintCount === 0) {
-    return "Open detail for linked complaints";
+    return "Buka detail untuk complaint terkait";
   }
 
-  return `${cluster.complaintCount} complaints in this cluster`;
+  return `${cluster.complaintCount} complaint dalam cluster ini`;
 }
 
 function StatusBadge({ status }: { status: ManagerActionStatus }) {
@@ -1043,10 +1604,10 @@ function CategoryBadge({ category }: { category: ManagerActionCategory }) {
 
 function ComplaintStatusBadge({ status }: { status: ComplaintClusterStatus }) {
   const copy: Record<ComplaintClusterStatus, string> = {
-    closed: "Closed by agent",
-    hea_sent: "HEA sent",
-    ready_to_notify: "Ready to notify",
-    waiting_manager: "HEA sent - waiting manager action",
+    closed: "Ditutup oleh agent",
+    hea_sent: "HEA terkirim",
+    ready_to_notify: "Siap dikabari",
+    waiting_manager: "HEA terkirim - menunggu tindakan manager",
   };
 
   return (
@@ -1067,11 +1628,66 @@ function ContextRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReferencePill({ reference }: { reference: ManagerActionReference }) {
+function ReferencePill({
+  isOpening,
+  onDetach,
+  onOpen,
+  reference,
+}: {
+  isOpening: boolean;
+  onDetach: () => void;
+  onOpen: () => void;
+  reference: ManagerActionReference;
+}) {
+  const Icon = reference.type === "file" ? Paperclip : Link2;
+
   return (
-    <span className="inline-flex min-h-7 items-center rounded-full border border-[#b5d4f4] bg-[#e6f1fb] px-3 py-1 text-[11px] font-medium text-[#0c447c]">
-      {reference.title}
-    </span>
+    <article className="flex flex-col gap-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--signal-blue-soft)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-blue)]">
+            <Icon aria-hidden="true" size={12} />
+            {reference.type === "file"
+              ? "File"
+              : reference.type === "link"
+                ? "Tautan"
+                : "Teks"}
+          </span>
+          <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
+            {usageTypeLabel[
+              reference.usageType as ActionRequestReferenceUsageType
+            ] ?? reference.usageType}
+          </span>
+        </div>
+        <p className="truncate text-sm font-semibold text-[var(--rail-ink)]">
+          {reference.title}
+        </p>
+        {reference.note ? (
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">
+            {reference.note}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <button
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--rail-border)] bg-white px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)] disabled:opacity-50"
+          disabled={isOpening}
+          onClick={onOpen}
+          type="button"
+        >
+          <ExternalLink aria-hidden="true" size={13} />
+          Lihat
+        </button>
+        <button
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--signal-red-soft)] bg-white px-3 text-xs font-semibold text-[var(--signal-red-dark)] transition hover:bg-[var(--signal-red-soft)]"
+          onClick={onDetach}
+          type="button"
+        >
+          <Trash2 aria-hidden="true" size={13} />
+          Lepas
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -1098,6 +1714,77 @@ function getAgentNames(cluster: ManagerActionCluster) {
   return Array.from(
     new Set(cluster.complaints.map((complaint) => complaint.agentName)),
   );
+}
+
+function sortManagerClusters(
+  clusters: ManagerActionCluster[],
+  sortConfig: ManagerActionSortConfig,
+) {
+  const direction = sortConfig.direction === "asc" ? 1 : -1;
+
+  return [...clusters].sort((first, second) => {
+    const result = compareManagerSortValues(
+      getManagerClusterSortValue(first, sortConfig.key),
+      getManagerClusterSortValue(second, sortConfig.key),
+    );
+
+    if (result !== 0) {
+      return result * direction;
+    }
+
+    return (
+      compareManagerSortValues(
+        toTime(second.raisedAt),
+        toTime(first.raisedAt),
+      ) || first.displayId.localeCompare(second.displayId)
+    );
+  });
+}
+
+function getManagerClusterSortValue(
+  cluster: ManagerActionCluster,
+  key: ManagerActionSortKey,
+): string | number {
+  if (key === "cluster") {
+    return `${cluster.displayId} ${cluster.title}`;
+  }
+
+  if (key === "category") {
+    return categoryLabel[cluster.category];
+  }
+
+  if (key === "agents") {
+    return cluster.agentCount;
+  }
+
+  if (key === "status") {
+    return managerStatusRank[cluster.status];
+  }
+
+  return toTime(cluster.raisedAt);
+}
+
+function compareManagerSortValues(
+  first: string | number,
+  second: string | number,
+) {
+  if (typeof first === "number" && typeof second === "number") {
+    return first - second;
+  }
+
+  return String(first).localeCompare(String(second), "id", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function toTime(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 const inputClassName =

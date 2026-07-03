@@ -2,8 +2,8 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { escalateTicket } from "@/core/dashboard/model/api/tickets.api";
-import { queryKeys } from "@/core/dashboard/model/query-keys";
 import type { Ticket } from "@/core/dashboard/model/types/ticket.types";
+import { invalidateDashboardWorkflow } from "./invalidate-dashboard-workflow";
 
 export function useEscalateTicket() {
   const queryClient = useQueryClient();
@@ -11,13 +11,13 @@ export function useEscalateTicket() {
   return useMutation<Ticket, Error, string>({
     mutationFn: escalateTicket,
     mutationKey: ["tickets", "escalate"],
-    onSuccess: (_data, ticketId) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.tickets.detail(ticketId),
+    onSuccess: async (_data, ticketId) => {
+      await invalidateDashboardWorkflow(queryClient, {
+        includeActionRequests: true,
+        includeComplaints: true,
+        includeTickets: true,
+        ticketId,
       });
-      queryClient.invalidateQueries({ queryKey: queryKeys.actionRequests.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.complaints.all });
     },
   });
 }

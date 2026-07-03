@@ -8,7 +8,10 @@ import {
   Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { FollowUpTicket } from "../model/ticket.types";
+import type {
+  AttachedReferenceForTicket,
+  FollowUpTicket,
+} from "../model/ticket.types";
 import { CATEGORY_LABELS, CategoryBadge, StatusBadge } from "./TicketCard";
 
 type ActorRole = "customer" | "agent" | "manager" | "internal" | "platform";
@@ -16,22 +19,33 @@ type ActorRole = "customer" | "agent" | "manager" | "internal" | "platform";
 interface TicketDetailProps {
   ticket: FollowUpTicket;
   closureDraft: string;
+  canPerformFinalClosure: boolean;
   hasCopiedClosure: boolean;
-  onAddInternalNote: () => void;
+  isAdminFinalClosure: boolean;
+  isFinalClosurePending: boolean;
+  closureContextWarning: string;
   onClosureDraftChange: (value: string) => void;
   onCopyClosureAndClose: () => void;
+  onOpenManagerReference: (reference: AttachedReferenceForTicket) => void;
 }
 
 export function TicketDetail({
   closureDraft,
+  canPerformFinalClosure,
   hasCopiedClosure,
-  onAddInternalNote,
+  isAdminFinalClosure,
+  isFinalClosurePending,
+  closureContextWarning,
   onClosureDraftChange,
   onCopyClosureAndClose,
+  onOpenManagerReference,
   ticket,
 }: TicketDetailProps) {
   const canClose =
-    ticket.status === "ready_to_notify" && closureDraft.trim().length > 0;
+    ticket.status === "ready_to_notify" &&
+    closureDraft.trim().length >= 5 &&
+    canPerformFinalClosure &&
+    !isFinalClosurePending;
 
   return (
     <section className="flex min-h-[700px] min-w-0 flex-1 flex-col overflow-hidden bg-[var(--background)] xl:min-h-0">
@@ -73,11 +87,18 @@ export function TicketDetail({
           <OriginalComplaintCard ticket={ticket} />
           <PreviousSafeReplyCard ticket={ticket} />
           <ManagerActionCard ticket={ticket} />
+          <ManagerReferencesCard
+            onOpenReference={onOpenManagerReference}
+            ticket={ticket}
+            warning={closureContextWarning}
+          />
           <ClosureMessageCard
             canClose={canClose}
             closureDraft={closureDraft}
+            canPerformFinalClosure={canPerformFinalClosure}
             hasCopiedClosure={hasCopiedClosure}
-            onAddInternalNote={onAddInternalNote}
+            isAdminFinalClosure={isAdminFinalClosure}
+            isFinalClosurePending={isFinalClosurePending}
             onChange={onClosureDraftChange}
             onCopyClosureAndClose={onCopyClosureAndClose}
             ticket={ticket}
@@ -154,13 +175,13 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
       {actionCompleted ? (
         <>
           <RoleMessage
-            label="Action taken - catatan internal"
+            label="Tindakan dilakukan - catatan internal"
             actorRole="manager"
             text={ticket.managerAction.actionTaken ?? "Arahan selesai."}
           />
           <div className="mt-3">
             <RoleMessage
-              label="Closure message - saran balasan pelanggan"
+              label="Pesan penutup - saran balasan pelanggan"
               actorRole="agent"
               quote
               text={
@@ -168,16 +189,6 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
                 "Saran balasan akhir belum tersedia."
               }
             />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {ticket.managerAction.references.map((reference) => (
-              <span
-                className="rounded-full border border-[var(--rail-border)] bg-[var(--background)] px-2.5 py-1 text-[10px] font-semibold text-[var(--text-muted)]"
-                key={reference.id}
-              >
-                {reference.title}
-              </span>
-            ))}
           </div>
           <div className="mt-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
             <div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-[var(--rail-ink)]">
@@ -189,8 +200,8 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
               Hasil tim internal
             </div>
             <p className="text-xs leading-6 text-[var(--text-muted)]">
-              Action taken dipakai sebagai catatan internal. Closure message
-              sudah dimuat sebagai draft balasan akhir di bawah.
+              Tindakan yang dilakukan dipakai sebagai catatan internal. Pesan
+              penutup sudah dimuat sebagai draft balasan akhir di bawah.
             </p>
           </div>
         </>
@@ -205,19 +216,86 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
   );
 }
 
+function ManagerReferencesCard({
+  onOpenReference,
+  ticket,
+  warning,
+}: {
+  onOpenReference: (reference: AttachedReferenceForTicket) => void;
+  ticket: FollowUpTicket;
+  warning: string;
+}) {
+  return (
+    <WorkflowCard
+      actorName={ticket.managerAction.managerName ?? "Manajer"}
+      eyebrow="Konteks final closure"
+      actorRole="manager"
+      title="Referensi dari Manager"
+    >
+      {warning ? (
+        <div className="mb-3 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-amber-dark)]">
+          {warning}
+        </div>
+      ) : null}
+      {ticket.managerAction.references.length > 0 ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {ticket.managerAction.references.map((reference) => (
+            <button
+              className="min-h-24 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3 text-left transition hover:border-[var(--signal-blue)] hover:bg-white"
+              key={reference.referenceLinkId}
+              onClick={() => onOpenReference(reference)}
+              type="button"
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="rounded-full bg-[var(--signal-blue-soft)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-blue)]">
+                  {referenceDisplayLabel[reference.displayType]}
+                </span>
+                <ExternalLink
+                  aria-hidden="true"
+                  className="text-[var(--text-tertiary)]"
+                  size={13}
+                />
+              </div>
+              <p className="line-clamp-2 text-xs font-semibold leading-5 text-[var(--rail-ink)]">
+                {reference.title}
+              </p>
+              <p className="mt-1 text-[11px] leading-5 text-[var(--text-muted)]">
+                {usageTypeLabel[reference.usageType] ?? reference.usageType}
+              </p>
+              {reference.note ? (
+                <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-[var(--text-tertiary)]">
+                  {reference.note}
+                </p>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4 text-xs leading-6 text-[var(--text-muted)]">
+          Belum ada referensi yang dilampirkan manager.
+        </div>
+      )}
+    </WorkflowCard>
+  );
+}
+
 function ClosureMessageCard({
   canClose,
   closureDraft,
+  canPerformFinalClosure,
   hasCopiedClosure,
-  onAddInternalNote,
+  isAdminFinalClosure,
+  isFinalClosurePending,
   onChange,
   onCopyClosureAndClose,
   ticket,
 }: {
   canClose: boolean;
   closureDraft: string;
+  canPerformFinalClosure: boolean;
   hasCopiedClosure: boolean;
-  onAddInternalNote: () => void;
+  isAdminFinalClosure: boolean;
+  isFinalClosurePending: boolean;
   onChange: (value: string) => void;
   onCopyClosureAndClose: () => void;
   ticket: FollowUpTicket;
@@ -236,13 +314,6 @@ function ClosureMessageCard({
             actorRole="internal"
             text="Balasan akhir bisa dibuat setelah manager menyelesaikan tindak lanjut."
           />
-          <button
-            className="mt-3 h-9 rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]"
-            onClick={onAddInternalNote}
-            type="button"
-          >
-            Tambah catatan internal
-          </button>
         </div>
       </WorkflowCard>
     );
@@ -261,8 +332,9 @@ function ClosureMessageCard({
     >
       {hasCopiedClosure ? (
         <div className="mb-3 rounded-lg border border-[var(--signal-green)] bg-[var(--signal-green-soft)] p-3 text-sm text-[var(--signal-green-dark)]">
-          Sudah disalin oleh agen - tiket ditutup. Tempel balasan akhir di{" "}
-          {ticket.sourceLabel} jika percakapan eksternal masih membutuhkannya.
+          Balasan akhir sudah disalin dan backend mengonfirmasi ticket ditutup.
+          Tempel balasan akhir di {ticket.sourceLabel} jika percakapan eksternal
+          masih membutuhkannya.
         </div>
       ) : null}
 
@@ -277,6 +349,17 @@ function ClosureMessageCard({
         Draft di bawah berasal dari closure message manager. Agen bisa meninjau,
         menyesuaikan, lalu menyalinnya untuk pelanggan.
       </div>
+      {isAdminFinalClosure ? (
+        <div className="mb-2 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-amber-dark)]">
+          Mode admin/tester aktif. Aksi ini tetap akan dicatat backend sebagai
+          final closure.
+        </div>
+      ) : null}
+      {!canPerformFinalClosure ? (
+        <div className="mb-2 rounded-lg border border-[var(--signal-red)] bg-[var(--signal-red-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-red-dark)]">
+          Manager tidak dapat melakukan final closure agent.
+        </div>
+      ) : null}
       <textarea
         className="min-h-[180px] w-full resize-none rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 py-3 text-sm leading-7 text-[var(--rail-ink)] outline-none transition focus:border-[var(--signal-blue)] focus:ring-2 focus:ring-[var(--signal-blue-soft)] disabled:opacity-70"
         disabled={ticket.status === "closed"}
@@ -286,8 +369,8 @@ function ClosureMessageCard({
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs text-[var(--text-muted)]">
-          Untuk saat ini sistem hanya menyalin; pesan tidak dikirim langsung ke
-          platform eksternal.
+          Sistem menyalin balasan lebih dulu, lalu menutup ticket hanya setelah
+          backend mengonfirmasi complaint resolved.
         </span>
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
@@ -296,9 +379,11 @@ function ClosureMessageCard({
           type="button"
         >
           <Clipboard aria-hidden="true" size={14} />
-          {ticket.status === "closed"
-            ? "Tiket ditutup"
-            : "Salin balasan & tutup"}
+          {isFinalClosurePending
+            ? "Menandai selesai..."
+            : ticket.status === "closed"
+              ? "Tiket ditutup"
+              : "Salin balasan & tandai selesai"}
         </button>
       </div>
     </WorkflowCard>
@@ -347,6 +432,24 @@ function WorkflowCard({
     </article>
   );
 }
+
+const referenceDisplayLabel: Record<
+  AttachedReferenceForTicket["displayType"],
+  string
+> = {
+  file: "File",
+  link: "Tautan",
+  text: "Teks",
+};
+
+const usageTypeLabel: Record<string, string> = {
+  action_basis: "Dasar tindakan",
+  closure_support: "Dukungan balasan penutup",
+  evidence: "Bukti / konteks",
+  internal_note: "Catatan internal",
+  policy_support: "Dukungan kebijakan",
+  related_link: "Link terkait",
+};
 
 function RoleMessage({
   label,
