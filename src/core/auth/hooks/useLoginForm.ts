@@ -12,14 +12,12 @@ const loginFormSchema = z.object({
     .min(1, "Email wajib diisi.")
     .email("Format email tidak valid."),
   password: z.string().min(1, "Password wajib diisi."),
-  rememberMe: z.boolean(),
 });
 
 export function useLoginForm() {
   const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -47,7 +45,6 @@ export function useLoginForm() {
     const formState: LoginFormState = {
       email,
       password,
-      rememberMe,
     };
 
     const validation = loginFormSchema.safeParse(formState);
@@ -76,10 +73,8 @@ export function useLoginForm() {
     isPasswordVisible,
     isSubmitting: loginMutation.isPending || loginMutation.isSuccess,
     password,
-    rememberMe,
     setEmail: updateEmail,
     setPassword: updatePassword,
-    setRememberMe,
     togglePasswordVisibility,
   };
 }

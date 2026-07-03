@@ -14,10 +14,8 @@ export function LoginForm() {
     isPasswordVisible,
     isSubmitting,
     password,
-    rememberMe,
     setEmail,
     setPassword,
-    setRememberMe,
     togglePasswordVisibility,
   } = useLoginForm();
 
@@ -57,26 +55,6 @@ export function LoginForm() {
             required
             value={password}
           />
-        </div>
-
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-          <label className="flex min-w-0 items-center gap-2 text-[var(--text-muted)]">
-            <input
-              checked={rememberMe}
-              className="h-4 w-4 rounded border-[var(--rail-border)] accent-[var(--signal-blue)]"
-              disabled={isSubmitting}
-              onChange={(event) => setRememberMe(event.target.checked)}
-              type="checkbox"
-            />
-            <span>{loginFormContent.rememberMeLabel}</span>
-          </label>
-          <button
-            className="shrink-0 font-semibold text-[var(--signal-blue)] transition hover:text-[var(--rail-ink)]"
-            disabled={isSubmitting}
-            type="button"
-          >
-            {loginFormContent.forgotPasswordLabel}
-          </button>
         </div>
 
         {errorMessage ? (
