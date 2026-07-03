@@ -1,24 +1,22 @@
-import type {
-  ComplaintTrendPoint,
-  TrendInterval,
-} from "../../model/manager-dashboard.types";
+import type { ComplaintTrendPoint } from "../../model/types/dashboard.types";
+import type { ReportGroupBy } from "../../model/types/dashboard-filter.types";
 import { ComplaintTrendChart } from "./ComplaintTrendChart";
 
 interface ComplaintTrendCardProps {
   data: ComplaintTrendPoint[];
-  interval: TrendInterval;
-  onIntervalChange: (interval: TrendInterval) => void;
+  groupBy: ReportGroupBy;
+  onGroupByChange: (groupBy: ReportGroupBy) => void;
 }
 
-const INTERVALS: { label: string; value: TrendInterval }[] = [
-  { label: "Bulanan", value: "monthly" },
-  { label: "Mingguan", value: "weekly" },
+const GROUP_OPTIONS: { label: string; value: ReportGroupBy }[] = [
+  { label: "Harian", value: "day" },
+  { label: "Mingguan", value: "week" },
 ];
 
 export function ComplaintTrendCard({
   data,
-  interval,
-  onIntervalChange,
+  groupBy,
+  onGroupByChange,
 }: ComplaintTrendCardProps) {
   return (
     <section className="rounded-[18px] border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4 shadow-[var(--shadow-soft)]">
@@ -32,15 +30,15 @@ export function ComplaintTrendCard({
           </p>
         </div>
         <div className="flex w-fit rounded-full border border-[var(--rail-border)] bg-[var(--background)] p-1">
-          {INTERVALS.map((item) => (
+          {GROUP_OPTIONS.map((item) => (
             <button
               className={`h-8 rounded-full px-3 text-xs font-semibold transition ${
-                interval === item.value
+                groupBy === item.value
                   ? "bg-[var(--surface-panel)] text-[var(--rail-ink)] shadow-sm"
                   : "text-[var(--text-muted)] hover:text-[var(--rail-ink)]"
               }`}
               key={item.value}
-              onClick={() => onIntervalChange(item.value)}
+              onClick={() => onGroupByChange(item.value)}
               type="button"
             >
               {item.label}

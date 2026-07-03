@@ -942,8 +942,6 @@ function ModalShell({
     "--reference-modal-top": "16px",
   });
 
-
-
   useEffect(() => {
     const updateModalViewport = () => {
       const viewport = window.visualViewport;

@@ -1,120 +1,83 @@
-import type { ComplaintTrendPoint } from "../../model/manager-dashboard.types";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { ComplaintTrendPoint } from "../../model/types/dashboard.types";
 
-interface ComplaintTrendChartProps {
+interface ComplaintTrendCardProps {
   data: ComplaintTrendPoint[];
 }
 
-export function ComplaintTrendChart({ data }: ComplaintTrendChartProps) {
-  const maxValue = Math.max(
-    ...data.flatMap((item) => [item.incoming, item.resolved, item.escalated]),
-    1,
-  );
-
-  const incomingPoints = buildPoints(data, maxValue, "incoming");
-  const resolvedPoints = buildPoints(data, maxValue, "resolved");
-  const escalatedPoints = buildPoints(data, maxValue, "escalated");
-
+export function ComplaintTrendChart({ data }: ComplaintTrendCardProps) {
   return (
     <div className="h-[280px] w-full">
-      <svg
-        aria-label="Grafik tren keluhan"
-        className="h-full w-full overflow-visible"
-        role="img"
-        viewBox="0 0 640 260"
-      >
-        <title>Grafik tren keluhan</title>
-        {[48, 96, 144, 192].map((y) => (
-          <line
-            key={y}
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={data}
+          margin={{ top: 8, right: 16, left: -8, bottom: 0 }}
+        >
+          <CartesianGrid
             stroke="rgba(19, 35, 31, 0.08)"
-            strokeWidth="1"
-            x1="34"
-            x2="612"
-            y1={y}
-            y2={y}
+            strokeDasharray="0"
+            vertical={false}
           />
-        ))}
-
-        <polyline
-          fill="none"
-          points={incomingPoints}
-          stroke="var(--signal-blue)"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="4"
-        />
-        <polyline
-          fill="none"
-          points={resolvedPoints}
-          stroke="var(--signal-green)"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="4"
-        />
-        <polyline
-          fill="none"
-          points={escalatedPoints}
-          stroke="var(--signal-red)"
-          strokeDasharray="7 6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="3"
-        />
-
-        {data.map((item, index) => {
-          const x = chartX(index, data.length);
-
-          return (
-            <g key={item.label}>
-              <circle
-                cx={x}
-                cy={chartY(item.incoming, maxValue)}
-                fill="var(--surface-panel)"
-                r="4"
-                stroke="var(--signal-blue)"
-                strokeWidth="3"
-              />
-              <circle
-                cx={x}
-                cy={chartY(item.resolved, maxValue)}
-                fill="var(--surface-panel)"
-                r="4"
-                stroke="var(--signal-green)"
-                strokeWidth="3"
-              />
-              <text
-                fill="var(--text-muted)"
-                fontSize="12"
-                textAnchor="middle"
-                x={x}
-                y="238"
-              >
-                {item.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+          <XAxis
+            dataKey="bucket"
+            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
+            axisLine={{ stroke: "var(--rail-border)" }}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "var(--surface-panel)",
+              border: "1px solid var(--rail-border)",
+              borderRadius: 8,
+              fontSize: 13,
+              color: "var(--rail-ink)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+            }}
+          />
+          <Line
+            dataKey="incoming"
+            name="Masuk"
+            type="monotone"
+            stroke="var(--signal-blue)"
+            strokeWidth={4}
+            dot={{ fill: "var(--surface-panel)", strokeWidth: 3, r: 5 }}
+            activeDot={{ r: 7 }}
+          />
+          <Line
+            dataKey="resolved"
+            name="Selesai"
+            type="monotone"
+            stroke="var(--signal-green)"
+            strokeWidth={4}
+            dot={{ fill: "var(--surface-panel)", strokeWidth: 3, r: 5 }}
+            activeDot={{ r: 7 }}
+          />
+          <Line
+            dataKey="escalated"
+            name="Dieskalasi"
+            type="monotone"
+            stroke="var(--signal-red)"
+            strokeWidth={3}
+            strokeDasharray="7 6"
+            dot={{ fill: "var(--surface-panel)", strokeWidth: 3, r: 5 }}
+            activeDot={{ r: 7 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
-}
-
-function buildPoints(
-  data: ComplaintTrendPoint[],
-  maxValue: number,
-  key: "escalated" | "incoming" | "resolved",
-) {
-  return data
-    .map((item, index) => {
-      return `${chartX(index, data.length)},${chartY(item[key], maxValue)}`;
-    })
-    .join(" ");
-}
-
-function chartX(index: number, length: number) {
-  return 52 + index * (540 / Math.max(length - 1, 1));
-}
-
-function chartY(value: number, maxValue: number) {
-  return 212 - (value / maxValue) * 172;
 }
