@@ -22,6 +22,8 @@
 *agents
 !src/app/(protected)/manager/agents/
 !src/app/(protected)/manager/agents/**
+!src/app/api/reports/agents/
+!src/app/api/reports/agents/**
 
 # misc
 .DS_Store

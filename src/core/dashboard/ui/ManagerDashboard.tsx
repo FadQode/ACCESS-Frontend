@@ -12,6 +12,14 @@ import { ComplaintCategoryCard } from "./manager/ComplaintCategoryCard";
 import { ComplaintTrendCard } from "./manager/ComplaintTrendCard";
 import { ManagerDashboardHeader } from "./manager/ManagerDashboardHeader";
 
+const SKELETON_CATEGORY_ROWS = [
+  "category-row-1",
+  "category-row-2",
+  "category-row-3",
+  "category-row-4",
+  "category-row-5",
+];
+
 export function ManagerDashboard() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
@@ -101,8 +109,8 @@ export function ManagerDashboard() {
                   <SkeletonCard>
                     <div className="mb-3 h-3 w-32 animate-pulse rounded bg-[var(--rail-border)]" />
                     <div className="space-y-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i}>
+                      {SKELETON_CATEGORY_ROWS.map((row) => (
+                        <div key={row}>
                           <div className="mb-1 flex items-center justify-between text-xs">
                             <div className="h-3 w-20 animate-pulse rounded bg-[var(--rail-border)]" />
                             <div className="h-3 w-8 animate-pulse rounded bg-[var(--rail-border)]" />
