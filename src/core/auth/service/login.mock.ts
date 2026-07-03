@@ -20,8 +20,6 @@ export const loginFormContent = {
   emailPlaceholder: "nama@perusahaan.com",
   passwordLabel: "Kata Sandi",
   passwordPlaceholder: "••••••••",
-  rememberMeLabel: "Ingat saya",
-  forgotPasswordLabel: "Lupa kata sandi?",
   submitLabel: "Masuk",
   supportPrefix: "Butuh akses? Hubungi administrator Anda melalui",
   supportEmail: "support@company.com",
