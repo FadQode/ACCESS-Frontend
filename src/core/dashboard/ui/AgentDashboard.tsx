@@ -16,6 +16,16 @@ import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useAgentDashboardSummary } from "../hooks/use-agent-dashboard-summary";
 
+const SKELETON_CHART_HEIGHTS = [
+  { height: 44, id: "day-1" },
+  { height: 58, id: "day-2" },
+  { height: 72, id: "day-3" },
+  { height: 51, id: "day-4" },
+  { height: 86, id: "day-5" },
+  { height: 63, id: "day-6" },
+  { height: 48, id: "day-7" },
+];
+
 export function AgentDashboard() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
@@ -171,12 +181,12 @@ function SkeletonCard() {
 function SkeletonChart() {
   return (
     <div className="flex h-[260px] items-end gap-2">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div className="flex flex-1 flex-col justify-end gap-2" key={i}>
+      {SKELETON_CHART_HEIGHTS.map((item) => (
+        <div className="flex flex-1 flex-col justify-end gap-2" key={item.id}>
           <div className="flex flex-1 items-end justify-center rounded-lg bg-[var(--background)] px-2 py-2">
             <div
               className="w-8 rounded-t-md bg-[var(--rail-border)]"
-              style={{ height: `${30 + Math.random() * 70}%` }}
+              style={{ height: `${item.height}%` }}
             />
           </div>
           <div className="mx-auto h-3 w-6 rounded bg-[var(--rail-border)]" />

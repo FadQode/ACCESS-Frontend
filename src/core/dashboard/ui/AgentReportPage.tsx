@@ -15,6 +15,7 @@ import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
+import { useCurrentUser } from "../hooks/use-current-user";
 import { useSingleAgentReport } from "../hooks/use-single-agent-report";
 import type { ReportGroupBy } from "../model/types/dashboard-filter.types";
 import type {
@@ -23,9 +24,28 @@ import type {
 } from "../model/types/reports.types";
 import { getDefaultDateRange } from "../model/utils/date.utils";
 
+const SKELETON_TREND_HEIGHTS = [
+  { handled: 62, id: "day-1", resolved: 42 },
+  { handled: 48, id: "day-2", resolved: 33 },
+  { handled: 78, id: "day-3", resolved: 58 },
+  { handled: 55, id: "day-4", resolved: 38 },
+  { handled: 86, id: "day-5", resolved: 64 },
+  { handled: 70, id: "day-6", resolved: 51 },
+  { handled: 60, id: "day-7", resolved: 45 },
+];
+const SKELETON_CASE_ROWS = [
+  "case-row-1",
+  "case-row-2",
+  "case-row-3",
+  "case-row-4",
+  "case-row-5",
+];
+
 export function AgentReportPage() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
+  const currentUserQuery = useCurrentUser();
+  const currentUser = currentUserQuery.data ?? sessionUser;
   const defaultRange = getDefaultDateRange();
   const [fromDate, setFromDate] = useState(defaultRange.from);
   const [toDate, setToDate] = useState(defaultRange.to);
@@ -40,7 +60,7 @@ export function AgentReportPage() {
   const [query, setQuery] = useState("");
 
   const { data, error, isLoading, isFetching } = useSingleAgentReport(
-    sessionUser?.id ?? "",
+    currentUser?.id ?? "",
     {
       period: "custom",
       from: fromDate,
@@ -95,7 +115,7 @@ export function AgentReportPage() {
             userName={
               isLoading
                 ? "Agent"
-                : (data?.agent.name ?? sessionUser?.name ?? "Agent")
+                : (data?.agent.name ?? currentUser?.name ?? "Agent")
             }
           />
 
@@ -182,10 +202,10 @@ export function AgentReportPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {Array.from({ length: 5 }).map((_, i) => (
+                        {SKELETON_CASE_ROWS.map((row) => (
                           <tr
                             className="border-t border-[var(--rail-border)]"
-                            key={i}
+                            key={row}
                           >
                             <td className="px-3 py-3">
                               <div className="h-4 w-24 animate-pulse rounded bg-[var(--rail-border)]" />
@@ -488,16 +508,19 @@ function SkeletonMetric() {
 function SkeletonTrendBars() {
   return (
     <div className="flex h-[220px] items-end gap-2">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div className="flex h-full flex-1 flex-col justify-end gap-2" key={i}>
+      {SKELETON_TREND_HEIGHTS.map((height) => (
+        <div
+          className="flex h-full flex-1 flex-col justify-end gap-2"
+          key={height.id}
+        >
           <div className="flex flex-1 items-end justify-center gap-1 rounded-lg bg-[var(--background)] px-1 py-2">
             <div
               className={`w-3 rounded-t-md bg-[var(--rail-border)]`}
-              style={{ height: `${30 + Math.random() * 60}%` }}
+              style={{ height: `${height.handled}%` }}
             />
             <div
               className={`w-3 rounded-t-md bg-[var(--rail-border)]`}
-              style={{ height: `${20 + Math.random() * 50}%` }}
+              style={{ height: `${height.resolved}%` }}
             />
           </div>
           <div className="mx-auto h-3 w-6 rounded bg-[var(--rail-border)]" />

@@ -9,6 +9,14 @@ import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useAgentPerformanceReport } from "../hooks/use-agent-performance-report";
 import type { ReportPeriod } from "../model/types/dashboard-filter.types";
 
+const SKELETON_AGENT_ROWS = [
+  "agent-row-1",
+  "agent-row-2",
+  "agent-row-3",
+  "agent-row-4",
+  "agent-row-5",
+];
+
 export function ManagerAgentsReportPage() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
@@ -151,10 +159,10 @@ export function ManagerAgentsReportPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {Array.from({ length: 5 }).map((_, i) => (
+                        {SKELETON_AGENT_ROWS.map((row) => (
                           <tr
                             className="border-t border-[var(--rail-border)]"
-                            key={i}
+                            key={row}
                           >
                             <td className="px-3 py-3">
                               <div className="flex animate-pulse items-center gap-2">
