@@ -407,10 +407,7 @@ export function ManagerActionQueue() {
     (sum, cluster) => sum + cluster.complaintCount,
     0,
   );
-  const totalAgents = clusters.reduce(
-    (sum, cluster) => sum + cluster.agentCount,
-    0,
-  );
+  const totalAgents = getUniqueAgentCount(clusters);
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
@@ -1731,6 +1728,22 @@ function getAgentNames(cluster: ManagerActionCluster) {
   return Array.from(
     new Set(cluster.complaints.map((complaint) => complaint.agentName)),
   );
+}
+
+function getUniqueAgentCount(clusters: ManagerActionCluster[]) {
+  const agentNames = new Set<string>();
+
+  for (const cluster of clusters) {
+    for (const agentName of getAgentNames(cluster)) {
+      const normalizedAgentName = agentName.trim();
+
+      if (normalizedAgentName && normalizedAgentName !== "Unassigned agent") {
+        agentNames.add(normalizedAgentName);
+      }
+    }
+  }
+
+  return agentNames.size;
 }
 
 function sortManagerClusters(
