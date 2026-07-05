@@ -15,7 +15,7 @@ export function ComplaintCategoryCard({
           Complaints by category
         </h2>
         <p className="mt-1 text-xs text-[var(--text-muted)]">
-          Distribusi keluhan pada periode yang dipilih.
+          Distribusi seluruh keluhan.
         </p>
       </div>
       <div className="grid gap-4">

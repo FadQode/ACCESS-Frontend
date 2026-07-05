@@ -11,14 +11,14 @@ export function OpenEscalationsCard({ escalations }: OpenEscalationsCardProps) {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
-            Open escalations
+            Eskalasi aktif
           </h2>
           <p className="mt-1 text-xs text-[var(--text-muted)]">
             Keluhan yang perlu perhatian manajer.
           </p>
         </div>
         <span className="rounded-full bg-[var(--signal-red-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--signal-red-dark)]">
-          {escalations.length} terbuka
+          {escalations.length} eskalasi
         </span>
       </div>
       <div className="grid gap-2">

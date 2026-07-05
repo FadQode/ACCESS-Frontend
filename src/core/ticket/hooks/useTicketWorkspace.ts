@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useComplaints } from "@/core/dashboard/hooks/use-complaints";
 import { useFinalClosure } from "@/core/dashboard/hooks/use-final-closure";
 import { useTicketDetail } from "@/core/dashboard/hooks/use-ticket-detail";
 import { useTickets } from "@/core/dashboard/hooks/use-tickets";
+import type { Complaint } from "@/core/dashboard/model/types/complaint.types";
 import { mapActionRequestUsageToQuickResponseUsage } from "@/core/reference/model/mappers/reference-usage.mapper";
 import { mapBackendTicketToFollowUpTicket } from "../model/ticket.mapper";
 import type {
@@ -45,6 +47,7 @@ const ticketPriorityRank: Record<FollowUpTicket["priority"], number> = {
 
 export function useTicketWorkspace() {
   const ticketsQuery = useTickets({ limit: 100 });
+  const complaintsQuery = useComplaints({ limit: 100 });
   const finalClosureMutation = useFinalClosure();
   const [selectedTicketId, setSelectedTicketId] = useState("");
   const [filter, setFilter] = useState<FollowUpTicketFilter>("all");
@@ -66,13 +69,20 @@ export function useTicketWorkspace() {
   >(null);
   const selectedTicketQuery = useTicketDetail(selectedTicketId || null);
   const closureContextQuery = useTicketClosureContext(selectedTicketId || null);
+  const complaintById = useMemo(
+    () => buildComplaintLookup(complaintsQuery.data?.items ?? []),
+    [complaintsQuery.data?.items],
+  );
 
   const mappedTickets = useMemo(
     () =>
       (ticketsQuery.data?.items ?? []).map((ticket) =>
-        mapBackendTicketToFollowUpTicket(ticket),
+        mapBackendTicketToFollowUpTicket(
+          ticket,
+          complaintById.get(ticket.complaintId),
+        ),
       ),
-    [ticketsQuery.data?.items],
+    [complaintById, ticketsQuery.data?.items],
   );
 
   useEffect(() => {
@@ -104,7 +114,10 @@ export function useTicketWorkspace() {
       selectedTicketQuery.data &&
       selectedTicketQuery.data.id === selectedTicketId
     ) {
-      ticket = mapBackendTicketToFollowUpTicket(selectedTicketQuery.data);
+      ticket = mapBackendTicketToFollowUpTicket(
+        selectedTicketQuery.data,
+        complaintById.get(selectedTicketQuery.data.complaintId),
+      );
     }
 
     if (ticket && closureContextQuery.data) {
@@ -120,6 +133,7 @@ export function useTicketWorkspace() {
     return ticket;
   }, [
     closureContextQuery.data,
+    complaintById,
     mappedTickets,
     selectedTicketId,
     selectedTicketQuery.data,
@@ -263,6 +277,7 @@ export function useTicketWorkspace() {
       });
       await Promise.all([
         ticketsQuery.refetch(),
+        complaintsQuery.refetch(),
         selectedTicketQuery.refetch(),
         closureContextQuery.refetch(),
       ]);
@@ -325,6 +340,17 @@ export function useTicketWorkspace() {
       (Boolean(selectedTicketId) && selectedTicketQuery.isLoading),
     refetchTickets: ticketsQuery.refetch,
   };
+}
+
+function buildComplaintLookup(complaints: Complaint[]) {
+  const lookup = new Map<string, Complaint>();
+
+  for (const complaint of complaints) {
+    lookup.set(complaint.id, complaint);
+    lookup.set(complaint.referenceNo, complaint);
+  }
+
+  return lookup;
 }
 
 function sortFollowUpTickets(

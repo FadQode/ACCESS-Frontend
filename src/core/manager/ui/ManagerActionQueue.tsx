@@ -28,8 +28,11 @@ import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useActionRequestDetail } from "@/core/dashboard/hooks/use-action-request-detail";
+import { useActionRequestDetails } from "@/core/dashboard/hooks/use-action-request-details";
 import { useActionRequests } from "@/core/dashboard/hooks/use-action-requests";
+import { useAgentPerformanceReport } from "@/core/dashboard/hooks/use-agent-performance-report";
 import { useTakeAction } from "@/core/dashboard/hooks/use-take-action";
+import type { ActionRequest } from "@/core/dashboard/model/types/action-request.types";
 import { mapActionRequestToManagerCluster } from "@/core/manager/model/manager-action.mapper";
 import type {
   ComplaintClusterStatus,
@@ -48,12 +51,7 @@ import type { ActionRequestReferenceUsageType } from "@/core/reference/model/typ
 const MANAGER_NAME = "Mgr. Dina";
 
 type SortDirection = "asc" | "desc";
-type ManagerActionSortKey =
-  | "cluster"
-  | "category"
-  | "agents"
-  | "status"
-  | "raised";
+type ManagerActionSortKey = "cluster" | "category" | "status" | "raised";
 type ManagerActionSortConfig = {
   key: ManagerActionSortKey;
   direction: SortDirection;
@@ -147,8 +145,17 @@ export function ManagerActionQueue() {
     useState<ManagerActionReference | null>(null);
   const [formError, setFormError] = useState("");
   const [referenceFeedback, setReferenceFeedback] = useState("");
+  const agentReportQuery = useAgentPerformanceReport({
+    includeInactive: true,
+    period: "90d",
+  });
   const actionRequestsQuery = useActionRequests();
   const actionRequestDetailQuery = useActionRequestDetail(selectedClusterId);
+  const actionRequestItems = actionRequestsQuery.data?.items ?? [];
+  const actionRequestDetailQueries = useActionRequestDetails(
+    actionRequestItems.map((actionRequest) => actionRequest.id),
+    actionRequestItems.length > 0,
+  );
   const takeActionMutation = useTakeAction();
   const attachReferenceMutation = useAttachReferenceToActionRequest(
     selectedClusterId ?? "",
@@ -158,20 +165,50 @@ export function ManagerActionQueue() {
   );
   const fileUrlMutation = useReferenceFileUrl();
 
+  const agentNameById = useMemo(
+    () =>
+      new Map(
+        (agentReportQuery.data?.agents ?? []).map((agent) => [
+          agent.agentId,
+          agent.agentName,
+        ]),
+      ),
+    [agentReportQuery.data?.agents],
+  );
+
+  const actionRequestDetailsById = useMemo(
+    () =>
+      new Map(
+        actionRequestDetailQueries
+          .map((queryResult) => queryResult.data)
+          .filter((actionRequest): actionRequest is ActionRequest =>
+            Boolean(actionRequest),
+          )
+          .map((actionRequest) => [actionRequest.id, actionRequest]),
+      ),
+    [actionRequestDetailQueries],
+  );
+
   const clusters = useMemo(
     () =>
-      (actionRequestsQuery.data?.items ?? []).map((actionRequest) =>
-        mapActionRequestToManagerCluster(actionRequest),
+      actionRequestItems.map((actionRequest) =>
+        mapActionRequestToManagerCluster(
+          actionRequestDetailsById.get(actionRequest.id) ?? actionRequest,
+          agentNameById,
+        ),
       ),
-    [actionRequestsQuery.data],
+    [actionRequestDetailsById, actionRequestItems, agentNameById],
   );
 
   const detailedCluster = useMemo(
     () =>
       actionRequestDetailQuery.data
-        ? mapActionRequestToManagerCluster(actionRequestDetailQuery.data)
+        ? mapActionRequestToManagerCluster(
+            actionRequestDetailQuery.data,
+            agentNameById,
+          )
         : null,
-    [actionRequestDetailQuery.data],
+    [actionRequestDetailQuery.data, agentNameById],
   );
 
   const selectedCluster = useMemo(
@@ -572,11 +609,11 @@ function QueueTableView({
 
         <div className="overflow-hidden rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)]">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] border-collapse">
+            <table className="w-full min-w-[760px] border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rail-border)] bg-[var(--background)]">
                   <TableHead
-                    className="w-[34%]"
+                    className="w-[42%]"
                     sortConfig={sortConfig}
                     sortKey="cluster"
                     onSortChange={onSortChange}
@@ -584,7 +621,7 @@ function QueueTableView({
                     Cluster
                   </TableHead>
                   <TableHead
-                    className="w-[14%]"
+                    className="w-[16%]"
                     sortConfig={sortConfig}
                     sortKey="category"
                     onSortChange={onSortChange}
@@ -592,15 +629,7 @@ function QueueTableView({
                     Kategori
                   </TableHead>
                   <TableHead
-                    className="w-[18%]"
-                    sortConfig={sortConfig}
-                    sortKey="agents"
-                    onSortChange={onSortChange}
-                  >
-                    Agent
-                  </TableHead>
-                  <TableHead
-                    className="w-[14%]"
+                    className="w-[16%]"
                     sortConfig={sortConfig}
                     sortKey="status"
                     onSortChange={onSortChange}
@@ -608,7 +637,7 @@ function QueueTableView({
                     Status
                   </TableHead>
                   <TableHead
-                    className="w-[12%]"
+                    className="w-[14%]"
                     sortConfig={sortConfig}
                     sortKey="raised"
                     onSortChange={onSortChange}
@@ -621,7 +650,7 @@ function QueueTableView({
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td className="px-4 py-12 text-center" colSpan={6}>
+                    <td className="px-4 py-12 text-center" colSpan={5}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
                         Memuat action requests...
                       </p>
@@ -632,7 +661,7 @@ function QueueTableView({
                   </tr>
                 ) : errorMessage ? (
                   <tr>
-                    <td className="px-4 py-12 text-center" colSpan={6}>
+                    <td className="px-4 py-12 text-center" colSpan={5}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
                         Action requests gagal dimuat.
                       </p>
@@ -670,9 +699,6 @@ function QueueTableView({
                         <CategoryBadge category={cluster.category} />
                       </TableCell>
                       <TableCell>
-                        <AgentSummary cluster={cluster} />
-                      </TableCell>
-                      <TableCell>
                         <StatusBadge status={cluster.status} />
                       </TableCell>
                       <TableCell>
@@ -691,7 +717,7 @@ function QueueTableView({
                   ))
                 ) : (
                   <tr>
-                    <td className="px-4 py-12 text-center" colSpan={6}>
+                    <td className="px-4 py-12 text-center" colSpan={5}>
                       <p className="text-sm font-semibold text-[var(--rail-ink)]">
                         Belum ada action request
                       </p>
@@ -873,29 +899,39 @@ function ContextPanel({
   onOpenAttachReferences: () => void;
   onOpenReference: (reference: ManagerActionReference) => void;
 }) {
+  const hasVisibleContextDetails = Boolean(
+    cluster.affectedRoute || cluster.recommendedAction,
+  );
+
   return (
     <Panel
       countLabel={`${cluster.references.length} referensi`}
       icon={<CheckCircle2 aria-hidden="true" size={15} />}
       title="Konteks dan referensi"
     >
-      <div className="space-y-3">
-        <ContextRow label="Isu terdeteksi" value={cluster.detectedIssue} />
-        {cluster.affectedRoute ? (
-          <ContextRow label="Layanan terdampak" value={cluster.affectedRoute} />
-        ) : null}
-        <ContextRow label="Kebijakan terkait" value={cluster.policyApplies} />
-        {cluster.similarPastCase ? (
-          <ContextRow label="Kasus serupa" value={cluster.similarPastCase} />
-        ) : null}
-        {cluster.recommendedAction ? (
-          <ContextRow
-            label="Saran tindakan"
-            value={cluster.recommendedAction}
-          />
-        ) : null}
-      </div>
-      <div className="mt-4 border-t border-[var(--rail-border)] pt-4">
+      {hasVisibleContextDetails ? (
+        <div className="space-y-3">
+          {cluster.affectedRoute ? (
+            <ContextRow
+              label="Layanan terdampak"
+              value={cluster.affectedRoute}
+            />
+          ) : null}
+          {cluster.recommendedAction ? (
+            <ContextRow
+              label="Saran tindakan"
+              value={cluster.recommendedAction}
+            />
+          ) : null}
+        </div>
+      ) : null}
+      <div
+        className={
+          hasVisibleContextDetails
+            ? "mt-4 border-t border-[var(--rail-border)] pt-4"
+            : ""
+        }
+      >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-[var(--rail-ink)]">
@@ -1551,35 +1587,6 @@ function SortIcon({
   );
 }
 
-function AgentSummary({ cluster }: { cluster: ManagerActionCluster }) {
-  const agentNames = getAgentNames(cluster);
-
-  if (cluster.agentCount === 0) {
-    return (
-      <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-[var(--rail-ink)]">
-          Buka detail
-        </p>
-        <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-          Agent akan dimuat di detail
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-w-0">
-      <p className="truncate text-xs font-medium text-[var(--rail-ink)]">
-        {agentNames.slice(0, 2).join(", ")}
-        {agentNames.length > 2 ? ` +${agentNames.length - 2}` : ""}
-      </p>
-      <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-        {cluster.agentCount} agent menunggu
-      </p>
-    </div>
-  );
-}
-
 function formatComplaintCount(cluster: ManagerActionCluster) {
   if (cluster.complaintCount === 0) {
     return "Buka detail untuk complaint terkait";
@@ -1751,10 +1758,6 @@ function getManagerClusterSortValue(
 
   if (key === "category") {
     return categoryLabel[cluster.category];
-  }
-
-  if (key === "agents") {
-    return cluster.agentCount;
   }
 
   if (key === "status") {

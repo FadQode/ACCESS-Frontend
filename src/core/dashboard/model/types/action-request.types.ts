@@ -33,6 +33,7 @@ export type ActionRequestLinkedComplaint = {
   complaintId?: string;
   ticketId?: string;
   agentId?: string | null;
+  agentName?: string | null;
   linkedAt?: string;
   complaintText?: string;
   ticketStatus?: string;

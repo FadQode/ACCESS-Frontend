@@ -165,8 +165,7 @@ export function AgentReportPage() {
               </div>
             ) : isLoading ? (
               <>
-                <section className="grid gap-3 md:grid-cols-4">
-                  <SkeletonMetric />
+                <section className="grid gap-3 md:grid-cols-3">
                   <SkeletonMetric />
                   <SkeletonMetric />
                   <SkeletonMetric />
@@ -228,18 +227,17 @@ export function AgentReportPage() {
               </>
             ) : data ? (
               <>
-                <section className="grid gap-3 md:grid-cols-4">
+                <section className="grid gap-3 md:grid-cols-3">
                   <ReportMetric
-                    label="Total handled"
+                    label="Total ditangani"
                     value={data.summary.handledCount}
                   />
                   <ReportMetric
-                    label="Resolved"
+                    label="Selesai"
                     value={data.summary.resolvedCount}
                   />
-                  <ReportMetric label="Open" value={data.summary.openCount} />
                   <ReportMetric
-                    label="Escalated"
+                    label="Eskalasi"
                     value={data.summary.escalatedCount}
                   />
                 </section>

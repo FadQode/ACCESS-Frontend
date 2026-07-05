@@ -112,7 +112,7 @@ export function TicketDetail({
 function OriginalComplaintCard({ ticket }: { ticket: FollowUpTicket }) {
   return (
     <WorkflowCard
-      actorName={`${ticket.customerName} (${ticket.username})`}
+      actorName={formatCustomerActorName(ticket)}
       eyebrow={`${ticket.sourceLabel} - ${ticket.sourceType}`}
       actorRole="customer"
       title="Keluhan pelanggan"
@@ -175,7 +175,7 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
       {actionCompleted ? (
         <>
           <RoleMessage
-            label="Tindakan dilakukan - catatan internal"
+            label="Tindakan dilakukan"
             actorRole="manager"
             text={ticket.managerAction.actionTaken ?? "Arahan selesai."}
           />
@@ -190,24 +190,10 @@ function ManagerActionCard({ ticket }: { ticket: FollowUpTicket }) {
               }
             />
           </div>
-          <div className="mt-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
-            <div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-[var(--rail-ink)]">
-              <Wrench
-                aria-hidden="true"
-                className="text-[var(--signal-amber)]"
-                size={14}
-              />
-              Hasil tim internal
-            </div>
-            <p className="text-xs leading-6 text-[var(--text-muted)]">
-              Tindakan yang dilakukan dipakai sebagai catatan internal. Pesan
-              penutup sudah dimuat sebagai draft balasan akhir di bawah.
-            </p>
-          </div>
         </>
       ) : (
         <RoleMessage
-          label="Status internal"
+          label="Status arahan"
           actorRole="internal"
           text="Menunggu arahan manager. Balasan akhir belum tersedia."
         />
@@ -303,7 +289,7 @@ function ClosureMessageCard({
   if (ticket.status === "waiting_manager" || ticket.status === "escalated") {
     return (
       <WorkflowCard
-        actorName="Manajer / tim internal"
+        actorName="Manajer"
         eyebrow="Belum ada balasan akhir"
         actorRole="internal"
         title="Kabari pelanggan"
@@ -340,10 +326,6 @@ function ClosureMessageCard({
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <ActorBadge actorRole="agent" text="Agen meninjau dan menyalin" />
-        <ActorBadge
-          actorRole="platform"
-          text={`Tujuan: ${ticket.sourceLabel}`}
-        />
       </div>
       <div className="mb-2 rounded-lg border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 py-2 text-xs leading-5 text-[var(--signal-blue)]">
         Draft di bawah berasal dari closure message manager. Agen bisa meninjau,
@@ -388,6 +370,12 @@ function ClosureMessageCard({
       </div>
     </WorkflowCard>
   );
+}
+
+function formatCustomerActorName(ticket: FollowUpTicket) {
+  return ticket.customerName === ticket.username
+    ? ticket.customerName
+    : `${ticket.customerName} (${ticket.username})`;
 }
 
 function WorkflowCard({

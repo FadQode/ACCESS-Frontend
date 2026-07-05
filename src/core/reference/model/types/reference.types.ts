@@ -81,6 +81,17 @@ export interface CreateLinkReferenceInput {
   description?: string | null;
   url: string;
   category?: ReferenceCategory | null;
+  createdByEmail?: string | null;
+  createdByName?: string | null;
+  tags?: string[];
+}
+
+export interface CreateTextReferenceInput {
+  title: string;
+  description: string;
+  category?: ReferenceCategory | null;
+  createdByEmail?: string | null;
+  createdByName?: string | null;
   tags?: string[];
 }
 
@@ -89,6 +100,8 @@ export interface CreateFileReferenceInput {
   description?: string | null;
   file: File;
   category?: ReferenceCategory | null;
+  createdByEmail?: string | null;
+  createdByName?: string | null;
   tags?: string[];
 }
 

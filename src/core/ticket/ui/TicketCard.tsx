@@ -134,7 +134,7 @@ function actionSummary(ticket: FollowUpTicket) {
   }
 
   if (ticket.status === "waiting_manager" || ticket.status === "escalated") {
-    return "Menunggu arahan manajer atau tim internal sebelum pelanggan dikabari.";
+    return "Menunggu arahan manajer sebelum pelanggan dikabari.";
   }
 
   return ticket.closureCopiedAt

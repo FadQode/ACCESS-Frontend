@@ -15,8 +15,12 @@ export type Ticket = {
   status: TicketStatus | string;
   priority?: TicketPriority | string;
   category?: string;
+  complainerName?: string | null;
   complaintStatus?: string;
   complaintText?: string;
+  source?: string | null;
+  sourceHandle?: string | null;
+  sourceUrl?: string | null;
   referenceNo?: string;
   heaResponse?: string | null;
   heaSentAt?: string | null;

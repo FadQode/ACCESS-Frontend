@@ -13,6 +13,24 @@ const idSchema = z
   .union([z.string(), z.number()])
   .transform((value) => String(value));
 
+const ticketComplaintSchema = z
+  .object({
+    complainerName: z.string().nullable().optional(),
+    complainer_name: z.string().nullable().optional(),
+    customerName: z.string().nullable().optional(),
+    customer_name: z.string().nullable().optional(),
+    referenceNo: z.string().optional(),
+    reference_no: z.string().optional(),
+    source: z.string().nullable().optional(),
+    sourceHandle: z.string().nullable().optional(),
+    sourceUrl: z.string().nullable().optional(),
+    source_handle: z.string().nullable().optional(),
+    source_url: z.string().nullable().optional(),
+    username: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
 const rawTicketSchema = z
   .object({
     actionRequest: z
@@ -50,6 +68,11 @@ const rawTicketSchema = z
     actionTaken: z.string().nullable().optional(),
     action_taken: z.string().nullable().optional(),
     category: z.string().optional(),
+    complaint: ticketComplaintSchema,
+    complainerName: z.string().nullable().optional(),
+    complainer_name: z.string().nullable().optional(),
+    customerName: z.string().nullable().optional(),
+    customer_name: z.string().nullable().optional(),
     complaintId: idSchema.optional(),
     complaintStatus: z.string().optional(),
     complaintText: z.string().optional(),
@@ -70,6 +93,12 @@ const rawTicketSchema = z
     priority: z.string().optional(),
     referenceNo: z.string().optional(),
     reference_no: z.string().optional(),
+    source: z.string().nullable().optional(),
+    sourceHandle: z.string().nullable().optional(),
+    sourceUrl: z.string().nullable().optional(),
+    source_handle: z.string().nullable().optional(),
+    source_url: z.string().nullable().optional(),
+    username: z.string().nullable().optional(),
     status: z.string().optional(),
     updatedAt: z.string().optional(),
     updated_at: z.string().optional(),
@@ -112,6 +141,7 @@ const rawTicketSchema = z
   })
   .transform<Ticket>((value) => {
     const actionRequest = value.actionRequest ?? value.action_request;
+    const complaint = value.complaint;
     const managerAction = value.managerAction ?? value.manager_action;
 
     return {
@@ -132,6 +162,15 @@ const rawTicketSchema = z
       actionTaken: value.actionTaken ?? value.action_taken,
       agentId: value.agentId ?? value.agent_id,
       category: value.category,
+      complainerName:
+        value.complainerName ??
+        value.complainer_name ??
+        value.customerName ??
+        value.customer_name ??
+        complaint?.complainerName ??
+        complaint?.complainer_name ??
+        complaint?.customerName ??
+        complaint?.customer_name,
       complaintId: value.complaintId ?? value.complaint_id ?? value.id,
       complaintStatus: value.complaintStatus ?? value.complaint_status,
       complaintText: value.complaintText ?? value.complaint_text,
@@ -142,7 +181,24 @@ const rawTicketSchema = z
       heaSentAt: value.heaSentAt ?? value.hea_sent_at,
       id: value.id,
       priority: value.priority,
-      referenceNo: value.referenceNo ?? value.reference_no,
+      referenceNo:
+        value.referenceNo ??
+        value.reference_no ??
+        complaint?.referenceNo ??
+        complaint?.reference_no,
+      source: value.source ?? complaint?.source,
+      sourceHandle:
+        value.sourceHandle ??
+        value.source_handle ??
+        value.username ??
+        complaint?.sourceHandle ??
+        complaint?.source_handle ??
+        complaint?.username,
+      sourceUrl:
+        value.sourceUrl ??
+        value.source_url ??
+        complaint?.sourceUrl ??
+        complaint?.source_url,
       status: value.status ?? "open",
       updatedAt: value.updatedAt ?? value.updated_at,
       agent: value.agent ?? null,

@@ -40,12 +40,30 @@ export const referenceStatusSchema = z.enum(["active", "draft", "archived"]);
 const nullableStringSchema = z.string().nullable().optional();
 export const MAX_REFERENCE_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
+const rawReferenceUserSchema = z
+  .object({
+    email: nullableStringSchema,
+    id: z.string().optional(),
+    name: nullableStringSchema,
+    username: nullableStringSchema,
+  })
+  .passthrough()
+  .nullable()
+  .optional();
+
 export const rawReferenceSchema = z
   .object({
     category: referenceCategorySchema.nullable().optional(),
     content: nullableStringSchema,
     createdAt: z.string(),
     createdBy: z.string().nullable().optional(),
+    createdByEmail: nullableStringSchema,
+    createdByName: nullableStringSchema,
+    createdByUser: rawReferenceUserSchema,
+    created_by: z.string().nullable().optional(),
+    created_by_email: nullableStringSchema,
+    created_by_name: nullableStringSchema,
+    created_by_user: rawReferenceUserSchema,
     fileMimeType: nullableStringSchema,
     fileName: nullableStringSchema,
     fileSize: z.number().nullable().optional(),
@@ -57,38 +75,72 @@ export const rawReferenceSchema = z
     title: z.string(),
     updatedAt: z.string(),
     url: nullableStringSchema,
+    uploadedBy: rawReferenceUserSchema,
+    uploadedByEmail: nullableStringSchema,
+    uploadedByName: nullableStringSchema,
+    uploaded_by: rawReferenceUserSchema,
+    uploaded_by_email: nullableStringSchema,
+    uploaded_by_name: nullableStringSchema,
     version: z.string().default("1"),
   })
   .passthrough()
-  .transform<ReferenceItem>((value) => ({
-    category: value.category ?? null,
-    createdAt: value.createdAt,
-    createdBy: value.createdBy ?? null,
-    description: value.content ?? null,
-    displayType: getReferenceDisplayType(value.sourceType, {
-      fileName: value.fileName,
-      fileUrl: value.fileUrl,
-      mimeType: value.fileMimeType,
-      url: value.url,
-    }),
-    fileName: value.fileName ?? null,
-    fileSize: value.fileSize ?? null,
-    fileUrl: value.fileUrl ?? null,
-    id: value.id,
-    mimeType: value.fileMimeType ?? null,
-    sourceType: value.sourceType,
-    status: value.status,
-    tags: dedupeTags(value.tags),
-    title: value.title,
-    updatedAt: value.updatedAt,
-    uploadedBy: value.createdBy
-      ? {
-          id: value.createdBy,
-        }
-      : null,
-    url: value.url ?? null,
-    version: value.version,
-  }));
+  .transform<ReferenceItem>((value) => {
+    const createdBy = value.createdBy ?? value.created_by ?? null;
+    const creator =
+      value.uploadedBy ??
+      value.uploaded_by ??
+      value.createdByUser ??
+      value.created_by_user ??
+      null;
+    const creatorName =
+      creator?.name ??
+      creator?.username ??
+      value.uploadedByName ??
+      value.uploaded_by_name ??
+      value.createdByName ??
+      value.created_by_name ??
+      null;
+    const creatorEmail =
+      creator?.email ??
+      value.uploadedByEmail ??
+      value.uploaded_by_email ??
+      value.createdByEmail ??
+      value.created_by_email ??
+      null;
+    const creatorId = creator?.id ?? createdBy;
+
+    return {
+      category: value.category ?? null,
+      createdAt: value.createdAt,
+      createdBy,
+      description: value.content ?? null,
+      displayType: getReferenceDisplayType(value.sourceType, {
+        fileName: value.fileName,
+        fileUrl: value.fileUrl,
+        mimeType: value.fileMimeType,
+        url: value.url,
+      }),
+      fileName: value.fileName ?? null,
+      fileSize: value.fileSize ?? null,
+      fileUrl: value.fileUrl ?? null,
+      id: value.id,
+      mimeType: value.fileMimeType ?? null,
+      sourceType: value.sourceType,
+      status: value.status,
+      tags: dedupeTags(value.tags),
+      title: value.title,
+      updatedAt: value.updatedAt,
+      uploadedBy: creatorId
+        ? {
+            email: creatorEmail,
+            id: creatorId,
+            name: creatorName,
+          }
+        : null,
+      url: value.url ?? null,
+      version: value.version,
+    };
+  });
 
 const paginationSchema = z.object({
   limit: z.number().default(20),
@@ -137,7 +189,7 @@ export const referenceFormSchema = z
     category: referenceCategorySchema.or(z.literal("")).optional(),
     description: z.string().max(5000).optional(),
     file: z.instanceof(File).optional(),
-    mode: z.enum(["file", "link"]),
+    mode: z.enum(["file", "link", "text"]),
     tags: z.array(z.string()).max(30).optional(),
     title: z.string().trim().min(1).max(255),
     url: z.string().trim().optional(),
@@ -173,6 +225,17 @@ export const referenceFormSchema = z
           path: ["url"],
         });
       }
+    }
+
+    if (
+      value.mode === "text" &&
+      (!value.description || value.description.trim().length === 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Isi teks referensi wajib diisi.",
+        path: ["description"],
+      });
     }
   });
 
