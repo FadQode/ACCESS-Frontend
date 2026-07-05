@@ -9,15 +9,27 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
 import { ApiStateBoundary } from "@/core/components/feedback";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
+import { useCurrentUser } from "@/core/dashboard/hooks/use-current-user";
+import { useUsers } from "@/core/dashboard/hooks/use-users";
 import { ApiClientError } from "@/core/dashboard/model/api/client";
+import type { UserLookupItem } from "@/core/dashboard/model/api/users.api";
+import type { AuthUser } from "@/core/dashboard/model/types/auth.types";
 import { useReferenceDetail } from "../hooks/use-reference-detail";
 import { useReferenceFileUrl } from "../hooks/use-reference-file-url";
-import { getReferenceOwner } from "../model/mappers/reference.mapper";
+import {
+  getReferenceOwner,
+  type ReferenceOwnerContext,
+} from "../model/mappers/reference.mapper";
+import {
+  getCachedReferenceOwners,
+  type ReferenceOwnerCache,
+} from "../model/reference-owner-cache";
 import type { ReferenceItem } from "../model/types/reference.types";
 
 type ReferenceDashboardRole = "agent" | "manager";
@@ -31,11 +43,27 @@ export function ReferenceDetailPage({
 }) {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
+  const currentUserQuery = useCurrentUser();
+  const currentUser = currentUserQuery.data ?? sessionUser;
+  const [cachedOwners, setCachedOwners] = useState<ReferenceOwnerCache>({});
   const referenceQuery = useReferenceDetail(referenceId);
+  const usersQuery = useUsers(Boolean(currentUser));
   const fileUrlMutation = useReferenceFileUrl();
   const reference = referenceQuery.data;
+  const referenceOwnerContext = useMemo(
+    () => ({
+      currentUser,
+      ownersByReferenceId: cachedOwners,
+      usersById: buildUserLookup(usersQuery.data ?? [], currentUser),
+    }),
+    [cachedOwners, currentUser, usersQuery.data],
+  );
   const isAgentUnavailable =
     dashboardRole === "agent" && reference && reference.status !== "active";
+
+  useEffect(() => {
+    setCachedOwners(getCachedReferenceOwners());
+  }, []);
 
   const openReference = async () => {
     if (!reference) {
@@ -67,7 +95,7 @@ export function ReferenceDetailPage({
             isSidebarOpen={sidebarOpen}
             onSidebarToggle={toggleSidebar}
             roleLabel="Detail referensi"
-            userName={sessionUser?.name ?? "User"}
+            userName={currentUser?.name ?? "User"}
           />
 
           <ApiStateBoundary
@@ -91,6 +119,7 @@ export function ReferenceDetailPage({
                 isOpening={fileUrlMutation.isPending}
                 onOpen={() => void openReference()}
                 reference={reference}
+                ownerContext={referenceOwnerContext}
               />
             ) : null}
           </ApiStateBoundary>
@@ -104,11 +133,13 @@ function ReferenceDetailCard({
   dashboardRole,
   isOpening,
   onOpen,
+  ownerContext,
   reference,
 }: {
   dashboardRole: ReferenceDashboardRole;
   isOpening: boolean;
   onOpen: () => void;
+  ownerContext: ReferenceOwnerContext;
   reference: ReferenceItem;
 }) {
   const Icon = reference.displayType === "link" ? Link2 : FileText;
@@ -137,7 +168,7 @@ function ReferenceDetailCard({
               {reference.title}
             </h1>
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Dibuat oleh {getReferenceOwner(reference)}
+              Dibuat oleh {getReferenceOwner(reference, ownerContext)}
             </p>
           </div>
           {reference.displayType !== "text" ? (
@@ -236,6 +267,23 @@ function InfoTile({ label, value }: { label: string; value: string }) {
       </p>
     </div>
   );
+}
+
+function buildUserLookup(
+  users: UserLookupItem[],
+  currentUser?: AuthUser | null,
+) {
+  const usersById: ReferenceOwnerContext["usersById"] = {};
+
+  for (const user of users) {
+    usersById[user.id] = user;
+  }
+
+  if (currentUser) {
+    usersById[currentUser.id] = currentUser;
+  }
+
+  return usersById;
 }
 
 function getErrorMessage(error: unknown) {

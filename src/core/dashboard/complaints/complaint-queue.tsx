@@ -298,7 +298,7 @@ function ComplaintTableView({
               Complaints
             </h1>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Laporan pelanggan dari kanal publik dan privat
+              Kumpulan Laporan pelanggan
             </p>
           </div>
 

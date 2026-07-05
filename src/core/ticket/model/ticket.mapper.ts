@@ -1,3 +1,4 @@
+import type { Complaint } from "@/core/dashboard/model/types/complaint.types";
 import type { Ticket as BackendTicket } from "@/core/dashboard/model/types/ticket.types";
 import type {
   ExternalChannel,
@@ -10,6 +11,10 @@ import type {
 
 export function mapBackendTicketToFollowUpTicket(
   ticket: BackendTicket,
+  complaint?: Pick<
+    Complaint,
+    "complainerName" | "referenceNo" | "sourceHandle" | "sourceUrl"
+  >,
 ): FollowUpTicket {
   const status = mapTicketStatus(ticket.status);
   const category = mapTicketCategory(ticket.category);
@@ -17,6 +22,8 @@ export function mapBackendTicketToFollowUpTicket(
   const agentName = ticket.agent?.name ?? "Agen";
   const managerClosureMessage = getManagerClosureMessage(ticket);
   const closureMessage = managerClosureMessage ?? ticket.closureMessage ?? "";
+  const customerName = getCustomerName(ticket, complaint);
+  const username = getCustomerUsername(ticket, complaint);
 
   return {
     activityLog: buildActivityLog(ticket, status, agentName),
@@ -30,10 +37,10 @@ export function mapBackendTicketToFollowUpTicket(
       : undefined,
     closureMessage,
     complaintId: ticket.complaintId,
-    customerInitials: "PA",
-    customerName: "Pelanggan ACCESS",
+    customerInitials: getInitials(customerName),
+    customerName,
     displayId: ticket.referenceNo ?? shortId(ticket.id),
-    externalUrl: undefined,
+    externalUrl: ticket.sourceUrl ?? complaint?.sourceUrl ?? undefined,
     id: ticket.id,
     managerAction: buildManagerAction(ticket, status),
     originalComplaint: ticket.complaintText ?? "Detail keluhan belum tersedia.",
@@ -51,10 +58,57 @@ export function mapBackendTicketToFollowUpTicket(
     status,
     submittedAt: formatAbsoluteDate(createdAt),
     submittedAtValue: createdAt,
-    username: ticket.referenceNo
-      ? `#${ticket.referenceNo}`
-      : shortId(ticket.id),
+    username,
   };
+}
+
+function getCustomerName(
+  ticket: BackendTicket,
+  complaint?: Pick<Complaint, "complainerName" | "sourceHandle">,
+) {
+  return (
+    normalizeDisplayText(ticket.sourceHandle) ??
+    normalizeDisplayText(complaint?.sourceHandle) ??
+    normalizeDisplayText(ticket.complainerName) ??
+    normalizeDisplayText(complaint?.complainerName) ??
+    "Pelanggan"
+  );
+}
+
+function getCustomerUsername(
+  ticket: BackendTicket,
+  complaint?: Pick<Complaint, "referenceNo" | "sourceHandle">,
+) {
+  return (
+    normalizeDisplayText(ticket.sourceHandle) ??
+    normalizeDisplayText(complaint?.sourceHandle) ??
+    (complaint?.referenceNo
+      ? `#${complaint.referenceNo}`
+      : ticket.referenceNo
+        ? `#${ticket.referenceNo}`
+        : shortId(ticket.id))
+  );
+}
+
+function normalizeDisplayText(value?: string | null) {
+  const normalized = value?.trim();
+
+  return normalized && normalized.length > 0 ? normalized : undefined;
+}
+
+function getInitials(value: string) {
+  const cleaned = value.replace(/^@/, "").trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return "PL";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
 
 function mapTicketStatus(status?: string): FollowUpTicketStatus {

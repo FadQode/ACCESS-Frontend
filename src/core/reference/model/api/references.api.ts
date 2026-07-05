@@ -8,6 +8,7 @@ import {
 import type {
   CreateFileReferenceInput,
   CreateLinkReferenceInput,
+  CreateTextReferenceInput,
   GetReferencesParams,
   ReferenceFileUrl,
   ReferenceItem,
@@ -60,10 +61,33 @@ export async function createLinkReference(
   const response = await apiClient.post<unknown>("/references", {
     category: input.category || null,
     content: input.description || null,
+    createdByEmail: input.createdByEmail ?? null,
+    createdByName: input.createdByName ?? null,
     sourceType: "external_link",
     tags: input.tags ?? [],
     title: input.title,
+    uploadedByEmail: input.createdByEmail ?? null,
+    uploadedByName: input.createdByName ?? null,
     url: input.url,
+  });
+
+  return referenceResponseSchema.parse(response);
+}
+
+export async function createTextReference(
+  input: CreateTextReferenceInput,
+): Promise<ReferenceItem> {
+  const response = await apiClient.post<unknown>("/references", {
+    category: input.category || null,
+    content: input.description,
+    createdByEmail: input.createdByEmail ?? null,
+    createdByName: input.createdByName ?? null,
+    sourceType: "internal_note",
+    tags: input.tags ?? [],
+    title: input.title,
+    uploadedByEmail: input.createdByEmail ?? null,
+    uploadedByName: input.createdByName ?? null,
+    url: null,
   });
 
   return referenceResponseSchema.parse(response);
@@ -78,6 +102,10 @@ export async function createFileReference(
   formData.append("title", input.title);
   appendOptionalFormValue(formData, "category", input.category);
   appendOptionalFormValue(formData, "content", input.description);
+  appendOptionalFormValue(formData, "createdByEmail", input.createdByEmail);
+  appendOptionalFormValue(formData, "createdByName", input.createdByName);
+  appendOptionalFormValue(formData, "uploadedByEmail", input.createdByEmail);
+  appendOptionalFormValue(formData, "uploadedByName", input.createdByName);
 
   if (input.tags && input.tags.length > 0) {
     formData.append("tags", input.tags.join(","));

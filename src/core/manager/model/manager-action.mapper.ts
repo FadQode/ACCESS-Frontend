@@ -8,12 +8,13 @@ import type {
 
 export function mapActionRequestToManagerCluster(
   actionRequest: ActionRequest,
+  agentNameById?: ReadonlyMap<string, string>,
 ): ManagerActionCluster {
   const linkedComplaints = actionRequest.linkedComplaints ?? [];
   const agentIds = new Set(
     linkedComplaints
-      .map((complaint) => complaint.agentId)
-      .filter((agentId): agentId is string => Boolean(agentId)),
+      .map((complaint) => complaint.agentId ?? complaint.agentName)
+      .filter((agent): agent is string => Boolean(agent)),
   );
 
   return {
@@ -31,7 +32,11 @@ export function mapActionRequestToManagerCluster(
         : undefined,
     complaintCount: linkedComplaints.length,
     complaints: linkedComplaints.map((complaint, index) => ({
-      agentName: formatAgentName(complaint.agentId),
+      agentName: formatAgentName(
+        complaint.agentName ??
+          (complaint.agentId ? agentNameById?.get(complaint.agentId) : null),
+        complaint.agentId,
+      ),
       complaintText: complaint.complaintText ?? "No complaint text available.",
       customerInitials: `C${index + 1}`,
       customerName: `Complaint ${shortId(complaint.complaintId ?? complaint.id)}`,
@@ -139,7 +144,13 @@ function normalizeManagerCategory(category?: string): ManagerActionCategory {
   return "other";
 }
 
-function formatAgentName(agentId?: string | null) {
+function formatAgentName(agentName?: string | null, agentId?: string | null) {
+  const normalizedAgentName = agentName?.trim();
+
+  if (normalizedAgentName) {
+    return normalizedAgentName;
+  }
+
   if (!agentId) {
     return "Unassigned agent";
   }

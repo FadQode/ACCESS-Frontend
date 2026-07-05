@@ -22,8 +22,20 @@ const linkedComplaintSchema = z
   .object({
     actionRequestId: idSchema.optional(),
     action_request_id: idSchema.optional(),
+    agent: z
+      .object({
+        email: z.string().optional(),
+        id: idSchema.optional(),
+        name: z.string().optional(),
+      })
+      .nullable()
+      .optional(),
     agentId: idSchema.nullable().optional(),
+    agentName: z.string().nullable().optional(),
     agent_id: idSchema.nullable().optional(),
+    agent_name: z.string().nullable().optional(),
+    assignedAgentName: z.string().nullable().optional(),
+    assigned_agent_name: z.string().nullable().optional(),
     complaintId: idSchema.optional(),
     complaintText: z.string().optional(),
     complaint_id: idSchema.optional(),
@@ -39,6 +51,12 @@ const linkedComplaintSchema = z
   .transform<ActionRequestLinkedComplaint>((value) => ({
     actionRequestId: value.actionRequestId ?? value.action_request_id,
     agentId: value.agentId ?? value.agent_id,
+    agentName:
+      value.agentName ??
+      value.agent_name ??
+      value.assignedAgentName ??
+      value.assigned_agent_name ??
+      value.agent?.name,
     complaintId: value.complaintId ?? value.complaint_id,
     complaintText: value.complaintText ?? value.complaint_text,
     id: value.id,

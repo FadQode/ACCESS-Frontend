@@ -31,14 +31,27 @@ import { ApiStateBoundary } from "@/core/components/feedback";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
+import { useCurrentUser } from "@/core/dashboard/hooks/use-current-user";
+import { useUsers } from "@/core/dashboard/hooks/use-users";
 import { ApiClientError } from "@/core/dashboard/model/api/client";
+import type { UserLookupItem } from "@/core/dashboard/model/api/users.api";
+import type { AuthUser } from "@/core/dashboard/model/types/auth.types";
 import { useArchiveReference } from "../hooks/use-archive-reference";
 import { useCreateReference } from "../hooks/use-create-reference";
+import { useReferenceDetails } from "../hooks/use-reference-details";
 import { useReferenceFileUrl } from "../hooks/use-reference-file-url";
 import { useReferenceTags } from "../hooks/use-reference-tags";
 import { useReferences } from "../hooks/use-references";
 import { useUpdateReference } from "../hooks/use-update-reference";
-import { getReferenceOwner } from "../model/mappers/reference.mapper";
+import {
+  getReferenceOwner,
+  type ReferenceOwnerContext,
+} from "../model/mappers/reference.mapper";
+import {
+  getCachedReferenceOwners,
+  type ReferenceOwnerCache,
+  rememberReferenceOwner,
+} from "../model/reference-owner-cache";
 import {
   MAX_REFERENCE_FILE_SIZE_BYTES,
   referenceFormSchema,
@@ -62,6 +75,7 @@ type ReferenceSortConfig = {
   key: ReferenceSortKey;
   direction: SortDirection;
 };
+type ReferenceFormMode = "file" | "link" | "text";
 type ReferenceModalStyle = CSSProperties & {
   "--reference-modal-max-height": string;
   "--reference-modal-top": string;
@@ -81,10 +95,14 @@ const CATEGORY_OPTIONS: Array<{ label: string; value: ReferenceCategory }> = [
 
 const TYPE_OPTIONS: Array<{
   label: string;
-  value: Extract<ReferenceSourceType, "external_link" | "uploaded_file">;
+  value: Extract<
+    ReferenceSourceType,
+    "external_link" | "internal_note" | "uploaded_file"
+  >;
 }> = [
   { label: "File", value: "uploaded_file" },
   { label: "Tautan", value: "external_link" },
+  { label: "Teks", value: "internal_note" },
 ];
 const ACCEPTED_REFERENCE_FILE_TYPES = [
   ".pdf",
@@ -106,14 +124,17 @@ export function ReferenceManagementPage({
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const router = useRouter();
   const sessionUser = useSessionUser();
+  const currentUserQuery = useCurrentUser();
+  const currentUser = currentUserQuery.data ?? sessionUser;
   const canManage =
-    sessionUser?.role === "manager" || sessionUser?.role === "admin";
+    currentUser?.role === "manager" || currentUser?.role === "admin";
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
   const [sourceType, setSourceType] = useState<ReferenceSourceType | "">("");
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<ModalState>(null);
   const [feedback, setFeedback] = useState("");
+  const [cachedOwners, setCachedOwners] = useState<ReferenceOwnerCache>({});
   const [sortConfig, setSortConfig] = useState<ReferenceSortConfig>({
     direction: "asc",
     key: "title",
@@ -131,11 +152,46 @@ export function ReferenceManagementPage({
   );
   const referencesQuery = useReferences(filters);
   const tagsQuery = useReferenceTags();
+  const usersQuery = useUsers(Boolean(currentUser));
   const fileUrlMutation = useReferenceFileUrl();
   const archiveMutation = useArchiveReference();
   const references = useMemo(
     () => sortReferences(referencesQuery.data?.items ?? [], sortConfig),
     [referencesQuery.data?.items, sortConfig],
+  );
+  const referenceDetailQueries = useReferenceDetails(
+    references.map((reference) => reference.id),
+    references.length > 0,
+  );
+  const usersById = useMemo(
+    () => buildUserLookup(usersQuery.data ?? [], currentUser),
+    [currentUser, usersQuery.data],
+  );
+  const detailOwners = useMemo(
+    () =>
+      buildReferenceDetailOwnerLookup(
+        referenceDetailQueries
+          .map((queryResult) => queryResult.data)
+          .filter((reference): reference is ReferenceItem =>
+            Boolean(reference),
+          ),
+        {
+          currentUser,
+          usersById,
+        },
+      ),
+    [currentUser, referenceDetailQueries, usersById],
+  );
+  const referenceOwnerContext = useMemo(
+    () => ({
+      currentUser,
+      ownersByReferenceId: {
+        ...cachedOwners,
+        ...detailOwners,
+      },
+      usersById,
+    }),
+    [cachedOwners, currentUser, detailOwners, usersById],
   );
   const pagination = referencesQuery.data?.pagination;
 
@@ -146,6 +202,10 @@ export function ReferenceManagementPage({
       key,
     }));
   };
+
+  useEffect(() => {
+    setCachedOwners(getCachedReferenceOwners());
+  }, []);
 
   const openReference = async (reference: ReferenceItem) => {
     setFeedback("");
@@ -210,7 +270,7 @@ export function ReferenceManagementPage({
                 ? "Referensi manager"
                 : "Referensi agent"
             }
-            userName={sessionUser?.name ?? "User"}
+            userName={currentUser?.name ?? "User"}
           />
 
           <section className="overflow-hidden rounded-xl border border-[var(--rail-border)] bg-[var(--surface-panel)] shadow-[var(--shadow-soft)]">
@@ -224,8 +284,7 @@ export function ReferenceManagementPage({
                     Referensi
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-                    Materi internal aktif dari backend untuk panduan
-                    operasional.
+                    Materi internal aktif untuk panduan operasional.
                   </p>
                 </div>
                 {canManage ? (
@@ -327,6 +386,7 @@ export function ReferenceManagementPage({
                   }
                   onEdit={(reference) => setModal({ reference, type: "edit" })}
                   onOpen={(reference) => void openReference(reference)}
+                  ownerContext={referenceOwnerContext}
                   references={references}
                   sortConfig={sortConfig}
                   onSortChange={changeSort}
@@ -364,8 +424,12 @@ export function ReferenceManagementPage({
 
       {modal?.type === "create" || modal?.type === "edit" ? (
         <ReferenceFormModal
+          currentUser={currentUser}
           mode={modal.type}
           onClose={() => setModal(null)}
+          onCreated={(reference) => {
+            setCachedOwners(rememberReferenceOwner(reference.id, currentUser));
+          }}
           onSuccess={(message) => {
             setFeedback(message);
             setModal(null);
@@ -392,6 +456,7 @@ function ReferenceTable({
   onArchive,
   onEdit,
   onOpen,
+  ownerContext,
   onSortChange,
   references,
   sortConfig,
@@ -401,6 +466,7 @@ function ReferenceTable({
   onArchive: (reference: ReferenceItem) => void;
   onEdit: (reference: ReferenceItem) => void;
   onOpen: (reference: ReferenceItem) => void;
+  ownerContext: ReferenceOwnerContext;
   onSortChange: (key: ReferenceSortKey) => void;
   references: ReferenceItem[];
   sortConfig: ReferenceSortConfig;
@@ -500,7 +566,7 @@ function ReferenceTable({
                 </div>
               </td>
               <td className="border-b border-[var(--rail-border)] px-3 py-4 text-xs font-semibold text-[var(--text-muted)]">
-                {getReferenceOwner(reference)}
+                {getReferenceOwner(reference, ownerContext)}
               </td>
               <td className="whitespace-nowrap border-b border-[var(--rail-border)] px-3 py-4 text-xs font-semibold text-[var(--text-muted)]">
                 {formatReferenceDate(reference.createdAt)}
@@ -615,6 +681,18 @@ function ReferenceTypeBadge({ reference }: { reference: ReferenceItem }) {
   );
 }
 
+function getFormModeLabel(mode: ReferenceFormMode) {
+  if (mode === "file") {
+    return "File";
+  }
+
+  if (mode === "text") {
+    return "Teks";
+  }
+
+  return "Tautan";
+}
+
 function ActionButton({
   danger = false,
   disabled = false,
@@ -646,21 +724,29 @@ function ActionButton({
 }
 
 function ReferenceFormModal({
+  currentUser,
   mode,
   onClose,
+  onCreated,
   onSuccess,
   reference,
 }: {
+  currentUser?: AuthUser | null;
   mode: "create" | "edit";
   onClose: () => void;
+  onCreated?: (reference: ReferenceItem) => void;
   onSuccess: (message: string) => void;
   reference?: ReferenceItem;
 }) {
   const createMutation = useCreateReference();
   const updateMutation = useUpdateReference();
   const fileInputId = useId();
-  const [formMode, setFormMode] = useState<"file" | "link">(
-    reference?.displayType === "file" ? "file" : "link",
+  const [formMode, setFormMode] = useState<ReferenceFormMode>(
+    reference?.displayType === "file"
+      ? "file"
+      : reference?.displayType === "text"
+        ? "text"
+        : "link",
   );
   const [title, setTitle] = useState(reference?.title ?? "");
   const [description, setDescription] = useState(reference?.description ?? "");
@@ -686,6 +772,14 @@ function ReferenceFormModal({
           return;
         }
 
+        if (
+          reference.displayType === "text" &&
+          description.trim().length === 0
+        ) {
+          setError("Isi teks referensi wajib diisi.");
+          return;
+        }
+
         const tags = parseTags(tagsInput);
 
         await updateMutation.mutateAsync({
@@ -703,6 +797,10 @@ function ReferenceFormModal({
       }
 
       const tags = parseTags(tagsInput);
+      const creator = {
+        createdByEmail: currentUser?.email ?? null,
+        createdByName: currentUser?.name ?? null,
+      };
       const parsed = referenceFormSchema.safeParse({
         category,
         description,
@@ -720,18 +818,31 @@ function ReferenceFormModal({
         return;
       }
 
+      let createdReference: ReferenceItem;
+
       if (formMode === "file" && file) {
-        await createMutation.mutateAsync({
+        createdReference = await createMutation.mutateAsync({
           category: category || null,
+          ...creator,
           description,
           file,
           mode: "file",
           tags,
           title,
         });
-      } else {
-        await createMutation.mutateAsync({
+      } else if (formMode === "text") {
+        createdReference = await createMutation.mutateAsync({
           category: category || null,
+          ...creator,
+          description,
+          mode: "text",
+          tags,
+          title,
+        });
+      } else {
+        createdReference = await createMutation.mutateAsync({
+          category: category || null,
+          ...creator,
           description,
           mode: "link",
           tags,
@@ -740,6 +851,7 @@ function ReferenceFormModal({
         });
       }
 
+      onCreated?.(createdReference);
       onSuccess("Referensi berhasil ditambahkan.");
     } catch {
       setError(
@@ -759,8 +871,8 @@ function ReferenceFormModal({
         {!isEditing ? (
           <div>
             <RequiredFieldLabel label="Tipe" />
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {(["link", "file"] as const).map((item) => (
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {(["link", "file", "text"] as const).map((item) => (
                 <button
                   className={`h-10 rounded-lg border text-xs font-semibold transition ${
                     formMode === item
@@ -771,7 +883,7 @@ function ReferenceFormModal({
                   onClick={() => setFormMode(item)}
                   type="button"
                 >
-                  {item === "link" ? "Tautan" : "File"}
+                  {getFormModeLabel(item)}
                 </button>
               ))}
             </div>
@@ -786,9 +898,17 @@ function ReferenceFormModal({
           />
         </FormField>
 
-        <FormField label="Deskripsi">
+        <FormField
+          label={formMode === "text" ? "Isi teks referensi" : "Deskripsi"}
+          required={formMode === "text"}
+        >
           <textarea
             className={`${fieldClassName} min-h-24 resize-none py-3`}
+            placeholder={
+              formMode === "text"
+                ? "Tulis referensi teks yang akan dibaca tim."
+                : undefined
+            }
             onChange={(event) => setDescription(event.target.value)}
             value={description}
           />
@@ -1158,6 +1278,46 @@ function sortReferences(
 
     return result * direction;
   });
+}
+
+function buildUserLookup(
+  users: UserLookupItem[],
+  currentUser?: AuthUser | null,
+) {
+  const usersById: ReferenceOwnerContext["usersById"] = {};
+
+  for (const user of users) {
+    usersById[user.id] = user;
+  }
+
+  if (currentUser) {
+    usersById[currentUser.id] = currentUser;
+  }
+
+  return usersById;
+}
+
+function buildReferenceDetailOwnerLookup(
+  references: ReferenceItem[],
+  context: ReferenceOwnerContext,
+) {
+  const ownersByReferenceId: ReferenceOwnerContext["ownersByReferenceId"] = {};
+
+  for (const reference of references) {
+    const ownerName = getReferenceOwner(reference, context);
+
+    if (ownerName === "Internal") {
+      continue;
+    }
+
+    ownersByReferenceId[reference.id] = {
+      email: reference.uploadedBy?.email ?? null,
+      id: reference.uploadedBy?.id ?? reference.createdBy ?? null,
+      name: ownerName,
+    };
+  }
+
+  return ownersByReferenceId;
 }
 
 function getReferenceSortValue(

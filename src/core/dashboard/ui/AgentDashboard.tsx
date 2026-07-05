@@ -41,7 +41,7 @@ export function AgentDashboard() {
       value: isLoading ? "..." : (data?.cards.resolvedCount ?? 0).toString(),
     },
     {
-      label: "Terbuka",
+      label: "Eskalasi",
       value: isLoading ? "..." : (data?.cards.openCount ?? 0).toString(),
     },
   ];
@@ -75,7 +75,7 @@ export function AgentDashboard() {
                   Ringkasan pekerjaan saya
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-                  Ringkasan 7 hari terakhir — kasus selesai, kasus terbuka, dan
+                  Ringkasan 7 hari terakhir — kasus selesai, eskalasi aktif, dan
                   tren penyelesaian harian.
                 </p>
               </div>
@@ -101,9 +101,9 @@ export function AgentDashboard() {
                     value={data.cards.resolvedCount.toString()}
                   />
                   <SummaryCard
-                    detail={`${data.cards.openCount} kasus masih terbuka`}
+                    detail={`${data.cards.openCount} kasus menunggu tindak lanjut`}
                     icon={<CircleDot aria-hidden="true" size={20} />}
-                    label="Kasus terbuka"
+                    label="Eskalasi aktif"
                     tone="blue"
                     value={data.cards.openCount.toString()}
                   />
@@ -124,7 +124,7 @@ export function AgentDashboard() {
                         value={data.resolutionSummary.resolvedInPeriod}
                       />
                       <MiniRow
-                        label="Masih terbuka"
+                        label="Eskalasi aktif"
                         value={data.cards.openCount}
                       />
                       <MiniRow

@@ -48,10 +48,7 @@ export function ManagerAgentsReportPage() {
   const totalResolved = data
     ? data.agents.reduce((sum, agent) => sum + agent.resolvedCount, 0)
     : 0;
-  const totalEscalated = data
-    ? data.agents.reduce((sum, agent) => sum + agent.escalatedCount, 0)
-    : 0;
-  const totalOpen = data
+  const totalOnProgress = data
     ? data.agents.reduce((sum, agent) => sum + agent.openCount, 0)
     : 0;
 
@@ -65,8 +62,8 @@ export function ManagerAgentsReportPage() {
       value: isLoading ? "..." : totalResolved.toString(),
     },
     {
-      label: "Eskalasi",
-      value: isLoading ? "..." : totalEscalated.toString(),
+      label: "On Progress",
+      value: isLoading ? "..." : totalOnProgress.toString(),
     },
   ];
 
@@ -100,9 +97,7 @@ export function ManagerAgentsReportPage() {
                     Performa agent
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-                    Halaman report untuk review detail per agent. Metric waktu
-                    respons lanjutan bisa masuk di sini nanti, bukan di overview
-                    utama.
+                    Halaman report untuk review detail per agent
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -136,8 +131,7 @@ export function ManagerAgentsReportPage() {
               </div>
             ) : isLoading ? (
               <>
-                <section className="grid gap-3 md:grid-cols-3">
-                  <SkeletonMetric />
+                <section className="grid gap-3 md:grid-cols-2">
                   <SkeletonMetric />
                   <SkeletonMetric />
                 </section>
@@ -152,8 +146,7 @@ export function ManagerAgentsReportPage() {
                         <tr>
                           <th className="px-3 py-3">Agent</th>
                           <th className="px-3 py-3">Selesai</th>
-                          <th className="px-3 py-3">Terbuka</th>
-                          <th className="px-3 py-3">Eskalasi</th>
+                          <th className="px-3 py-3">On Progress</th>
                           <th className="px-3 py-3">Kategori dominan</th>
                           <th className="px-3 py-3">Last Activity</th>
                         </tr>
@@ -180,9 +173,6 @@ export function ManagerAgentsReportPage() {
                               <div className="h-4 w-8 animate-pulse rounded bg-[var(--rail-border)]" />
                             </td>
                             <td className="px-3 py-3">
-                              <div className="h-4 w-8 animate-pulse rounded bg-[var(--rail-border)]" />
-                            </td>
-                            <td className="px-3 py-3">
                               <div className="h-4 w-20 animate-pulse rounded bg-[var(--rail-border)]" />
                             </td>
                             <td className="px-3 py-3">
@@ -197,10 +187,9 @@ export function ManagerAgentsReportPage() {
               </>
             ) : data && data.agents.length > 0 ? (
               <>
-                <section className="grid gap-3 md:grid-cols-3">
+                <section className="grid gap-3 md:grid-cols-2">
                   <ReportCard label="Kasus selesai" value={totalResolved} />
-                  <ReportCard label="Kasus terbuka" value={totalOpen} />
-                  <ReportCard label="Eskalasi" value={totalEscalated} />
+                  <ReportCard label="On Progress" value={totalOnProgress} />
                 </section>
 
                 <section className="rounded-xl border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4 shadow-[var(--shadow-soft)]">
@@ -227,8 +216,7 @@ export function ManagerAgentsReportPage() {
                         <tr>
                           <th className="px-3 py-3">Agent</th>
                           <th className="px-3 py-3">Selesai</th>
-                          <th className="px-3 py-3">Terbuka</th>
-                          <th className="px-3 py-3">Eskalasi</th>
+                          <th className="px-3 py-3">On Progress</th>
                           <th className="px-3 py-3">Kategori dominan</th>
                           <th className="px-3 py-3">Last Activity</th>
                         </tr>
@@ -262,9 +250,6 @@ export function ManagerAgentsReportPage() {
                                 {agent.openCount}
                               </td>
                               <td className="px-3 py-3 text-[var(--text-muted)]">
-                                {agent.escalatedCount}
-                              </td>
-                              <td className="px-3 py-3 text-[var(--text-muted)]">
                                 {agent.topCategory || "-"}
                               </td>
                               <td className="px-3 py-3 text-[var(--text-muted)]">
@@ -280,7 +265,7 @@ export function ManagerAgentsReportPage() {
                           <tr>
                             <td
                               className="px-3 py-8 text-center text-sm text-[var(--text-muted)]"
-                              colSpan={6}
+                              colSpan={5}
                             >
                               Tidak ada agent yang cocok dengan pencarian.
                             </td>

@@ -99,7 +99,7 @@ export function AgentPerformanceDashboard({
               label: "Tepat waktu",
               value: `${snapshot.slaHealth.onTimePercent}%`,
             },
-            { label: "Aktif", value: openCases.toString() },
+            { label: "Eskalasi", value: openCases.toString() },
             {
               label: "Terlambat",
               value: snapshot.slaHealth.overdueCount.toString(),
@@ -158,7 +158,7 @@ export function AgentPerformanceDashboard({
               value={snapshot.metrics.qualityScore.toString()}
             />
             <KpiCard
-              detail={`${openCases} kasus aktif`}
+              detail={`${openCases} kasus menunggu tindak lanjut`}
               icon={<AlertTriangle aria-hidden="true" size={20} />}
               label="Rasio eskalasi"
               tone="red"
@@ -194,14 +194,14 @@ export function AgentPerformanceDashboard({
 
             <Card
               action={<SelectPill label="Minggu ini" />}
-              title="Kasus minggu ini"
+              title="Eskalasi minggu ini"
             >
               <div className="mb-3 flex flex-wrap gap-4">
                 <LegendDot color="var(--signal-blue)" label="Baru" />
                 <LegendDot color="var(--signal-blue-soft)" label="Selesai" />
               </div>
               <p className="mb-2 text-xl font-semibold text-[var(--rail-ink)]">
-                {openCases} terbuka
+                {openCases} eskalasi aktif
               </p>
               <WeeklyCasesChart data={snapshot.weeklyCases} />
             </Card>
