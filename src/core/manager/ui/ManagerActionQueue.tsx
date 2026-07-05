@@ -22,6 +22,7 @@ import {
   type ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
@@ -140,6 +141,7 @@ export function ManagerActionQueue() {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionTaken, setActionTaken] = useState("");
   const [closureMessage, setClosureMessage] = useState("");
+  const hydratedClusterIdRef = useRef<string | null>(null);
   const [attachModalOpen, setAttachModalOpen] = useState(false);
   const [detachReference, setDetachReference] =
     useState<ManagerActionReference | null>(null);
@@ -221,6 +223,11 @@ export function ManagerActionQueue() {
 
   useEffect(() => {
     if (!selectedClusterId) {
+      hydratedClusterIdRef.current = null;
+      return;
+    }
+
+    if (hydratedClusterIdRef.current === selectedClusterId) {
       return;
     }
 
@@ -235,6 +242,7 @@ export function ManagerActionQueue() {
 
     setActionTaken(cluster.actionTaken);
     setClosureMessage(cluster.closureMessage);
+    hydratedClusterIdRef.current = selectedClusterId;
   }, [clusters, detailedCluster, selectedClusterId]);
 
   const visibleClusters = useMemo(() => {
@@ -297,6 +305,7 @@ export function ManagerActionQueue() {
   }, [clusters]);
 
   const openCluster = (cluster: ManagerActionCluster) => {
+    hydratedClusterIdRef.current = cluster.id;
     setSelectedClusterId(cluster.id);
     setActionTaken(cluster.actionTaken);
     setClosureMessage(cluster.closureMessage);
@@ -306,6 +315,7 @@ export function ManagerActionQueue() {
   };
 
   const closeCluster = () => {
+    hydratedClusterIdRef.current = null;
     setSelectedClusterId(null);
     setFormError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
