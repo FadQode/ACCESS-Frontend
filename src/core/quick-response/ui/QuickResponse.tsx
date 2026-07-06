@@ -836,7 +836,7 @@ function ComplaintInputForm({
       </FieldLabel>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <FieldLabel label="Username / handle" note="opsional">
+        <FieldLabel label="Username / handle" note="opsional" required>
           <div className="relative">
             <UserRound
               aria-hidden="true"
@@ -852,7 +852,7 @@ function ComplaintInputForm({
             />
           </div>
         </FieldLabel>
-        <FieldLabel label="Link eksternal" note="opsional">
+        <FieldLabel label="Link eksternal" note="opsional" required>
           <div className="relative">
             <Link2
               aria-hidden="true"
@@ -1852,10 +1852,19 @@ function getSuccessDescription(result: CreateQuickResponseResponse) {
 }
 
 function getPreviewErrorMessage(error: unknown) {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? (error as { code?: string }).code
+      : undefined;
+  const message = error instanceof Error ? error.message : "";
   const status =
     typeof error === "object" && error !== null && "status" in error
       ? (error as { status?: number }).status
       : undefined;
+
+  if (code === "ECONNABORTED" || message.includes("terlalu lama")) {
+    return "Generate suggestion membutuhkan waktu terlalu lama. Coba lagi sebentar lagi.";
+  }
 
   if (status === 401) {
     return "Sesi berakhir. Silakan login kembali.";
