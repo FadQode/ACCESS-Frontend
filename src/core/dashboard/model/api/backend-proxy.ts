@@ -5,6 +5,7 @@ type ProxyOptions = {
   method: "DELETE" | "GET" | "PATCH" | "POST";
   request: NextRequest;
   path: string;
+  timeoutMs?: number;
 };
 
 const BACKEND_API_BASE_URL = process.env.BACKEND_API_BASE_URL;
@@ -78,6 +79,7 @@ export async function proxyBackendRequest({
   method,
   path,
   request,
+  timeoutMs = BACKEND_TIMEOUT_MS,
 }: ProxyOptions) {
   try {
     const body = await readProxyBody(request, method);
@@ -86,7 +88,7 @@ export async function proxyBackendRequest({
       headers: createForwardHeaders(request, body),
       method,
       responseType: "text",
-      timeout: BACKEND_TIMEOUT_MS,
+      timeout: timeoutMs,
       transformResponse: [(data) => data],
       url: getBackendUrl(path),
       validateStatus: () => true,

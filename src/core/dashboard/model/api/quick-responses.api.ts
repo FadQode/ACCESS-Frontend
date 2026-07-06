@@ -19,6 +19,7 @@ import type {
 const idSchema = z
   .union([z.string(), z.number()])
   .transform((value) => String(value));
+const QUICK_RESPONSE_PREVIEW_TIMEOUT_MS = 45_000;
 
 const rawQuickResponseResponseSchema = z
   .object({
@@ -164,6 +165,7 @@ export async function previewQuickResponse(
   const response = await apiClient.post<unknown>(
     "/quick-responses/preview",
     payload,
+    { timeout: QUICK_RESPONSE_PREVIEW_TIMEOUT_MS },
   );
 
   return quickResponsePreviewSchema.parse(response);
