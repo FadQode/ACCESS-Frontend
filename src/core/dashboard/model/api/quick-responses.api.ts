@@ -11,6 +11,9 @@ import type {
   CreateQuickResponseResponse,
   QuickResponseCategory,
   QuickResponseOutcome,
+  QuickResponsePreviewData,
+  QuickResponsePreviewRequest,
+  QuickResponsePreviewSuggestions,
 } from "@/core/dashboard/model/types/quick-response.types";
 
 const idSchema = z
@@ -62,6 +65,23 @@ const rawQuickResponseResponseSchema = z
     },
     requiresFollowUp: value.requiresFollowUp,
     ticket: value.ticket ?? null,
+  }));
+
+const previewSuggestionListSchema = z.array(z.string()).length(3);
+
+const quickResponsePreviewSchema = z
+  .object({
+    suggestionSource: z.enum(["ai", "fallback"]),
+    suggestions: z.object({
+      hear: previewSuggestionListSchema,
+      empathize: previewSuggestionListSchema,
+      apologize: previewSuggestionListSchema,
+      takeAction: previewSuggestionListSchema,
+    }),
+  })
+  .transform<QuickResponsePreviewData>((value) => ({
+    suggestionSource: value.suggestionSource,
+    suggestions: value.suggestions as QuickResponsePreviewSuggestions,
   }));
 
 const finalClosureResponseSchema = z
@@ -130,6 +150,23 @@ export async function createQuickResponse(
   const response = await apiClient.post<unknown>("/quick-responses", payload);
 
   return rawQuickResponseResponseSchema.parse(response);
+}
+
+export async function previewQuickResponse(
+  input: QuickResponsePreviewRequest,
+): Promise<QuickResponsePreviewData> {
+  const payload = {
+    complaintText: input.complaintText.trim(),
+    ...(input.category ? { category: input.category } : {}),
+    ...(input.responseTarget ? { responseTarget: input.responseTarget } : {}),
+    ...(input.responseTone ? { responseTone: input.responseTone } : {}),
+  };
+  const response = await apiClient.post<unknown>(
+    "/quick-responses/preview",
+    payload,
+  );
+
+  return quickResponsePreviewSchema.parse(response);
 }
 
 export async function createComplaintQuickResponse(

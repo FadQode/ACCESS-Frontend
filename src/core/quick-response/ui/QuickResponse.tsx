@@ -8,11 +8,8 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Copy,
-  ExternalLink,
-  FileText,
-  Headphones,
+  Info,
   Link2,
-  Lock,
   MessageSquareText,
   RefreshCcw,
   ShieldCheck,
@@ -31,12 +28,19 @@ import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useCreateQuickResponse } from "@/core/dashboard/hooks/use-create-quick-response";
 import { useEscalateTicket } from "@/core/dashboard/hooks/use-escalate-ticket";
+import { useQuickResponsePreview } from "@/core/dashboard/hooks/use-quick-response-preview";
 import { createQuickResponseSchema } from "@/core/dashboard/model/schemas/quick-response.schema";
 import type {
   CreateQuickResponseResponse,
+  QuickResponseCategory,
   QuickResponseOutcome,
+  QuickResponsePreviewData,
+  QuickResponseSuggestionSource,
 } from "@/core/dashboard/model/types/quick-response.types";
-import { mapQuickResponseToCreateRequest } from "@/core/dashboard/quick-response/quick-response.mapper";
+import {
+  mapQuickResponseToCreateRequest,
+  targetToBackendMap,
+} from "@/core/dashboard/quick-response/quick-response.mapper";
 
 type StepId = 1 | 2 | 3 | 4;
 type ResponseTarget =
@@ -44,12 +48,14 @@ type ResponseTarget =
   | "direct-message"
   | "app-review"
   | "internal-note";
-type Tone = "formal" | "friendly" | "concise";
 type OutcomeId = "resolved" | "ticket";
 type CompletionState = "saved" | "resolved" | "follow-up";
 type BuilderKey = "hear" | "empathize" | "apologize" | "takeAction";
 type QuickResponseFieldErrors = Partial<
-  Record<"complaintText" | "sourceUrl" | "finalResponse" | "permission", string>
+  Record<
+    "category" | "complaintText" | "sourceUrl" | "finalResponse" | "permission",
+    string
+  >
 >;
 type FeedbackState = {
   description: string;
@@ -74,26 +80,6 @@ interface BuilderOptions {
   takeAction: SentenceOption[];
 }
 
-interface Scenario {
-  key: string;
-  label: string;
-  insight: string;
-  managerApprovalRequired: boolean;
-  similarCase: {
-    title: string;
-    detail: string;
-  };
-  references: ReferenceItem[];
-  builderOptions: BuilderOptions;
-}
-
-interface ReferenceItem {
-  title: string;
-  meta: string;
-  linkLabel: string;
-  tone: "green" | "amber" | "blue";
-}
-
 const sourceOptions: Option[] = [
   { value: "twitter", label: "Twitter / X" },
   { value: "instagram", label: "Instagram" },
@@ -103,263 +89,17 @@ const sourceOptions: Option[] = [
   { value: "other", label: "Lainnya" },
 ];
 
-const defaultComplaint =
-  "Kereta saya terlambat lebih dari 3 jam dari Surabaya ke Jakarta. Saya ada meeting penting dan tidak ada pemberitahuan sama sekali. Ini sangat mengecewakan!";
-
-const genericOptions: BuilderOptions = {
-  hear: [
-    {
-      id: "hear-generic-1",
-      text: "Terima kasih sudah menyampaikan keluhan ini kepada kami.",
-    },
-    {
-      id: "hear-generic-2",
-      text: "Kami menerima laporan Kakak dan akan meninjau kendala yang disampaikan.",
-    },
-    {
-      id: "hear-generic-3",
-      text: "Kami memahami bahwa Kakak mengalami kendala pada layanan kami.",
-    },
-  ],
-  empathize: [
-    {
-      id: "empathize-generic-1",
-      text: "Kami memahami bahwa pengalaman ini tidak sesuai dengan harapan Kakak.",
-    },
-    {
-      id: "empathize-generic-2",
-      text: "Kami paham situasi seperti ini dapat membuat Kakak merasa tidak nyaman.",
-    },
-    {
-      id: "empathize-generic-3",
-      text: "Kami mengerti keluhan ini penting untuk segera ditindaklanjuti.",
-    },
-  ],
-  apologize: [
-    {
-      id: "apologize-generic-1",
-      text: "Mohon maaf atas ketidaknyamanan yang terjadi.",
-    },
-    {
-      id: "apologize-generic-2",
-      text: "Kami meminta maaf atas pengalaman yang belum sesuai harapan.",
-    },
-    {
-      id: "apologize-generic-3",
-      text: "Maaf atas kendala yang Kakak alami hari ini.",
-    },
-  ],
-  takeAction: [
-    {
-      id: "action-generic-1",
-      text: "Tim kami akan meninjau laporan ini dan memberikan tindak lanjut sesuai kebijakan yang berlaku.",
-    },
-    {
-      id: "action-generic-2",
-      text: "Kami akan bantu arahkan laporan ini ke tim terkait untuk pengecekan lebih lanjut.",
-    },
-    {
-      id: "action-generic-3",
-      text: "Silakan kirim detail melalui DM agar tim kami dapat membantu pengecekan lebih lanjut.",
-    },
-  ],
-};
-
-const scenarios: Record<string, Scenario> = {
-  delay: {
-    key: "delay",
-    label: "Terlambat lama / tanpa notifikasi",
-    insight:
-      "Kemungkinan keluhan operasional. Balasan publik cukup mengakui kendala tanpa menjanjikan kompensasi.",
-    managerApprovalRequired: true,
-    similarCase: {
-      title: "Keluhan serupa selesai - Maret 2026, Surabaya-Jakarta",
-      detail:
-        "Pengembalian dana penuh disetujui setelah tinjauan operasional. Selesai dalam 2 hari.",
-    },
-    references: [
-      {
-        title: "SOP - penanganan keterlambatan v2.1",
-        meta: "Keterlambatan di atas 120 menit dapat ditinjau untuk pengembalian dana atau jadwal ulang setelah disetujui manajer.",
-        linkLabel: "Lihat SOP",
-        tone: "green",
-      },
-      {
-        title: "Riwayat penyelesaian - keterlambatan Sby-Jkt, Mar 2026",
-        meta: "Rute sama. Pengembalian dana penuh disetujui manajer setelah insiden dikonfirmasi.",
-        linkLabel: "Lihat tiket #0712",
-        tone: "amber",
-      },
-      {
-        title: "Kebijakan pengembalian dana v3.2 - Bagian 4.2",
-        meta: "Keputusan pengembalian dana atau jadwal ulang harus diverifikasi sebelum dikonfirmasi ke pelanggan.",
-        linkLabel: "Lihat kebijakan",
-        tone: "blue",
-      },
-    ],
-    builderOptions: {
-      ...genericOptions,
-      hear: [
-        {
-          id: "hear-delay-1",
-          text: "Kami menerima keluhan Kakak terkait keterlambatan perjalanan.",
-        },
-        {
-          id: "hear-delay-2",
-          text: "Terima kasih sudah menyampaikan kendala perjalanan ini kepada kami.",
-        },
-        {
-          id: "hear-delay-3",
-          text: "Kami memahami bahwa perjalanan Kakak mengalami keterlambatan yang cukup lama.",
-        },
-      ],
-      takeAction: [
-        {
-          id: "action-delay-safe",
-          text: "Berdasarkan kebijakan keterlambatan, kasus seperti ini perlu kami teruskan ke tim terkait untuk pengecekan dan persetujuan lebih lanjut.",
-        },
-        {
-          id: "action-delay-team",
-          text: "Kami akan bantu arahkan laporan ini ke tim operasional agar dapat ditinjau sesuai ketentuan yang berlaku.",
-        },
-        {
-          id: "action-delay-dm",
-          text: "Silakan lanjutkan melalui DM agar tim kami dapat membantu pengecekan tanpa membuka data pribadi di ruang publik.",
-        },
-      ],
-    },
-  },
-  refund: {
-    key: "refund",
-    label: "Tindak lanjut pengembalian dana",
-    insight:
-      "Keluhan pengembalian dana perlu pengecekan status internal. Beri balasan awal yang aman dan buat tiket.",
-    managerApprovalRequired: true,
-    similarCase: {
-      title: "Batch pengembalian dana serupa - April 2026",
-      detail:
-        "Selesai setelah tim keuangan mengonfirmasi status settlement payment gateway.",
-    },
-    references: [
-      {
-        title: "Kebijakan pengembalian dana v3.2",
-        meta: "Status pengembalian dana harus diverifikasi sebelum estimasi waktu dibagikan.",
-        linkLabel: "Lihat kebijakan",
-        tone: "blue",
-      },
-      {
-        title: "SOP settlement pembayaran",
-        meta: "Kendala gateway membutuhkan konfirmasi tim keuangan.",
-        linkLabel: "Lihat SOP",
-        tone: "amber",
-      },
-    ],
-    builderOptions: {
-      ...genericOptions,
-      hear: [
-        {
-          id: "hear-refund-1",
-          text: "Kami menerima keluhan Kakak terkait proses pengembalian dana yang belum diterima.",
-        },
-        {
-          id: "hear-refund-2",
-          text: "Terima kasih sudah menghubungi kami mengenai status pengembalian dana Kakak.",
-        },
-        {
-          id: "hear-refund-3",
-          text: "Kami memahami bahwa Kakak membutuhkan kejelasan terkait proses pengembalian dana.",
-        },
-      ],
-      takeAction: [
-        {
-          id: "action-refund-safe",
-          text: "Kami akan teruskan laporan ini ke tim terkait untuk pengecekan status pengembalian dana dan tindak lanjut sesuai ketentuan.",
-        },
-        {
-          id: "action-refund-dm",
-          text: "Silakan lanjutkan melalui DM agar data pengajuan dapat dicek dengan aman oleh tim kami.",
-        },
-        {
-          id: "action-refund-support",
-          text: "Tim kami akan membantu pengecekan melalui kanal bantuan resmi tanpa meminta data pribadi di ruang publik.",
-        },
-      ],
-    },
-  },
-  app: {
-    key: "app",
-    label: "Kendala akses aplikasi",
-    insight:
-      "Kemungkinan bisa dibantu dengan langkah awal yang aman, kecuali pelanggan melaporkan pembayaran atau booking hilang.",
-    managerApprovalRequired: false,
-    similarCase: {
-      title: "Kendala login aplikasi serupa - Mei 2026",
-      detail:
-        "Selesai dengan refresh cache, pembaruan aplikasi, dan kontak bantuan resmi.",
-    },
-    references: [
-      {
-        title: "SOP kendala aplikasi",
-        meta: "Gunakan langkah aman lebih dulu; arahkan kendala akun yang berlanjut ke kanal bantuan.",
-        linkLabel: "Lihat SOP",
-        tone: "green",
-      },
-    ],
-    builderOptions: {
-      ...genericOptions,
-      hear: [
-        {
-          id: "hear-app-1",
-          text: "Kami menerima keluhan Kakak terkait kendala pada aplikasi.",
-        },
-        {
-          id: "hear-app-2",
-          text: "Terima kasih sudah melaporkan kendala akses aplikasi ini.",
-        },
-        {
-          id: "hear-app-3",
-          text: "Kami memahami bahwa Kakak mengalami kesulitan menggunakan layanan aplikasi.",
-        },
-      ],
-      takeAction: [
-        {
-          id: "action-app-safe",
-          text: "Silakan coba tutup aplikasi sepenuhnya, bersihkan cache, lalu masuk kembali.",
-        },
-        {
-          id: "action-app-support",
-          text: "Jika masih belum berhasil, mohon hubungi kanal bantuan resmi dengan menyertakan detail perangkat dan akun.",
-        },
-        {
-          id: "action-app-team",
-          text: "Tim kami akan membantu pengecekan lebih lanjut jika kendala masih terjadi setelah langkah awal dicoba.",
-        },
-      ],
-    },
-  },
-};
-
-const genericScenario: Scenario = {
-  key: "generic",
-  label: "Keluhan pelanggan eksternal",
-  insight:
-    "Keluhan umum. Akui kendala secara aman dan jangan meminta data sensitif di ruang publik.",
-  managerApprovalRequired: false,
-  similarCase: {
-    title: "Pola keluhan serupa ditemukan",
-    detail:
-      "Gunakan pengakuan awal yang aman dan pindahkan detail pribadi ke kanal bantuan resmi.",
-  },
-  references: [
-    {
-      title: "Panduan keamanan balasan eksternal",
-      meta: "Jangan meminta data pribadi di balasan publik.",
-      linkLabel: "Lihat panduan",
-      tone: "blue",
-    },
-  ],
-  builderOptions: genericOptions,
-};
+const categoryOptions: Option[] = [
+  { value: "delay", label: "Keterlambatan" },
+  { value: "refund", label: "Pengembalian Dana" },
+  { value: "cancellation", label: "Pembatalan" },
+  { value: "lost_item", label: "Barang Tertinggal" },
+  { value: "facility", label: "Fasilitas" },
+  { value: "payment", label: "Pembayaran" },
+  { value: "account", label: "Akun" },
+  { value: "app_error", label: "Error Aplikasi" },
+  { value: "other", label: "Lainnya" },
+];
 
 const builderSections: {
   key: BuilderKey;
@@ -393,43 +133,34 @@ export function QuickResponse() {
   const sessionUser = useSessionUser();
   const createQuickResponseMutation = useCreateQuickResponse();
   const escalateTicketMutation = useEscalateTicket();
+  const previewMutation = useQuickResponsePreview();
   const [currentStep, setCurrentStep] = useState<StepId>(1);
   const [source, setSource] = useState("twitter");
-  const [username, setUsername] = useState("@sitinuraini");
+  const [username, setUsername] = useState("");
   const [externalUrl, setExternalUrl] = useState("");
   const [rating, setRating] = useState("1");
-  const [complaintText, setComplaintText] = useState(defaultComplaint);
+  const [complaintText, setComplaintText] = useState("");
+  const [category, setCategory] = useState("");
   const [responseTarget, setResponseTarget] =
     useState<ResponseTarget>("public-reply");
-  const tone: Tone = "formal";
+  const responseTone = "calm";
   const [inputExpanded, setInputExpanded] = useState(true);
   const [inputDirty, setInputDirty] = useState(false);
-  const [isBuildingResponse, setIsBuildingResponse] = useState(false);
-  const [selectedHear, setSelectedHear] = useState("hear-delay-1");
-  const [selectedEmpathize, setSelectedEmpathize] = useState(
-    "empathize-generic-1",
+  const [builderOptions, setBuilderOptions] = useState<BuilderOptions | null>(
+    null,
   );
-  const [selectedApologize, setSelectedApologize] = useState(
-    "apologize-generic-1",
-  );
-  const [selectedTakeAction, setSelectedTakeAction] =
-    useState("action-delay-safe");
-  const [finalResponse, setFinalResponse] = useState(() =>
-    buildResponseDraft(scenarios.delay.builderOptions, {
-      hear: "hear-delay-1",
-      empathize: "empathize-generic-1",
-      apologize: "apologize-generic-1",
-      takeAction: "action-delay-safe",
-    }),
-  );
-  const [safeReply, setSafeReply] = useState(() =>
-    buildSafeReply(scenarios.delay.builderOptions, {
-      hear: "hear-delay-1",
-      empathize: "empathize-generic-1",
-      apologize: "apologize-generic-1",
-    }),
-  );
-  const [managerApprovalRequired, setManagerApprovalRequired] = useState(true);
+  const [suggestionSource, setSuggestionSource] =
+    useState<QuickResponseSuggestionSource | null>(null);
+  const [previewError, setPreviewError] = useState("");
+  const [selectedHear, setSelectedHear] = useState("");
+  const [selectedEmpathize, setSelectedEmpathize] = useState("");
+  const [selectedApologize, setSelectedApologize] = useState("");
+  const [selectedTakeAction, setSelectedTakeAction] = useState("");
+  const [finalResponse, setFinalResponse] = useState("");
+  const [safeReply, setSafeReply] = useState("");
+  const [isFinalResponseManuallyEdited, setIsFinalResponseManuallyEdited] =
+    useState(false);
+  const [manualPreservedNotice, setManualPreservedNotice] = useState("");
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeId | null>(
     null,
   );
@@ -440,17 +171,21 @@ export function QuickResponse() {
     useState<CreateQuickResponseResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<QuickResponseFieldErrors>({});
   const [feedback, setFeedback] = useState<FeedbackState>(null);
-  const [activeScenario, setActiveScenario] = useState<Scenario>(
-    scenarios.delay,
-  );
 
   const sourceLabel = labelFor(sourceOptions, source);
+  const categoryLabel = category
+    ? labelFor(categoryOptions, category)
+    : "Belum dipilih";
   const isReviewSource = source === "google-play" || source === "app-store";
-  const canGenerate = complaintText.trim().length > 0;
-  const flowLocked = inputDirty;
   const isManager = sessionUser?.role === "manager";
+  const isGenerating = previewMutation.isPending;
+  const canGenerate =
+    complaintText.trim().length > 0 && !isGenerating && !isManager;
+  const flowLocked = inputDirty;
   const isSubmitting =
     createQuickResponseMutation.isPending || escalateTicketMutation.isPending;
+  const managerApprovalRequired = false;
+  const hasPreviewSuggestions = builderOptions !== null;
 
   const selectedMap = useMemo(
     () => ({
@@ -469,7 +204,7 @@ export function QuickResponse() {
         title: "Salin & Selesaikan",
         description:
           "Salin balasan lengkap untuk pelanggan, lalu tandai keluhan selesai secara internal.",
-        recommended: !managerApprovalRequired,
+        recommended: true,
         icon: <CheckCircle2 aria-hidden="true" size={18} />,
       },
       {
@@ -477,11 +212,11 @@ export function QuickResponse() {
         title: "Salin HEA & Minta Aksi",
         description:
           "Salin balasan HEA awal untuk pelanggan dan tandai kasus perlu tindak lanjut.",
-        recommended: managerApprovalRequired,
+        recommended: false,
         icon: <TicketCheck aria-hidden="true" size={18} />,
       },
     ],
-    [managerApprovalRequired],
+    [],
   );
 
   const handleSourceChange = (nextSource: string) => {
@@ -496,6 +231,12 @@ export function QuickResponse() {
     }
   };
 
+  const handleCategoryChange = (nextCategory: string) => {
+    setCategory(nextCategory);
+    setFieldErrors((current) => ({ ...current, category: undefined }));
+    markInputDirty();
+  };
+
   const markInputDirty = () => {
     if (currentStep > 1) {
       setInputDirty(true);
@@ -503,7 +244,7 @@ export function QuickResponse() {
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!canGenerate) {
       return;
     }
@@ -515,58 +256,81 @@ export function QuickResponse() {
     setFieldErrors({});
     setCopiedLabel("");
     setCurrentStep(2);
-    setIsBuildingResponse(true);
+    setPreviewError("");
+    setManualPreservedNotice("");
 
-    window.setTimeout(() => {
-      const scenario = getScenario(complaintText);
-      const defaults = getDefaultSelections(scenario.builderOptions);
-      const nextDraft = buildResponseDraft(scenario.builderOptions, defaults);
-      const nextSafeReply = buildSafeReply(scenario.builderOptions, defaults);
+    try {
+      const preview = await previewMutation.mutateAsync({
+        complaintText,
+        ...(category ? { category: category as QuickResponseCategory } : {}),
+        responseTarget: targetToBackendMap[responseTarget],
+        responseTone,
+      });
+      const nextOptions = createBuilderOptions(preview);
+      const defaults = getDefaultSelections(nextOptions);
+      const nextDraft = buildFinalResponse(defaults);
 
-      setActiveScenario(scenario);
-      setManagerApprovalRequired(scenario.managerApprovalRequired);
+      setBuilderOptions(nextOptions);
+      setSuggestionSource(preview.suggestionSource);
       setSelectedHear(defaults.hear);
       setSelectedEmpathize(defaults.empathize);
       setSelectedApologize(defaults.apologize);
       setSelectedTakeAction(defaults.takeAction);
-      setFinalResponse(applyTone(nextDraft, tone));
-      setSafeReply(applyTone(nextSafeReply, tone));
-      setIsBuildingResponse(false);
-    }, 850);
+      setSafeReply(buildSafeReply(defaults));
+
+      if (isFinalResponseManuallyEdited) {
+        setManualPreservedNotice("Final response manual tetap dipertahankan.");
+      } else {
+        setFinalResponse(nextDraft);
+      }
+    } catch (error) {
+      setBuilderOptions(null);
+      setSuggestionSource(null);
+      setPreviewError(getPreviewErrorMessage(error));
+    }
   };
 
-  const handleSelectSentence = (key: BuilderKey, optionId: string) => {
+  const handleSelectSentence = (key: BuilderKey, optionText: string) => {
     const nextSelected = {
       ...selectedMap,
-      [key]: optionId,
+      [key]: optionText,
     };
 
     if (key === "hear") {
-      setSelectedHear(optionId);
+      setSelectedHear(optionText);
     }
     if (key === "empathize") {
-      setSelectedEmpathize(optionId);
+      setSelectedEmpathize(optionText);
     }
     if (key === "apologize") {
-      setSelectedApologize(optionId);
+      setSelectedApologize(optionText);
     }
     if (key === "takeAction") {
-      setSelectedTakeAction(optionId);
+      setSelectedTakeAction(optionText);
     }
 
-    const nextDraft = buildResponseDraft(
-      activeScenario.builderOptions,
-      nextSelected,
-    );
-    const nextSafeReply = buildSafeReply(
-      activeScenario.builderOptions,
-      nextSelected,
-    );
+    const nextDraft = buildFinalResponse(nextSelected);
 
-    setFinalResponse(applyTone(nextDraft, tone));
-    setSafeReply(applyTone(nextSafeReply, tone));
+    if (!isFinalResponseManuallyEdited) {
+      setFinalResponse(nextDraft);
+    }
+
+    setSafeReply(buildSafeReply(nextSelected));
     setCompletionState(null);
     setCreatedResult(null);
+    setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
+  };
+
+  const handleFinalResponseChange = (value: string) => {
+    setFinalResponse(value);
+    setIsFinalResponseManuallyEdited(true);
+    setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
+  };
+
+  const handleUpdateFinalResponseFromSelected = () => {
+    setFinalResponse(buildFinalResponse(selectedMap));
+    setIsFinalResponseManuallyEdited(false);
+    setManualPreservedNotice("");
     setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
   };
 
@@ -593,33 +357,35 @@ export function QuickResponse() {
       return;
     }
 
+    if (!category) {
+      setCurrentStep(1);
+      setInputExpanded(true);
+      setFieldErrors({
+        category: "Pilih kategori keluhan sebelum menyimpan quick response.",
+      });
+      setFeedback({
+        description: "Kategori dibutuhkan untuk menyimpan quick response.",
+        title: "Kategori belum dipilih",
+        variant: "error",
+      });
+      return;
+    }
+
     const payload = mapQuickResponseToCreateRequest({
-      category: activeScenario.key,
+      category,
       complaintText,
       finalResponse,
       outcome,
       responseTarget,
       safeReply,
-      selectedApologize: findSentenceText(
-        activeScenario.builderOptions.apologize,
-        selectedApologize,
-      ),
-      selectedEmpathize: findSentenceText(
-        activeScenario.builderOptions.empathize,
-        selectedEmpathize,
-      ),
-      selectedHear: findSentenceText(
-        activeScenario.builderOptions.hear,
-        selectedHear,
-      ),
-      selectedTakeAction: findSentenceText(
-        activeScenario.builderOptions.takeAction,
-        selectedTakeAction,
-      ),
+      selectedApologize,
+      selectedEmpathize,
+      selectedHear,
+      selectedTakeAction,
       source,
       sourceHandle: username,
       sourceUrl: externalUrl,
-      tone,
+      tone: responseTone,
     });
 
     const parsedPayload = createQuickResponseSchema.safeParse(payload);
@@ -696,6 +462,7 @@ export function QuickResponse() {
     setExternalUrl("");
     setRating("1");
     setComplaintText("");
+    setCategory("");
     setResponseTarget("public-reply");
     setInputExpanded(true);
     setInputDirty(false);
@@ -704,13 +471,21 @@ export function QuickResponse() {
     setCreatedResult(null);
     setFieldErrors({});
     setFeedback(null);
+    previewMutation.reset();
     createQuickResponseMutation.reset();
     escalateTicketMutation.reset();
     setCopiedLabel("");
+    setBuilderOptions(null);
+    setSuggestionSource(null);
+    setPreviewError("");
+    setSelectedHear("");
+    setSelectedEmpathize("");
+    setSelectedApologize("");
+    setSelectedTakeAction("");
     setFinalResponse("");
     setSafeReply("");
-    setActiveScenario(genericScenario);
-    setManagerApprovalRequired(false);
+    setIsFinalResponseManuallyEdited(false);
+    setManualPreservedNotice("");
   };
 
   return (
@@ -750,10 +525,7 @@ export function QuickResponse() {
               label: "Tiket",
               value: completionState === "resolved" ? "Tidak" : "Jika perlu",
             },
-            {
-              label: "Risiko",
-              value: managerApprovalRequired ? "Perlu persetujuan" : "Rendah",
-            },
+            { label: "Kategori", value: categoryLabel },
           ]}
         />
 
@@ -825,15 +597,18 @@ export function QuickResponse() {
                 {inputExpanded || currentStep === 1 ? (
                   <ComplaintInputForm
                     canGenerate={canGenerate}
+                    category={category}
                     complaintText={complaintText}
                     externalUrl={externalUrl}
                     fieldErrors={fieldErrors}
                     inputDirty={inputDirty}
+                    isGenerating={isGenerating}
                     isReviewSource={isReviewSource}
                     onCancel={() => {
                       setInputExpanded(false);
                       setInputDirty(false);
                     }}
+                    onCategoryChange={handleCategoryChange}
                     onComplaintTextChange={(value) => {
                       setComplaintText(value);
                       markInputDirty();
@@ -852,12 +627,14 @@ export function QuickResponse() {
                       setUsername(value);
                       markInputDirty();
                     }}
+                    hasPreviewSuggestions={hasPreviewSuggestions}
                     rating={rating}
                     source={source}
                     username={username}
                   />
                 ) : (
                   <InputSummary
+                    category={categoryLabel}
                     complaintText={complaintText}
                     source={sourceLabel}
                     username={username}
@@ -870,10 +647,10 @@ export function QuickResponse() {
                 isComplete={currentStep > 2 && !flowLocked}
                 isLocked={flowLocked || currentStep < 2}
                 meta={
-                  isBuildingResponse
-                    ? "Menyusun rekomendasi"
+                  isGenerating
+                    ? "Generate suggestion"
                     : currentStep > 2
-                      ? activeScenario.label
+                      ? "Suggestion siap"
                       : "Buat dari input keluhan"
                 }
                 number={2}
@@ -881,25 +658,43 @@ export function QuickResponse() {
                 action={
                   currentStep >= 2 && !flowLocked ? (
                     <ContextBadge>
-                      {isBuildingResponse
-                        ? "Memproses"
-                        : "Kasus serupa ditemukan"}
+                      {isGenerating
+                        ? "Generating"
+                        : suggestionSource === "fallback"
+                          ? "Fallback suggestion"
+                          : suggestionSource === "ai"
+                            ? "AI suggestion"
+                            : "Preview"}
                     </ContextBadge>
                   ) : null
                 }
               >
-                {isBuildingResponse ? (
+                {isGenerating ? (
                   <BuildResponseSkeleton />
-                ) : (
-                  <ResponseBuilder
-                    flowLocked={flowLocked}
-                    managerApprovalRequired={managerApprovalRequired}
-                    onContinue={() => setCurrentStep(3)}
-                    onSelectSentence={handleSelectSentence}
-                    references={activeScenario.references}
-                    scenario={activeScenario}
-                    selectedMap={selectedMap}
+                ) : previewError ? (
+                  <PreviewErrorState
+                    message={previewError}
+                    onRetry={handleGenerate}
                   />
+                ) : builderOptions ? (
+                  <ResponseBuilder
+                    builderOptions={builderOptions}
+                    flowLocked={flowLocked}
+                    isFinalResponseManuallyEdited={
+                      isFinalResponseManuallyEdited
+                    }
+                    manualPreservedNotice={manualPreservedNotice}
+                    onApplySelectedToFinalResponse={
+                      handleUpdateFinalResponseFromSelected
+                    }
+                    onContinue={() => setCurrentStep(3)}
+                    onRegenerate={handleGenerate}
+                    onSelectSentence={handleSelectSentence}
+                    selectedMap={selectedMap}
+                    suggestionSource={suggestionSource}
+                  />
+                ) : (
+                  <PreviewEmptyState />
                 )}
               </StepCard>
 
@@ -919,7 +714,7 @@ export function QuickResponse() {
                   finalResponse={finalResponse}
                   managerApprovalRequired={managerApprovalRequired}
                   onBack={() => setCurrentStep(2)}
-                  onChangeFinalResponse={setFinalResponse}
+                  onChangeFinalResponse={handleFinalResponseChange}
                   onContinue={() => setCurrentStep(4)}
                   onCopy={handleCopyReview}
                   source={sourceLabel}
@@ -965,12 +760,16 @@ export function QuickResponse() {
 
 function ComplaintInputForm({
   canGenerate,
+  category,
   complaintText,
   externalUrl,
   fieldErrors,
+  hasPreviewSuggestions,
   inputDirty,
+  isGenerating,
   isReviewSource,
   onCancel,
+  onCategoryChange,
   onComplaintTextChange,
   onExternalUrlChange,
   onGenerate,
@@ -982,12 +781,16 @@ function ComplaintInputForm({
   username,
 }: {
   canGenerate: boolean;
+  category: string;
   complaintText: string;
   externalUrl: string;
   fieldErrors: QuickResponseFieldErrors;
+  hasPreviewSuggestions: boolean;
   inputDirty: boolean;
+  isGenerating: boolean;
   isReviewSource: boolean;
   onCancel: () => void;
+  onCategoryChange: (value: string) => void;
   onComplaintTextChange: (value: string) => void;
   onExternalUrlChange: (value: string) => void;
   onGenerate: () => void;
@@ -1012,6 +815,24 @@ function ComplaintInputForm({
           value={source}
           onChange={onSourceChange}
         />
+      </FieldLabel>
+
+      <FieldLabel label="Kategori keluhan" note="pilih sebelum menyimpan">
+        <select
+          className={inputClass}
+          onChange={(event) => onCategoryChange(event.target.value)}
+          value={category}
+        >
+          <option value="">Pilih kategori</option>
+          {categoryOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {fieldErrors.category ? (
+          <FieldError>{fieldErrors.category}</FieldError>
+        ) : null}
       </FieldLabel>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -1099,7 +920,11 @@ function ComplaintInputForm({
           type="button"
         >
           <Sparkles aria-hidden="true" size={15} />
-          Buat Balasan
+          {isGenerating
+            ? "Generating..."
+            : hasPreviewSuggestions
+              ? "Regenerate Suggestion"
+              : "Generate Suggestion"}
         </button>
       </div>
     </div>
@@ -1107,10 +932,12 @@ function ComplaintInputForm({
 }
 
 function InputSummary({
+  category,
   complaintText,
   source,
   username,
 }: {
+  category: string;
   complaintText: string;
   source: string;
   username: string;
@@ -1122,6 +949,7 @@ function InputSummary({
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <ContextBadge>{source}</ContextBadge>
+        <ContextBadge>{category}</ContextBadge>
         {username ? <ContextBadge>{username}</ContextBadge> : null}
       </div>
     </div>
@@ -1129,21 +957,27 @@ function InputSummary({
 }
 
 function ResponseBuilder({
+  builderOptions,
   flowLocked,
-  managerApprovalRequired,
+  isFinalResponseManuallyEdited,
+  manualPreservedNotice,
+  onApplySelectedToFinalResponse,
   onContinue,
+  onRegenerate,
   onSelectSentence,
-  references,
-  scenario,
   selectedMap,
+  suggestionSource,
 }: {
+  builderOptions: BuilderOptions;
   flowLocked: boolean;
-  managerApprovalRequired: boolean;
+  isFinalResponseManuallyEdited: boolean;
+  manualPreservedNotice: string;
+  onApplySelectedToFinalResponse: () => void;
   onContinue: () => void;
-  onSelectSentence: (key: BuilderKey, optionId: string) => void;
-  references: ReferenceItem[];
-  scenario: Scenario;
+  onRegenerate: () => void;
+  onSelectSentence: (key: BuilderKey, optionText: string) => void;
   selectedMap: Record<BuilderKey, string>;
+  suggestionSource: QuickResponseSuggestionSource | null;
 }) {
   return (
     <div className="space-y-4">
@@ -1154,22 +988,24 @@ function ResponseBuilder({
         </WarningBanner>
       ) : null}
 
-      <div className="flex items-start gap-3 rounded-lg border border-[var(--signal-green)] bg-[var(--signal-green-soft)] p-3">
-        <SearchGlyph />
+      {manualPreservedNotice ? (
+        <NoticeBanner>{manualPreservedNotice}</NoticeBanner>
+      ) : null}
+
+      <div className="flex flex-col gap-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-[var(--signal-green-dark)]">
-            {scenario.similarCase.title}
+          <p className="text-sm font-semibold text-[var(--rail-ink)]">
+            Backend suggestion siap dipilih.
           </p>
-          <p className="mt-1 text-xs leading-5 text-[var(--signal-green-dark)]">
-            {scenario.similarCase.detail}
+          <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+            Pilih satu opsi pada setiap bagian, lalu review balasan akhir.
           </p>
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {references.map((reference) => (
-          <ReferenceChip key={reference.title}>{reference.title}</ReferenceChip>
-        ))}
+        {suggestionSource ? (
+          <span className="inline-flex min-h-7 w-fit items-center rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 text-xs font-semibold text-[var(--signal-blue)]">
+            {suggestionSource === "fallback" ? "Fallback suggestion" : "AI"}
+          </span>
+        ) : null}
       </div>
 
       <section>
@@ -1177,42 +1013,91 @@ function ResponseBuilder({
           Penyusun balasan - pilih satu kalimat per bagian
         </p>
         <div className="space-y-4">
-          {builderSections.map((section) =>
-            section.key === "takeAction" ? (
-              <TakeActionBlock
-                disabled={flowLocked}
-                key={section.key}
-                managerApprovalRequired={managerApprovalRequired}
-                onSelect={(optionId) =>
-                  onSelectSentence("takeAction", optionId)
-                }
-                options={scenario.builderOptions.takeAction}
-                references={references}
-                selectedId={selectedMap.takeAction}
-              />
-            ) : (
-              <SentenceChoiceGroup
-                description={section.description}
-                disabled={flowLocked}
-                key={section.key}
-                label={section.label}
-                onSelect={(optionId) => onSelectSentence(section.key, optionId)}
-                options={scenario.builderOptions[section.key]}
-                selectedId={selectedMap[section.key]}
-              />
-            ),
-          )}
+          {builderSections.map((section) => (
+            <SentenceChoiceGroup
+              description={section.description}
+              disabled={flowLocked}
+              key={section.key}
+              label={section.label}
+              onSelect={(optionText) =>
+                onSelectSentence(section.key, optionText)
+              }
+              options={builderOptions[section.key]}
+              selectedText={selectedMap[section.key]}
+            />
+          ))}
         </div>
       </section>
 
-      <button
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
-        disabled={flowLocked}
-        onClick={onContinue}
-        type="button"
-      >
-        Review
-        <ArrowRight aria-hidden="true" size={15} />
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            className={secondaryButtonClass}
+            disabled={flowLocked}
+            onClick={onRegenerate}
+            type="button"
+          >
+            <RefreshCcw aria-hidden="true" size={13} />
+            Regenerate Suggestion
+          </button>
+          {isFinalResponseManuallyEdited ? (
+            <button
+              className={secondaryButtonClass}
+              disabled={flowLocked}
+              onClick={onApplySelectedToFinalResponse}
+              type="button"
+            >
+              Update final response from selected suggestions
+            </button>
+          ) : null}
+        </div>
+        <button
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)] disabled:cursor-not-allowed disabled:bg-[var(--rail-border)] disabled:text-[var(--text-muted)]"
+          disabled={flowLocked}
+          onClick={onContinue}
+          type="button"
+        >
+          Review
+          <ArrowRight aria-hidden="true" size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PreviewEmptyState() {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-4">
+      <Info
+        aria-hidden="true"
+        className="mt-0.5 shrink-0 text-[var(--signal-blue)]"
+        size={18}
+      />
+      <div>
+        <p className="text-sm font-semibold text-[var(--rail-ink)]">
+          Belum ada suggestion.
+        </p>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
+          Masukkan keluhan pelanggan lalu klik Generate Suggestion.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function PreviewErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <WarningBanner>{message}</WarningBanner>
+      <button className={secondaryButtonClass} onClick={onRetry} type="button">
+        <RefreshCcw aria-hidden="true" size={13} />
+        Coba lagi
       </button>
     </div>
   );
@@ -1636,7 +1521,6 @@ function StepCard({
 }
 
 const skeletonRows = ["hear", "empathize", "apologize", "take-action"];
-const skeletonReferences = ["sop", "past-resolution", "policy"];
 
 function BuildResponseSkeleton() {
   return (
@@ -1651,15 +1535,6 @@ function BuildResponseSkeleton() {
           <div className="h-3 w-1/2 animate-pulse rounded-full bg-[var(--surface-muted)]" />
           <div className="h-3 w-4/5 animate-pulse rounded-full bg-[var(--surface-muted)]" />
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {skeletonReferences.map((item) => (
-          <span
-            className="h-7 w-36 animate-pulse rounded-full bg-[var(--signal-blue-soft)]"
-            key={item}
-          />
-        ))}
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
@@ -1679,8 +1554,8 @@ function BuildResponseSkeleton() {
       </div>
 
       <div className="rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3 text-xs font-semibold text-[var(--signal-amber-dark)]">
-        Memeriksa keluhan serupa, referensi SOP, peringatan kebijakan, dan opsi
-        balasan yang aman...
+        Menghasilkan opsi Tangkap Keluhan, Tunjukkan Empati, Minta Maaf, dan
+        Tindak Lanjut...
       </div>
     </output>
   );
@@ -1692,14 +1567,14 @@ function SentenceChoiceGroup({
   label,
   onSelect,
   options,
-  selectedId,
+  selectedText,
 }: {
   description: string;
   disabled: boolean;
   label: string;
-  onSelect: (optionId: string) => void;
+  onSelect: (optionText: string) => void;
   options: SentenceOption[];
-  selectedId: string;
+  selectedText: string;
 }) {
   return (
     <section>
@@ -1709,13 +1584,13 @@ function SentenceChoiceGroup({
         {options.map((option) => (
           <button
             className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm leading-6 transition ${
-              selectedId === option.id
+              selectedText === option.text
                 ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--rail-ink)]"
                 : "border-[var(--rail-border)] bg-[var(--background)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
             }`}
             disabled={disabled}
             key={option.id}
-            onClick={() => onSelect(option.id)}
+            onClick={() => onSelect(option.text)}
             type="button"
           >
             {option.text}
@@ -1723,128 +1598,6 @@ function SentenceChoiceGroup({
         ))}
       </div>
     </section>
-  );
-}
-
-function TakeActionBlock({
-  disabled,
-  managerApprovalRequired,
-  onSelect,
-  options,
-  references,
-  selectedId,
-}: {
-  disabled: boolean;
-  managerApprovalRequired: boolean;
-  onSelect: (optionId: string) => void;
-  options: SentenceOption[];
-  references: ReferenceItem[];
-  selectedId: string;
-}) {
-  return (
-    <section>
-      <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-        Tindak Lanjut
-      </h3>
-      <p className="mt-1 text-xs text-[var(--text-muted)]">
-        Pisahkan kalimat untuk pelanggan dari tindakan internal yang dibutuhkan.
-      </p>
-      <div className="mt-3 overflow-hidden rounded-xl border border-[var(--signal-amber)]">
-        <div className="flex items-center gap-2 border-b border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-3 py-2">
-          <Sparkles
-            aria-hidden="true"
-            className="text-[var(--signal-amber-dark)]"
-            size={15}
-          />
-          <p className="flex-1 text-xs font-semibold text-[var(--signal-amber-dark)]">
-            Tindakan yang bisa disampaikan ke pelanggan
-          </p>
-          {managerApprovalRequired ? (
-            <span className="rounded-full border border-[var(--signal-amber)] bg-[var(--surface-panel)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-amber-dark)]">
-              Perlu persetujuan
-            </span>
-          ) : null}
-        </div>
-        <div className="space-y-3 p-3">
-          <div className="space-y-2">
-            {options.map((option) => (
-              <button
-                className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm leading-6 transition ${
-                  selectedId === option.id
-                    ? "border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]"
-                    : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] hover:border-[var(--signal-amber)] hover:text-[var(--rail-ink)]"
-                }`}
-                disabled={disabled}
-                key={option.id}
-                onClick={() => onSelect(option.id)}
-                type="button"
-              >
-                {option.text}
-              </button>
-            ))}
-          </div>
-
-          <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
-            <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-              <Lock aria-hidden="true" size={13} />
-              Internal - tidak ditampilkan ke pelanggan
-            </div>
-            <div className="space-y-3">
-              {references.map((reference) => (
-                <ReferenceRow key={reference.title} reference={reference} />
-              ))}
-            </div>
-            {managerApprovalRequired ? (
-              <div className="mt-3 flex gap-2 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3 text-xs leading-5 text-[var(--signal-amber-dark)]">
-                <AlertTriangle
-                  aria-hidden="true"
-                  className="mt-0.5 shrink-0"
-                  size={14}
-                />
-                <span>
-                  Perlu persetujuan manajer. Jangan langsung mengonfirmasi
-                  pengembalian dana, kompensasi, atau jadwal ulang. Buat tiket
-                  tindak lanjut jika kasus belum selesai.
-                </span>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ReferenceRow({ reference }: { reference: ReferenceItem }) {
-  const toneClass = {
-    amber: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
-    blue: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
-    green: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
-  }[reference.tone];
-
-  return (
-    <div className="flex items-start gap-3 border-b border-[var(--rail-border)] pb-3 last:border-b-0 last:pb-0">
-      <span
-        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneClass}`}
-      >
-        <FileText aria-hidden="true" size={14} />
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-[var(--rail-ink)]">
-          {reference.title}
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-          {reference.meta}
-        </p>
-        <button
-          className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[var(--signal-blue)]"
-          type="button"
-        >
-          <ExternalLink aria-hidden="true" size={12} />
-          {reference.linkLabel}
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -1977,15 +1730,6 @@ function ContextBadge({ children }: { children: ReactNode }) {
   );
 }
 
-function ReferenceChip({ children }: { children: ReactNode }) {
-  return (
-    <span className="inline-flex min-h-6 items-center gap-1 rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-2.5 py-1 text-[10px] font-semibold text-[var(--signal-blue)]">
-      <FileText aria-hidden="true" size={12} />
-      {children}
-    </span>
-  );
-}
-
 function WarningBanner({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-start gap-2 rounded-lg border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] p-3 text-xs leading-5 text-[var(--signal-amber-dark)]">
@@ -1995,11 +1739,12 @@ function WarningBanner({ children }: { children: ReactNode }) {
   );
 }
 
-function SearchGlyph() {
+function NoticeBanner({ children }: { children: ReactNode }) {
   return (
-    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-panel)] text-[var(--signal-green-dark)]">
-      <Headphones aria-hidden="true" size={18} />
-    </span>
+    <div className="flex items-start gap-2 rounded-lg border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] p-3 text-xs leading-5 text-[var(--signal-blue)]">
+      <Info aria-hidden="true" className="mt-0.5 shrink-0" size={14} />
+      <span>{children}</span>
+    </div>
   );
 }
 
@@ -2012,100 +1757,58 @@ const textareaClass =
 const secondaryButtonClass =
   "inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)]";
 
-function getScenario(text: string) {
-  const lowerText = text.toLowerCase();
-
-  if (
-    lowerText.includes("delay") ||
-    lowerText.includes("terlambat") ||
-    lowerText.includes("keterlambatan")
-  ) {
-    return scenarios.delay;
-  }
-
-  if (
-    lowerText.includes("refund") ||
-    lowerText.includes("pengembalian dana") ||
-    lowerText.includes("uang kembali")
-  ) {
-    return scenarios.refund;
-  }
-
-  if (
-    lowerText.includes("login") ||
-    lowerText.includes("masuk") ||
-    lowerText.includes("aplikasi") ||
-    lowerText.includes("password") ||
-    lowerText.includes("otp")
-  ) {
-    return scenarios.app;
-  }
-
-  return genericScenario;
-}
-
-function getDefaultSelections(options: BuilderOptions) {
+function createBuilderOptions(
+  preview: QuickResponsePreviewData,
+): BuilderOptions {
   return {
-    hear: options.hear[0]?.id ?? "",
-    empathize: options.empathize[0]?.id ?? "",
-    apologize: options.apologize[0]?.id ?? "",
-    takeAction: options.takeAction[0]?.id ?? "",
+    apologize: toSentenceOptions("apologize", preview.suggestions.apologize),
+    empathize: toSentenceOptions("empathize", preview.suggestions.empathize),
+    hear: toSentenceOptions("hear", preview.suggestions.hear),
+    takeAction: toSentenceOptions("takeAction", preview.suggestions.takeAction),
   };
 }
 
-function buildResponseDraft(
+function toSentenceOptions(key: BuilderKey, values: string[]) {
+  return values.map((text, index) => ({
+    id: `${key}-${index + 1}`,
+    text,
+  }));
+}
+
+function getDefaultSelections(
   options: BuilderOptions,
-  selected: Record<BuilderKey, string>,
-) {
-  return builderSections
-    .map((section) => {
-      return options[section.key].find(
-        (option) => option.id === selected[section.key],
-      )?.text;
-    })
+): Record<BuilderKey, string> {
+  return {
+    apologize: options.apologize[0]?.text ?? "",
+    empathize: options.empathize[0]?.text ?? "",
+    hear: options.hear[0]?.text ?? "",
+    takeAction: options.takeAction[0]?.text ?? "",
+  };
+}
+
+function buildFinalResponse(selected: Partial<Record<BuilderKey, string>>) {
+  return [
+    selected.hear,
+    selected.empathize,
+    selected.apologize,
+    selected.takeAction,
+  ]
     .filter(Boolean)
     .join(" ");
 }
 
-function buildSafeReply(
-  options: BuilderOptions,
-  selected: Partial<Record<BuilderKey, string>>,
-) {
+function buildSafeReply(selected: Partial<Record<BuilderKey, string>>) {
   const safeAction =
     "Laporan Kakak akan kami teruskan ke tim terkait untuk pengecekan dan tindak lanjut lebih lanjut.";
-  const parts = (["hear", "empathize", "apologize"] as BuilderKey[])
-    .map((section) => {
-      return options[section].find((option) => option.id === selected[section])
-        ?.text;
-    })
-    .filter(Boolean);
+  const parts = [selected.hear, selected.empathize, selected.apologize].filter(
+    Boolean,
+  );
 
   return [...parts, safeAction].join(" ");
 }
 
-function applyTone(draft: string, tone: Tone) {
-  if (tone === "concise") {
-    return draft
-      .replace("Terima kasih sudah menyampaikan keluhan ini kepada kami. ", "")
-      .replace(
-        "Kami menerima keluhan Kakak terkait ",
-        "Kami terima laporan terkait ",
-      );
-  }
-
-  if (tone === "friendly") {
-    return `${draft} Terima kasih sudah bersabar ya, Kak.`;
-  }
-
-  return draft;
-}
-
 function labelFor(options: { value: string; label: string }[], value: string) {
   return options.find((option) => option.value === value)?.label ?? value;
-}
-
-function findSentenceText(options: SentenceOption[], selectedId: string) {
-  return options.find((option) => option.id === selectedId)?.text ?? null;
 }
 
 function getCompletionState(outcome: QuickResponseOutcome): CompletionState {
@@ -2146,6 +1849,27 @@ function getSuccessDescription(result: CreateQuickResponseResponse) {
   }
 
   return "Keluhan sudah disimpan dan ditandai perlu tindak lanjut.";
+}
+
+function getPreviewErrorMessage(error: unknown) {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? (error as { status?: number }).status
+      : undefined;
+
+  if (status === 401) {
+    return "Sesi berakhir. Silakan login kembali.";
+  }
+
+  if (status === 403) {
+    return "Role ini tidak dapat generate suggestion.";
+  }
+
+  if (status === 422) {
+    return "Pastikan teks keluhan sudah diisi dan kategori valid.";
+  }
+
+  return "Gagal generate suggestion. Periksa koneksi lalu coba lagi.";
 }
 
 function getSubmitErrorMessage(error: unknown) {
