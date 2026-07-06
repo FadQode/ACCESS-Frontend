@@ -51,6 +51,40 @@ export type CreateQuickResponseRequest = {
   };
 };
 
+export type QuickResponsePreviewRequest = {
+  complaintText: string;
+  category?: QuickResponseCategory;
+  responseTone?: string | null;
+  responseTarget?: QuickResponseTarget;
+};
+
+export type QuickResponseSuggestionSource = "ai" | "fallback";
+
+export type QuickResponsePreviewSuggestions = {
+  hear: string[];
+  empathize: string[];
+  apologize: string[];
+  takeAction: string[];
+};
+
+export type QuickResponsePreviewData = {
+  suggestionSource: QuickResponseSuggestionSource;
+  suggestions: QuickResponsePreviewSuggestions;
+};
+
+export type QuickResponsePreviewResponse = {
+  success: true;
+  message: string;
+  data: QuickResponsePreviewData;
+};
+
+export type SelectedHeat = {
+  selectedHear: string;
+  selectedEmpathize: string;
+  selectedApologize: string;
+  selectedTakeAction: string;
+};
+
 export type QuickResponseSession = {
   id: string;
   outcome: QuickResponseOutcome;
