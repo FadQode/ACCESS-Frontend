@@ -836,7 +836,7 @@ function ComplaintInputForm({
       </FieldLabel>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <FieldLabel label="Username / handle" note="opsional" required>
+        <FieldLabel label="Username / handle" required>
           <div className="relative">
             <UserRound
               aria-hidden="true"
@@ -852,7 +852,7 @@ function ComplaintInputForm({
             />
           </div>
         </FieldLabel>
-        <FieldLabel label="Link eksternal" note="opsional" required>
+        <FieldLabel label="Link eksternal" required>
           <div className="relative">
             <Link2
               aria-hidden="true"
