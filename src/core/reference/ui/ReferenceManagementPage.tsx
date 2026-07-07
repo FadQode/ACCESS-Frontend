@@ -82,14 +82,16 @@ type ReferenceModalStyle = CSSProperties & {
 };
 
 const CATEGORY_OPTIONS: Array<{ label: string; value: ReferenceCategory }> = [
-  { label: "Keterlambatan", value: "delay" },
-  { label: "Pengembalian Dana", value: "refund" },
-  { label: "Pembatalan", value: "cancellation" },
-  { label: "Barang Hilang", value: "lost_item" },
-  { label: "Fasilitas", value: "facility" },
+  { label: "Tiket / Booking", value: "ticket_booking" },
+  { label: "Aplikasi Error / Lemot", value: "app_error" },
+  { label: "Login / OTP / Akun", value: "account" },
   { label: "Pembayaran", value: "payment" },
-  { label: "Akun", value: "account" },
-  { label: "Gangguan Aplikasi", value: "app_error" },
+  { label: "Update Aplikasi", value: "app_update" },
+  { label: "CS Tidak Merespons", value: "no_response_cs" },
+  { label: "Refund / Pembatalan", value: "refund_cancel" },
+  { label: "Antrian / Promo", value: "queue_problem" },
+  { label: "Barang Tertinggal", value: "lost_item" },
+  { label: "Fasilitas", value: "facility" },
   { label: "Lainnya", value: "other" },
 ];
 

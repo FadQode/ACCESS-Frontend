@@ -9,15 +9,17 @@ import type { PeriodInfo } from "./dashboard-filter.types";
 // ============================================================================
 
 export type ComplaintCategory =
-  | "delay"
-  | "refund"
-  | "cancellation"
-  | "lost_item"
-  | "facility"
-  | "payment"
-  | "account"
+  | "ticket_booking"
   | "app_error"
-  | "other";
+  | "account"
+  | "payment"
+  | "app_update"
+  | "no_response_cs"
+  | "refund_cancel"
+  | "queue_problem"
+  | "other"
+  | "lost_item"
+  | "facility";
 
 export type ComplaintStatus =
   | "submitted"

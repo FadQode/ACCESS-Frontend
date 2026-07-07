@@ -5,7 +5,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
     id: "mr-0142",
     displayId: "MR-2026-0142",
     title: "Train delay — Surabaya–Jakarta, 17 May",
-    category: "delay",
+    category: "ticket_booking",
     status: "pending",
 
     complaintCount: 5,
@@ -67,7 +67,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
       {
         id: "ref-001",
         referenceSourceId: "ref-001",
-        tags: ["delay"],
+        tags: ["ticket_booking"],
         title: "SOP — delay handling v2.1",
         type: "text",
         usageType: "closure_support",
@@ -94,7 +94,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
     id: "mr-0143",
     displayId: "MR-2026-0143",
     title: "Refund batch — cancelled May trips",
-    category: "refund",
+    category: "refund_cancel",
     status: "in_progress",
 
     complaintCount: 3,
@@ -146,7 +146,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
       {
         id: "ref-004",
         referenceSourceId: "ref-004",
-        tags: ["refund"],
+        tags: ["refund_cancel"],
         title: "Refund policy v3.2",
         type: "text",
         usageType: "policy_support",
@@ -165,7 +165,7 @@ export const mockManagerActionClusters: ManagerActionCluster[] = [
     id: "mr-0144",
     displayId: "MR-2026-0144",
     title: "App login failure — OTP not received",
-    category: "app_issue",
+    category: "account",
     status: "done",
 
     complaintCount: 4,

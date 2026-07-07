@@ -1,14 +1,17 @@
 export type ManagerActionStatus = "pending" | "in_progress" | "done";
 
 export type ManagerActionCategory =
-  | "delay"
-  | "refund"
-  | "cancellation"
-  | "facility"
-  | "lost_item"
+  | "ticket_booking"
+  | "app_error"
+  | "account"
   | "payment"
-  | "app_issue"
-  | "other";
+  | "app_update"
+  | "no_response_cs"
+  | "refund_cancel"
+  | "queue_problem"
+  | "other"
+  | "lost_item"
+  | "facility";
 
 export type ComplaintClusterStatus =
   | "hea_sent"

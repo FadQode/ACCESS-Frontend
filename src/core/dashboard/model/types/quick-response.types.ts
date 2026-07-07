@@ -19,15 +19,17 @@ export type QuickResponseSource =
   | "other";
 
 export type QuickResponseCategory =
-  | "delay"
-  | "refund"
-  | "cancellation"
-  | "lost_item"
-  | "facility"
-  | "payment"
-  | "account"
+  | "ticket_booking"
   | "app_error"
-  | "other";
+  | "account"
+  | "payment"
+  | "app_update"
+  | "no_response_cs"
+  | "refund_cancel"
+  | "queue_problem"
+  | "other"
+  | "lost_item"
+  | "facility";
 
 export type CreateQuickResponseRequest = {
   complaint: {
@@ -67,7 +69,25 @@ export type QuickResponsePreviewSuggestions = {
   takeAction: string[];
 };
 
+export type RelevantReference = {
+  id: string;
+  title: string;
+  category: string;
+  sourceType: string;
+  snippet: string;
+  fileName?: string | null;
+};
+
+export type SimilarResolvedCase = {
+  category: string;
+  complaintTextPreview: string;
+  finalResponsePreview: string;
+  resolvedAt: string | null;
+};
+
 export type QuickResponsePreviewData = {
+  relevantReferences: RelevantReference[];
+  similarResolvedCases: SimilarResolvedCase[];
   suggestionSource: QuickResponseSuggestionSource;
   suggestions: QuickResponsePreviewSuggestions;
 };

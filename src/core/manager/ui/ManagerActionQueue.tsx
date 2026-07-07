@@ -72,26 +72,41 @@ const statusFilters: Array<{
   { value: "done", label: "Selesai" },
 ];
 
-const categoryLabel: Record<ManagerActionCategory, string> = {
+const categoryLabel: Record<string, string> = {
+  account: "Login / OTP / Akun",
+  app_error: "Aplikasi Error / Lemot",
+  app_update: "Update Aplikasi",
   app_issue: "Kendala Aplikasi",
   cancellation: "Pembatalan",
   delay: "Keterlambatan",
   facility: "Fasilitas",
   lost_item: "Barang Tertinggal",
+  no_response_cs: "CS Tidak Merespons",
   other: "Lainnya",
   payment: "Pembayaran",
+  queue_problem: "Antrian / Promo",
   refund: "Pengembalian Dana",
+  refund_cancel: "Refund / Pembatalan",
+  ticket_booking: "Tiket / Booking",
 };
 
-const categoryBadgeClass: Record<ManagerActionCategory, string> = {
+const categoryBadgeClass: Record<string, string> = {
+  account: "bg-[#e9e4f4] text-[#5c4788]",
+  app_error: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
+  app_update: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
   app_issue: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
   cancellation: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
   delay: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
   facility: "bg-[#e9e4f4] text-[#5c4788]",
   lost_item: "bg-[#eee8dc] text-[#765733]",
+  no_response_cs: "bg-[#e9e4f4] text-[#5c4788]",
   other: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
   payment: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
+  queue_problem:
+    "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
   refund: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
+  refund_cancel: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
+  ticket_booking: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
 };
 
 const statusLabel: Record<ManagerActionStatus, string> = {

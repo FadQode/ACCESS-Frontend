@@ -21,16 +21,17 @@ import {
 
 type ComplaintCategory =
   | ""
-  | "delay"
-  | "refund"
-  | "cancellation"
-  | "reschedule"
+  | "ticket_booking"
+  | "app_error"
+  | "account"
   | "payment"
-  | "app-login"
-  | "facility"
-  | "lost-item"
-  | "seat-schedule"
-  | "other";
+  | "app_update"
+  | "no_response_cs"
+  | "refund_cancel"
+  | "queue_problem"
+  | "other"
+  | "lost_item"
+  | "facility";
 
 type FieldErrors = Partial<{
   category: string;
@@ -43,35 +44,40 @@ const categoryOptions: Array<{
   label: string;
   value: Exclude<ComplaintCategory, "">;
 }> = [
-  { label: "Keterlambatan", value: "delay" },
-  { label: "Pengembalian dana", value: "refund" },
-  { label: "Pembatalan tiket", value: "cancellation" },
-  { label: "Jadwal ulang", value: "reschedule" },
+  { label: "Tiket / booking", value: "ticket_booking" },
+  { label: "Aplikasi error / lemot", value: "app_error" },
+  { label: "Login / OTP / akun", value: "account" },
   { label: "Pembayaran", value: "payment" },
-  { label: "Aplikasi atau login", value: "app-login" },
+  { label: "Update aplikasi", value: "app_update" },
+  { label: "CS tidak merespons", value: "no_response_cs" },
+  { label: "Refund / pembatalan", value: "refund_cancel" },
+  { label: "Antrian / promo", value: "queue_problem" },
+  { label: "Barang tertinggal", value: "lost_item" },
   { label: "Fasilitas perjalanan", value: "facility" },
-  { label: "Barang tertinggal", value: "lost-item" },
-  { label: "Kursi atau jadwal tidak sesuai", value: "seat-schedule" },
   { label: "Lainnya", value: "other" },
 ];
 
 const categoryHints: Record<Exclude<ComplaintCategory, "">, string> = {
-  "app-login":
+  account:
+    "Jika ada, sertakan nomor HP/email akun dan pesan error login atau OTP.",
+  app_error:
     "Jika ada, jelaskan perangkat yang digunakan dan pesan error yang muncul.",
-  cancellation: "Jika ada, sertakan kode booking dan alasan pembatalan.",
-  delay:
-    "Jika ada, sertakan tanggal perjalanan, rute, dan perkiraan waktu keterlambatan.",
+  app_update:
+    "Jika ada, jelaskan versi aplikasi dan perubahan yang bermasalah setelah update.",
   facility:
     "Jika ada, sertakan nomor kereta, gerbong, atau fasilitas yang bermasalah.",
-  "lost-item":
-    "Jika ada, jelaskan barang yang tertinggal dan detail perjalanan.",
+  lost_item: "Jika ada, jelaskan barang yang tertinggal dan detail perjalanan.",
+  no_response_cs:
+    "Jika ada, sertakan kanal CS yang dihubungi dan kapan terakhir mendapat respons.",
   other:
     "Ceritakan masalah Anda dengan kata-kata sendiri. Tim kami akan membantu mengarahkan.",
   payment: "Jika ada, sertakan waktu transaksi dan status pembayaran.",
-  refund:
-    "Jika ada, sertakan tanggal pengajuan pengembalian dana dan metode pembayaran.",
-  reschedule: "Jika ada, sertakan jadwal awal dan jadwal baru yang diinginkan.",
-  "seat-schedule": "Jika ada, sertakan nomor kursi, jadwal, atau kode booking.",
+  queue_problem:
+    "Jika ada, sertakan promo/antrian yang dicoba dan waktu kejadian.",
+  refund_cancel:
+    "Jika ada, sertakan kode booking, alasan pembatalan, atau tanggal pengajuan refund.",
+  ticket_booking:
+    "Jika ada, sertakan kode booking, rute, tanggal, atau jadwal.",
 };
 
 const inputClassName =

@@ -59,21 +59,26 @@ export const managerDashboardMockData: ManagerDashboardData = {
     { escalated: 6, incoming: 37, label: "Apr", resolved: 31 },
   ],
   complaintCategories: [
-    { id: "delay", label: "Keterlambatan", percentage: 40, tone: "primary" },
     {
-      id: "refund",
-      label: "Pengembalian Dana",
+      id: "ticket_booking",
+      label: "Tiket / Booking",
+      percentage: 40,
+      tone: "primary",
+    },
+    {
+      id: "refund_cancel",
+      label: "Refund / Pembatalan",
       percentage: 26,
       tone: "warning",
     },
     {
-      id: "cancellation",
-      label: "Pembatalan",
+      id: "app_error",
+      label: "Aplikasi Error / Lemot",
       percentage: 21,
       tone: "success",
     },
     {
-      id: "lost-item",
+      id: "lost_item",
       label: "Barang Tertinggal",
       percentage: 8,
       tone: "purple",

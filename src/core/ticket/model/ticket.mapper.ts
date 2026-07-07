@@ -129,16 +129,22 @@ function mapTicketStatus(status?: string): FollowUpTicketStatus {
 
 function mapTicketCategory(category?: string): FollowUpTicketCategory {
   const categoryMap: Record<string, FollowUpTicketCategory> = {
-    account: "app_issue",
-    app: "app_issue",
-    app_error: "app_issue",
-    cancellation: "cancellation",
-    delay: "delay",
+    account: "account",
+    app: "app_error",
+    app_error: "app_error",
+    app_update: "app_update",
+    app_issue: "app_error",
+    cancellation: "refund_cancel",
+    delay: "ticket_booking",
     facility: "facility",
     lost_item: "lost_item",
+    no_response_cs: "no_response_cs",
     other: "other",
     payment: "payment",
-    refund: "refund",
+    queue_problem: "queue_problem",
+    refund: "refund_cancel",
+    refund_cancel: "refund_cancel",
+    ticket_booking: "ticket_booking",
   };
 
   return categoryMap[category ?? ""] ?? "other";

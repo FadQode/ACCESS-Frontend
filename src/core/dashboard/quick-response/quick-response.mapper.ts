@@ -21,7 +21,18 @@ export type QuickResponseUiTarget =
   | "internal-note";
 
 export type QuickResponseUiOutcome = "resolved" | "ticket";
-export type QuickResponseUiCategory = "delay" | "refund" | "app" | "generic";
+export type QuickResponseUiCategory =
+  | "ticket_booking"
+  | "app_error"
+  | "account"
+  | "payment"
+  | "app_update"
+  | "no_response_cs"
+  | "refund_cancel"
+  | "queue_problem"
+  | "other"
+  | "lost_item"
+  | "facility";
 
 export type QuickResponseMapperInput = {
   category: QuickResponseUiCategory | string;
@@ -52,16 +63,20 @@ export const sourceToBackendMap: Record<string, QuickResponseSource> = {
 
 export const categoryToBackendMap: Record<string, QuickResponseCategory> = {
   account: "account",
-  app: "app_error",
   app_error: "app_error",
-  cancellation: "cancellation",
-  delay: "delay",
+  app_update: "app_update",
+  cancellation: "refund_cancel",
+  delay: "ticket_booking",
   facility: "facility",
   generic: "other",
   lost_item: "lost_item",
   other: "other",
   payment: "payment",
-  refund: "refund",
+  queue_problem: "queue_problem",
+  refund: "refund_cancel",
+  refund_cancel: "refund_cancel",
+  ticket_booking: "ticket_booking",
+  no_response_cs: "no_response_cs",
 };
 
 export const targetToBackendMap: Record<string, QuickResponseTarget> = {

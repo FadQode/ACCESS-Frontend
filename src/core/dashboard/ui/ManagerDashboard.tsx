@@ -29,15 +29,20 @@ const SKELETON_CATEGORY_ROWS = [
 ];
 
 const categoryLabel: Record<string, string> = {
-  account: "Akun",
-  app_error: "Kendala Aplikasi",
+  account: "Login / OTP / Akun",
+  app_error: "Aplikasi Error / Lemot",
+  app_update: "Update Aplikasi",
   cancellation: "Pembatalan",
   delay: "Keterlambatan",
   facility: "Fasilitas",
   lost_item: "Barang Tertinggal",
+  no_response_cs: "CS Tidak Merespons",
   other: "Lainnya",
   payment: "Pembayaran",
   refund: "Pengembalian Dana",
+  refund_cancel: "Refund / Pembatalan",
+  queue_problem: "Antrian / Promo",
+  ticket_booking: "Tiket / Booking",
   uncategorized: "Lainnya",
 };
 

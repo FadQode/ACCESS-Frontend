@@ -14,6 +14,8 @@ import type {
   QuickResponsePreviewData,
   QuickResponsePreviewRequest,
   QuickResponsePreviewSuggestions,
+  RelevantReference,
+  SimilarResolvedCase,
 } from "@/core/dashboard/model/types/quick-response.types";
 
 const idSchema = z
@@ -70,8 +72,30 @@ const rawQuickResponseResponseSchema = z
 
 const previewSuggestionListSchema = z.array(z.string()).length(3);
 
+const relevantReferenceSchema = z
+  .object({
+    category: z.string(),
+    fileName: z.string().nullable().optional(),
+    id: idSchema,
+    snippet: z.string(),
+    sourceType: z.string(),
+    title: z.string(),
+  })
+  .transform<RelevantReference>((value) => value);
+
+const similarResolvedCaseSchema = z
+  .object({
+    category: z.string(),
+    complaintTextPreview: z.string(),
+    finalResponsePreview: z.string(),
+    resolvedAt: z.string().nullable(),
+  })
+  .transform<SimilarResolvedCase>((value) => value);
+
 const quickResponsePreviewSchema = z
   .object({
+    relevantReferences: z.array(relevantReferenceSchema).default([]),
+    similarResolvedCases: z.array(similarResolvedCaseSchema).default([]),
     suggestionSource: z.enum(["ai", "fallback"]),
     suggestions: z.object({
       hear: previewSuggestionListSchema,
@@ -81,6 +105,8 @@ const quickResponsePreviewSchema = z
     }),
   })
   .transform<QuickResponsePreviewData>((value) => ({
+    relevantReferences: value.relevantReferences,
+    similarResolvedCases: value.similarResolvedCases,
     suggestionSource: value.suggestionSource,
     suggestions: value.suggestions as QuickResponsePreviewSuggestions,
   }));

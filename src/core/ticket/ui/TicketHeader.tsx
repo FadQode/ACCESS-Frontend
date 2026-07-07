@@ -24,7 +24,7 @@ export function TicketHeader({ ticket }: TicketHeaderProps) {
               ticket.category,
             )}`}
           >
-            {CATEGORY_LABELS[ticket.category]}
+            {CATEGORY_LABELS[ticket.category] ?? ticket.category}
           </span>
           {ticket.escalated ? (
             <span className="rounded-full bg-[var(--signal-red-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--signal-red-dark)]">
@@ -55,26 +55,45 @@ export function TicketHeader({ ticket }: TicketHeaderProps) {
   );
 }
 
-const CATEGORY_LABELS: Record<TicketCategory, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
+  account: "Login / OTP / Akun",
+  app_error: "Aplikasi Error / Lemot",
+  app_update: "Update Aplikasi",
   cancellation: "Pembatalan",
   delay: "Keterlambatan",
   facility: "Fasilitas",
+  lost_item: "Barang Tertinggal",
+  no_response_cs: "CS Tidak Merespons",
+  payment: "Pembayaran",
+  queue_problem: "Antrian / Promo",
   refund: "Pengembalian Dana",
+  refund_cancel: "Refund / Pembatalan",
+  ticket_booking: "Tiket / Booking",
   "lost-item": "Barang Tertinggal",
   other: "Lainnya",
   "seat-issue": "Masalah Kursi",
 };
 
 function categoryBadgeClass(category: TicketCategory) {
-  const classes: Record<TicketCategory, string> = {
+  const classes: Record<string, string> = {
+    account: "bg-[#e9e4f4] text-[#5c4788]",
+    app_error: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
+    app_update: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
     cancellation: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
     delay: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
     facility: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
+    lost_item: "bg-[#ede9fe] text-[#5b21b6]",
+    no_response_cs: "bg-[#e9e4f4] text-[#5c4788]",
+    payment: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
+    queue_problem:
+      "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
     refund: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
+    refund_cancel: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
+    ticket_booking: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
     "lost-item": "bg-[#ede9fe] text-[#5b21b6]",
     other: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
     "seat-issue": "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
   };
 
-  return classes[category];
+  return classes[category] ?? classes.other;
 }

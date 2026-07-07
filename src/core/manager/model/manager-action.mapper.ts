@@ -121,20 +121,31 @@ function mapTicketStatusToComplaintStatus(
 
 function normalizeManagerCategory(category?: string): ManagerActionCategory {
   if (
-    category === "delay" ||
-    category === "refund" ||
-    category === "cancellation" ||
-    category === "facility" ||
-    category === "lost_item" ||
+    category === "ticket_booking" ||
+    category === "app_error" ||
+    category === "account" ||
     category === "payment" ||
-    category === "app_issue" ||
-    category === "other"
+    category === "app_update" ||
+    category === "no_response_cs" ||
+    category === "refund_cancel" ||
+    category === "queue_problem" ||
+    category === "other" ||
+    category === "facility" ||
+    category === "lost_item"
   ) {
     return category;
   }
 
-  if (category === "app_error") {
-    return "app_issue";
+  if (category === "app_issue") {
+    return "app_error";
+  }
+
+  if (category === "delay") {
+    return "ticket_booking";
+  }
+
+  if (category === "refund" || category === "cancellation") {
+    return "refund_cancel";
   }
 
   if (category === "lost-item") {

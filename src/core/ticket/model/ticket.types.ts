@@ -1,13 +1,22 @@
 export type TicketStatus = "new" | "open" | "resolved" | "escalated";
 
 export type TicketCategory =
+  | "ticket_booking"
+  | "app_error"
+  | "account"
+  | "payment"
+  | "app_update"
+  | "no_response_cs"
+  | "refund_cancel"
+  | "queue_problem"
+  | "other"
   | "delay"
   | "refund"
   | "cancellation"
   | "lost-item"
   | "seat-issue"
-  | "facility"
-  | "other";
+  | "lost_item"
+  | "facility";
 
 export type ResponseChannel = "email" | "whatsapp" | "phone";
 
@@ -121,14 +130,21 @@ export type FollowUpTicketStatus =
   | "escalated";
 
 export type FollowUpTicketCategory =
+  | "ticket_booking"
+  | "app_error"
+  | "account"
+  | "payment"
+  | "app_update"
+  | "no_response_cs"
+  | "refund_cancel"
+  | "queue_problem"
+  | "other"
   | "delay"
   | "refund"
   | "cancellation"
-  | "payment"
-  | "facility"
   | "app_issue"
   | "lost_item"
-  | "other";
+  | "facility";
 
 export type ExternalChannel =
   | "twitter"

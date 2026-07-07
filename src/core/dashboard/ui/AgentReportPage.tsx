@@ -390,14 +390,16 @@ export function AgentReportPage() {
                       value={categoryFilter}
                     >
                       <option value="all">Semua kategori</option>
-                      <option value="delay">Delay</option>
-                      <option value="refund">Refund</option>
-                      <option value="cancellation">Cancellation</option>
+                      <option value="ticket_booking">Ticket / Booking</option>
+                      <option value="app_error">App Error / Slow</option>
+                      <option value="account">Login / OTP / Account</option>
+                      <option value="payment">Payment</option>
+                      <option value="app_update">App Update</option>
+                      <option value="no_response_cs">No Response CS</option>
+                      <option value="refund_cancel">Refund / Cancel</option>
+                      <option value="queue_problem">Queue / Promo</option>
                       <option value="lost_item">Lost Item</option>
                       <option value="facility">Facility</option>
-                      <option value="payment">Payment</option>
-                      <option value="account">Account</option>
-                      <option value="app_error">App Error</option>
                       <option value="other">Other</option>
                     </select>
                   </div>

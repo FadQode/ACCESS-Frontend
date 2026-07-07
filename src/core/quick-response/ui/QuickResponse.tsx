@@ -36,11 +36,14 @@ import type {
   QuickResponseOutcome,
   QuickResponsePreviewData,
   QuickResponseSuggestionSource,
+  RelevantReference,
+  SimilarResolvedCase,
 } from "@/core/dashboard/model/types/quick-response.types";
 import {
   mapQuickResponseToCreateRequest,
   targetToBackendMap,
 } from "@/core/dashboard/quick-response/quick-response.mapper";
+import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
 
 type StepId = 1 | 2 | 3 | 4;
 type ResponseTarget =
@@ -80,6 +83,11 @@ interface BuilderOptions {
   takeAction: SentenceOption[];
 }
 
+type PreviewContext = {
+  relevantReferences: RelevantReference[];
+  similarResolvedCases: SimilarResolvedCase[];
+};
+
 const sourceOptions: Option[] = [
   { value: "twitter", label: "Twitter / X" },
   { value: "instagram", label: "Instagram" },
@@ -90,14 +98,16 @@ const sourceOptions: Option[] = [
 ];
 
 const categoryOptions: Option[] = [
-  { value: "delay", label: "Keterlambatan" },
-  { value: "refund", label: "Pengembalian Dana" },
-  { value: "cancellation", label: "Pembatalan" },
+  { value: "ticket_booking", label: "Tiket / Booking" },
+  { value: "app_error", label: "Aplikasi Error / Lemot" },
+  { value: "account", label: "Login / OTP / Akun" },
+  { value: "payment", label: "Pembayaran" },
+  { value: "app_update", label: "Update Aplikasi" },
+  { value: "no_response_cs", label: "CS Tidak Merespons" },
+  { value: "refund_cancel", label: "Refund / Pembatalan" },
+  { value: "queue_problem", label: "Antrian / Promo" },
   { value: "lost_item", label: "Barang Tertinggal" },
   { value: "facility", label: "Fasilitas" },
-  { value: "payment", label: "Pembayaran" },
-  { value: "account", label: "Akun" },
-  { value: "app_error", label: "Error Aplikasi" },
   { value: "other", label: "Lainnya" },
 ];
 
@@ -128,11 +138,17 @@ const builderSections: {
   },
 ];
 
+const emptyPreviewContext: PreviewContext = {
+  relevantReferences: [],
+  similarResolvedCases: [],
+};
+
 export function QuickResponse() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
   const createQuickResponseMutation = useCreateQuickResponse();
   const escalateTicketMutation = useEscalateTicket();
+  const fileUrlMutation = useReferenceFileUrl();
   const previewMutation = useQuickResponsePreview();
   const [currentStep, setCurrentStep] = useState<StepId>(1);
   const [source, setSource] = useState("twitter");
@@ -171,6 +187,12 @@ export function QuickResponse() {
     useState<CreateQuickResponseResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<QuickResponseFieldErrors>({});
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [openingReferenceId, setOpeningReferenceId] = useState<string | null>(
+    null,
+  );
+  const [previewContext, setPreviewContext] =
+    useState<PreviewContext>(emptyPreviewContext);
+  const [referenceOpenError, setReferenceOpenError] = useState("");
 
   const sourceLabel = labelFor(sourceOptions, source);
   const categoryLabel = category
@@ -257,6 +279,8 @@ export function QuickResponse() {
     setCopiedLabel("");
     setCurrentStep(2);
     setPreviewError("");
+    setPreviewContext(emptyPreviewContext);
+    setReferenceOpenError("");
     setManualPreservedNotice("");
 
     try {
@@ -271,6 +295,10 @@ export function QuickResponse() {
       const nextDraft = buildFinalResponse(defaults);
 
       setBuilderOptions(nextOptions);
+      setPreviewContext({
+        relevantReferences: preview.relevantReferences,
+        similarResolvedCases: preview.similarResolvedCases,
+      });
       setSuggestionSource(preview.suggestionSource);
       setSelectedHear(defaults.hear);
       setSelectedEmpathize(defaults.empathize);
@@ -285,6 +313,7 @@ export function QuickResponse() {
       }
     } catch (error) {
       setBuilderOptions(null);
+      setPreviewContext(emptyPreviewContext);
       setSuggestionSource(null);
       setPreviewError(getPreviewErrorMessage(error));
     }
@@ -332,6 +361,28 @@ export function QuickResponse() {
     setIsFinalResponseManuallyEdited(false);
     setManualPreservedNotice("");
     setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
+  };
+
+  const handleOpenReferenceFile = async (referenceId: string) => {
+    setReferenceOpenError("");
+    setOpeningReferenceId(referenceId);
+
+    try {
+      const fileUrl = await fileUrlMutation.mutateAsync(referenceId);
+      window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      setReferenceOpenError("Gagal membuka file referensi. Silakan coba lagi.");
+    } finally {
+      setOpeningReferenceId(null);
+    }
+  };
+
+  const handleOpenReference = (referenceId: string) => {
+    window.open(
+      `/agent/references/${referenceId}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   const handleCopyReview = async () => {
@@ -471,7 +522,11 @@ export function QuickResponse() {
     setCreatedResult(null);
     setFieldErrors({});
     setFeedback(null);
+    setOpeningReferenceId(null);
+    setPreviewContext(emptyPreviewContext);
+    setReferenceOpenError("");
     previewMutation.reset();
+    fileUrlMutation.reset();
     createQuickResponseMutation.reset();
     escalateTicketMutation.reset();
     setCopiedLabel("");
@@ -581,6 +636,16 @@ export function QuickResponse() {
                 }
                 number={1}
                 title="Input"
+                collapsedContent={
+                  !inputExpanded && complaintText.trim().length > 0 ? (
+                    <CollapsedComplaintPreview
+                      category={categoryLabel}
+                      complaintText={complaintText}
+                      source={sourceLabel}
+                      username={username}
+                    />
+                  ) : null
+                }
                 action={
                   !inputExpanded && complaintText.trim().length > 0 ? (
                     <button
@@ -688,8 +753,13 @@ export function QuickResponse() {
                       handleUpdateFinalResponseFromSelected
                     }
                     onContinue={() => setCurrentStep(3)}
+                    onOpenReference={handleOpenReference}
+                    onOpenReferenceFile={handleOpenReferenceFile}
                     onRegenerate={handleGenerate}
                     onSelectSentence={handleSelectSentence}
+                    openingReferenceId={openingReferenceId}
+                    previewContext={previewContext}
+                    referenceOpenError={referenceOpenError}
                     selectedMap={selectedMap}
                     suggestionSource={suggestionSource}
                   />
@@ -956,6 +1026,36 @@ function InputSummary({
   );
 }
 
+function CollapsedComplaintPreview({
+  category,
+  complaintText,
+  source,
+  username,
+}: {
+  category: string;
+  complaintText: string;
+  source: string;
+  username: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+          Complaint yang ditangani
+        </p>
+        <p className="mt-1 line-clamp-2 text-sm italic leading-6 text-[var(--text-muted)]">
+          "{complaintText}"
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[280px] sm:justify-end">
+        <ContextBadge>{source}</ContextBadge>
+        <ContextBadge>{category}</ContextBadge>
+        {username ? <ContextBadge>{username}</ContextBadge> : null}
+      </div>
+    </div>
+  );
+}
+
 function ResponseBuilder({
   builderOptions,
   flowLocked,
@@ -963,8 +1063,13 @@ function ResponseBuilder({
   manualPreservedNotice,
   onApplySelectedToFinalResponse,
   onContinue,
+  onOpenReference,
+  onOpenReferenceFile,
   onRegenerate,
   onSelectSentence,
+  openingReferenceId,
+  previewContext,
+  referenceOpenError,
   selectedMap,
   suggestionSource,
 }: {
@@ -974,8 +1079,13 @@ function ResponseBuilder({
   manualPreservedNotice: string;
   onApplySelectedToFinalResponse: () => void;
   onContinue: () => void;
+  onOpenReference: (referenceId: string) => void;
+  onOpenReferenceFile: (referenceId: string) => void;
   onRegenerate: () => void;
   onSelectSentence: (key: BuilderKey, optionText: string) => void;
+  openingReferenceId: string | null;
+  previewContext: PreviewContext;
+  referenceOpenError: string;
   selectedMap: Record<BuilderKey, string>;
   suggestionSource: QuickResponseSuggestionSource | null;
 }) {
@@ -1007,6 +1117,14 @@ function ResponseBuilder({
           </span>
         ) : null}
       </div>
+
+      <PreviewContextSections
+        context={previewContext}
+        onOpenReference={onOpenReference}
+        onOpenReferenceFile={onOpenReferenceFile}
+        openingReferenceId={openingReferenceId}
+        referenceOpenError={referenceOpenError}
+      />
 
       <section>
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
@@ -1061,6 +1179,188 @@ function ResponseBuilder({
           <ArrowRight aria-hidden="true" size={15} />
         </button>
       </div>
+    </div>
+  );
+}
+
+function PreviewContextSections({
+  context,
+  onOpenReference,
+  onOpenReferenceFile,
+  openingReferenceId,
+  referenceOpenError,
+}: {
+  context: PreviewContext;
+  onOpenReference: (referenceId: string) => void;
+  onOpenReferenceFile: (referenceId: string) => void;
+  openingReferenceId: string | null;
+  referenceOpenError: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+              Referensi Terkait
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+              Bahan bantu dari backend untuk memahami konteks complaint.
+            </p>
+          </div>
+          <ContextBadge>{context.relevantReferences.length} item</ContextBadge>
+        </div>
+
+        {referenceOpenError ? (
+          <FieldError>{referenceOpenError}</FieldError>
+        ) : null}
+
+        <div className="mt-3 space-y-3">
+          {context.relevantReferences.length > 0 ? (
+            context.relevantReferences.map((reference) => (
+              <RelevantReferenceCard
+                isOpening={openingReferenceId === reference.id}
+                key={reference.id}
+                onOpen={() => onOpenReference(reference.id)}
+                onOpenFile={() => onOpenReferenceFile(reference.id)}
+                reference={reference}
+              />
+            ))
+          ) : (
+            <ContextEmptyState message="Belum ada referensi terkait." />
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+              Kasus Serupa yang Pernah Diselesaikan
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+              Riwayat penyelesaian sebagai konteks baca, bukan template
+              otomatis.
+            </p>
+          </div>
+          <ContextBadge>
+            {context.similarResolvedCases.length} item
+          </ContextBadge>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          {context.similarResolvedCases.length > 0 ? (
+            context.similarResolvedCases.map((resolvedCase, index) => (
+              <SimilarResolvedCaseCard
+                key={`${resolvedCase.category}-${resolvedCase.resolvedAt ?? index}`}
+                resolvedCase={resolvedCase}
+              />
+            ))
+          ) : (
+            <ContextEmptyState message="Belum ada kasus serupa yang ditemukan." />
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RelevantReferenceCard({
+  isOpening,
+  onOpen,
+  onOpenFile,
+  reference,
+}: {
+  isOpening: boolean;
+  onOpen: () => void;
+  onOpenFile: () => void;
+  reference: RelevantReference;
+}) {
+  return (
+    <article className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h4 className="text-sm font-semibold text-[var(--rail-ink)]">
+            {reference.title}
+          </h4>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <ContextBadge>
+              {labelFor(categoryOptions, reference.category)}
+            </ContextBadge>
+            <ContextBadge>
+              {formatSourceType(reference.sourceType)}
+            </ContextBadge>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            className={secondaryButtonClass}
+            onClick={onOpen}
+            type="button"
+          >
+            <Link2 aria-hidden="true" size={13} />
+            Buka referensi
+          </button>
+          {reference.fileName ? (
+            <button
+              className={secondaryButtonClass}
+              disabled={isOpening}
+              onClick={onOpenFile}
+              type="button"
+            >
+              <Link2 aria-hidden="true" size={13} />
+              {isOpening ? "Membuka..." : "Buka file"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+        {reference.snippet}
+      </p>
+      {reference.fileName ? (
+        <p className="mt-3 truncate text-[11px] font-medium text-[var(--text-tertiary)]">
+          File: {reference.fileName}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function SimilarResolvedCaseCard({
+  resolvedCase,
+}: {
+  resolvedCase: SimilarResolvedCase;
+}) {
+  return (
+    <article className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ContextBadge>
+          {labelFor(categoryOptions, resolvedCase.category)}
+        </ContextBadge>
+        <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
+          {formatResolvedAt(resolvedCase.resolvedAt)}
+        </span>
+      </div>
+      <div className="mt-3 space-y-3">
+        <PreviewBox
+          isClamped={false}
+          title="Complaint sebelumnya"
+          value={resolvedCase.complaintTextPreview}
+        />
+        <PreviewBox
+          isClamped={false}
+          title="Balasan akhir sebelumnya"
+          value={resolvedCase.finalResponsePreview}
+        />
+      </div>
+    </article>
+  );
+}
+
+function ContextEmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--surface-muted)] p-3 text-xs leading-5 text-[var(--text-muted)]">
+      {message}
     </div>
   );
 }
@@ -1463,6 +1763,7 @@ function Stepper({ currentStep }: { currentStep: StepId }) {
 function StepCard({
   action,
   children,
+  collapsedContent,
   isActive,
   isComplete = false,
   isLocked = false,
@@ -1472,6 +1773,7 @@ function StepCard({
 }: {
   action?: ReactNode;
   children: ReactNode;
+  collapsedContent?: ReactNode;
   isActive: boolean;
   isComplete?: boolean;
   isLocked?: boolean;
@@ -1514,6 +1816,10 @@ function StepCard({
       {isActive ? (
         <div className={isLocked ? "pointer-events-none p-4" : "p-4"}>
           {children}
+        </div>
+      ) : collapsedContent ? (
+        <div className="border-t border-[var(--rail-border)] bg-[var(--surface-muted)] px-4 py-3">
+          {collapsedContent}
         </div>
       ) : null}
     </section>
@@ -1601,11 +1907,23 @@ function SentenceChoiceGroup({
   );
 }
 
-function PreviewBox({ title, value }: { title: string; value: string }) {
+function PreviewBox({
+  isClamped = true,
+  title,
+  value,
+}: {
+  isClamped?: boolean;
+  title: string;
+  value: string;
+}) {
   return (
     <section className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
       <h4 className="text-xs font-semibold text-[var(--rail-ink)]">{title}</h4>
-      <p className="mt-2 line-clamp-5 text-xs leading-5 text-[var(--text-muted)]">
+      <p
+        className={`mt-2 text-xs leading-5 text-[var(--text-muted)] ${
+          isClamped ? "line-clamp-5" : ""
+        }`}
+      >
         {value}
       </p>
     </section>
@@ -1809,6 +2127,29 @@ function buildSafeReply(selected: Partial<Record<BuilderKey, string>>) {
 
 function labelFor(options: { value: string; label: string }[], value: string) {
   return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function formatSourceType(value: string) {
+  return value
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatResolvedAt(value: string | null) {
+  if (!value) {
+    return "Tanggal selesai belum tersedia";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function getCompletionState(outcome: QuickResponseOutcome): CompletionState {

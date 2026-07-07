@@ -56,14 +56,16 @@ const statusFilters: Array<{
 
 const categoryFilters = [
   { label: "Semua kategori", value: "" },
-  { label: "Keterlambatan", value: "delay" },
-  { label: "Pengembalian dana", value: "refund" },
-  { label: "Pembatalan", value: "cancellation" },
+  { label: "Tiket / Booking", value: "ticket_booking" },
+  { label: "Aplikasi Error / Lemot", value: "app_error" },
+  { label: "Login / OTP / Akun", value: "account" },
+  { label: "Pembayaran", value: "payment" },
+  { label: "Update Aplikasi", value: "app_update" },
+  { label: "CS Tidak Merespons", value: "no_response_cs" },
+  { label: "Refund / Pembatalan", value: "refund_cancel" },
+  { label: "Antrian / Promo", value: "queue_problem" },
   { label: "Barang tertinggal", value: "lost_item" },
   { label: "Fasilitas", value: "facility" },
-  { label: "Pembayaran", value: "payment" },
-  { label: "Akun", value: "account" },
-  { label: "Kendala aplikasi", value: "app_error" },
   { label: "Lainnya", value: "other" },
 ];
 
@@ -78,15 +80,20 @@ const sourceLabel: Record<string, string> = {
 };
 
 const categoryLabel: Record<string, string> = {
-  account: "Akun",
-  app_error: "Kendala Aplikasi",
+  account: "Login / OTP / Akun",
+  app_error: "Aplikasi Error / Lemot",
+  app_update: "Update Aplikasi",
   cancellation: "Pembatalan",
   delay: "Keterlambatan",
   facility: "Fasilitas",
   lost_item: "Barang Tertinggal",
+  no_response_cs: "CS Tidak Merespons",
   other: "Lainnya",
   payment: "Pembayaran",
   refund: "Pengembalian Dana",
+  refund_cancel: "Refund / Pembatalan",
+  queue_problem: "Antrian / Promo",
+  ticket_booking: "Tiket / Booking",
 };
 
 const complaintStatusRank: Record<string, number> = {
@@ -755,13 +762,19 @@ function CategoryBadge({ category }: { category: string }) {
   const classes: Record<string, string> = {
     account: "bg-[#e9e4f4] text-[#5c4788]",
     app_error: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
+    app_update: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
     cancellation: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
     delay: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
     facility: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
     lost_item: "bg-[#eee8dc] text-[#765733]",
+    no_response_cs: "bg-[#e9e4f4] text-[#5c4788]",
     other: "bg-[var(--surface-muted)] text-[var(--text-muted)]",
     payment: "bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]",
+    queue_problem:
+      "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
     refund: "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]",
+    refund_cancel: "bg-[var(--signal-red-soft)] text-[var(--signal-red-dark)]",
+    ticket_booking: "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]",
   };
 
   return (

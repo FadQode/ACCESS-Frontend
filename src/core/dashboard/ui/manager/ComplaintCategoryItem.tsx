@@ -5,15 +5,20 @@ interface ComplaintCategoryItemProps {
 }
 
 const TONE_MAP: Record<string, string> = {
-  delay: "primary",
-  refund: "warning",
-  cancellation: "purple",
-  lost_item: "success",
-  facility: "muted",
-  payment: "primary",
   account: "warning",
   app_error: "purple",
+  app_update: "primary",
+  cancellation: "purple",
+  delay: "primary",
+  facility: "muted",
+  lost_item: "success",
+  no_response_cs: "warning",
   other: "muted",
+  payment: "primary",
+  queue_problem: "warning",
+  refund: "warning",
+  refund_cancel: "purple",
+  ticket_booking: "primary",
 };
 
 export function ComplaintCategoryItem({
