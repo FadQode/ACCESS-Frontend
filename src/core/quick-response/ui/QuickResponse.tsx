@@ -385,14 +385,6 @@ export function QuickResponse() {
     }
   };
 
-  const handleOpenReference = (referenceId: string) => {
-    window.open(
-      `/agent/references/${referenceId}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  };
-
   const handleCopyReview = async () => {
     const copied = await copyText(finalResponse);
     setCopiedLabel(copied ? "Balasan disalin" : "Gagal menyalin otomatis");
@@ -761,7 +753,6 @@ export function QuickResponse() {
                       handleUpdateFinalResponseFromSelected
                     }
                     onContinue={() => setCurrentStep(3)}
-                    onOpenReference={handleOpenReference}
                     onOpenReferenceFile={handleOpenReferenceFile}
                     onRegenerate={handleGenerate}
                     onSelectSentence={handleSelectSentence}
@@ -1070,7 +1061,6 @@ function ResponseBuilder({
   manualPreservedNotice,
   onApplySelectedToFinalResponse,
   onContinue,
-  onOpenReference,
   onOpenReferenceFile,
   onRegenerate,
   onSelectSentence,
@@ -1086,7 +1076,6 @@ function ResponseBuilder({
   manualPreservedNotice: string;
   onApplySelectedToFinalResponse: () => void;
   onContinue: () => void;
-  onOpenReference: (referenceId: string) => void;
   onOpenReferenceFile: (referenceId: string) => void;
   onRegenerate: () => void;
   onSelectSentence: (key: BuilderKey, optionText: string) => void;
@@ -1127,7 +1116,6 @@ function ResponseBuilder({
 
       <PreviewContextSections
         context={previewContext}
-        onOpenReference={onOpenReference}
         onOpenReferenceFile={onOpenReferenceFile}
         openingReferenceId={openingReferenceId}
         referenceOpenError={referenceOpenError}
@@ -1192,13 +1180,11 @@ function ResponseBuilder({
 
 function PreviewContextSections({
   context,
-  onOpenReference,
   onOpenReferenceFile,
   openingReferenceId,
   referenceOpenError,
 }: {
   context: PreviewContext;
-  onOpenReference: (referenceId: string) => void;
   onOpenReferenceFile: (referenceId: string) => void;
   openingReferenceId: string | null;
   referenceOpenError: string;
@@ -1228,7 +1214,6 @@ function PreviewContextSections({
               <RelevantReferenceCard
                 isOpening={openingReferenceId === reference.id}
                 key={reference.id}
-                onOpen={() => onOpenReference(reference.id)}
                 onOpenFile={() => onOpenReferenceFile(reference.id)}
                 reference={reference}
               />
@@ -1274,12 +1259,10 @@ function PreviewContextSections({
 
 function RelevantReferenceCard({
   isOpening,
-  onOpen,
   onOpenFile,
   reference,
 }: {
   isOpening: boolean;
-  onOpen: () => void;
   onOpenFile: () => void;
   reference: RelevantReference;
 }) {
@@ -1300,14 +1283,15 @@ function RelevantReferenceCard({
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          <button
+          <a
             className={secondaryButtonClass}
-            onClick={onOpen}
-            type="button"
+            href={`/agent/references/${encodeURIComponent(reference.id)}`}
+            rel="noopener noreferrer"
+            target="_blank"
           >
             <Link2 aria-hidden="true" size={13} />
             Buka referensi
-          </button>
+          </a>
           {reference.fileName ? (
             <button
               className={secondaryButtonClass}
