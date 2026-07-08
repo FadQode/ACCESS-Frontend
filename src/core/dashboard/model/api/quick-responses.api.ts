@@ -76,12 +76,21 @@ const relevantReferenceSchema = z
   .object({
     category: z.string(),
     fileName: z.string().nullable().optional(),
+    file_name: z.string().nullable().optional(),
     id: idSchema,
     snippet: z.string(),
-    sourceType: z.string(),
+    sourceType: z.string().optional(),
+    source_type: z.string().optional(),
     title: z.string(),
   })
-  .transform<RelevantReference>((value) => value);
+  .transform<RelevantReference>((value) => ({
+    category: value.category,
+    fileName: value.fileName ?? value.file_name ?? null,
+    id: value.id,
+    snippet: value.snippet,
+    sourceType: value.sourceType ?? value.source_type ?? "internal_note",
+    title: value.title,
+  }));
 
 const similarResolvedCaseSchema = z
   .object({

@@ -10,6 +10,11 @@ import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
+import {
+  closeReferenceWindow,
+  navigateReferenceWindow,
+  openPendingReferenceWindow,
+} from "@/core/reference/ui/open-reference-window";
 import { useTicketWorkspace } from "../hooks/useTicketWorkspace";
 import type { AttachedReferenceForTicket } from "../model/ticket.types";
 import { TicketAssistPanel } from "./TicketAssistPanel";
@@ -53,12 +58,22 @@ export function TicketWorkspace() {
     }
 
     if (reference.displayType === "file") {
+      const pendingWindow = openPendingReferenceWindow();
+
       try {
         const fileUrl = await fileUrlMutation.mutateAsync(
           reference.referenceSourceId,
         );
-        window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+        if (!navigateReferenceWindow(pendingWindow, fileUrl.signedUrl)) {
+          setReferenceFeedback({
+            description:
+              "Browser memblokir tab referensi. Izinkan pop-up lalu coba lagi.",
+            open: true,
+            title: "Referensi tidak bisa dibuka",
+          });
+        }
       } catch {
+        closeReferenceWindow(pendingWindow);
         setReferenceFeedback({
           description: "Gagal membuka file referensi. Silakan coba lagi.",
           open: true,

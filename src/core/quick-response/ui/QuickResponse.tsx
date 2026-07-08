@@ -14,7 +14,6 @@ import {
   RefreshCcw,
   ShieldCheck,
   Sparkles,
-  Star,
   TicketCheck,
   UserRound,
 } from "lucide-react";
@@ -44,6 +43,11 @@ import {
   targetToBackendMap,
 } from "@/core/dashboard/quick-response/quick-response.mapper";
 import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
+import {
+  closeReferenceWindow,
+  navigateReferenceWindow,
+  openPendingReferenceWindow,
+} from "@/core/reference/ui/open-reference-window";
 
 type StepId = 1 | 2 | 3 | 4;
 type ResponseTarget =
@@ -226,7 +230,6 @@ export function QuickResponse() {
         title: "Salin & Selesaikan",
         description:
           "Salin balasan lengkap untuk pelanggan, lalu tandai keluhan selesai secara internal.",
-        recommended: true,
         icon: <CheckCircle2 aria-hidden="true" size={18} />,
       },
       {
@@ -234,7 +237,6 @@ export function QuickResponse() {
         title: "Salin HEA & Minta Aksi",
         description:
           "Salin balasan HEA awal untuk pelanggan dan tandai kasus perlu tindak lanjut.",
-        recommended: false,
         icon: <TicketCheck aria-hidden="true" size={18} />,
       },
     ],
@@ -366,11 +368,17 @@ export function QuickResponse() {
   const handleOpenReferenceFile = async (referenceId: string) => {
     setReferenceOpenError("");
     setOpeningReferenceId(referenceId);
+    const pendingWindow = openPendingReferenceWindow();
 
     try {
       const fileUrl = await fileUrlMutation.mutateAsync(referenceId);
-      window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+      if (!navigateReferenceWindow(pendingWindow, fileUrl.signedUrl)) {
+        setReferenceOpenError(
+          "Browser memblokir tab referensi. Izinkan pop-up lalu coba lagi.",
+        );
+      }
     } catch {
+      closeReferenceWindow(pendingWindow);
       setReferenceOpenError("Gagal membuka file referensi. Silakan coba lagi.");
     } finally {
       setOpeningReferenceId(null);
@@ -815,7 +823,6 @@ export function QuickResponse() {
                   onReset={handleReset}
                   options={outcomeOptions}
                   permissionError={fieldErrors.permission}
-                  safeReply={safeReply}
                   selectedOutcome={selectedOutcome}
                   username={username}
                 />
@@ -1501,7 +1508,6 @@ function OutcomeStep({
   onReset,
   options,
   permissionError,
-  safeReply,
   selectedOutcome,
   username,
 }: {
@@ -1518,11 +1524,9 @@ function OutcomeStep({
     id: OutcomeId;
     title: string;
     description: string;
-    recommended: boolean;
     icon: ReactNode;
   }[];
   permissionError?: string;
-  safeReply: string;
   selectedOutcome: OutcomeId | null;
   username: string;
 }) {
@@ -1569,9 +1573,7 @@ function OutcomeStep({
             className={`min-h-[154px] rounded-lg border p-4 text-left transition ${
               selectedOutcome === option.id
                 ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)]"
-                : option.recommended
-                  ? "border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] hover:border-[var(--signal-blue)]"
-                  : "border-[var(--rail-border)] bg-[var(--surface-panel)] hover:border-[var(--signal-blue)] hover:bg-[var(--background)]"
+                : "border-[var(--rail-border)] bg-[var(--surface-panel)] hover:border-[var(--signal-blue)] hover:bg-[var(--background)]"
             } disabled:cursor-not-allowed disabled:opacity-60`}
             key={option.id}
             disabled={isManager || isSubmitting}
@@ -1587,22 +1589,12 @@ function OutcomeStep({
             <span className="mt-2 block text-xs leading-5 text-[var(--text-muted)]">
               {option.description}
             </span>
-            {option.recommended ? (
-              <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--signal-green-dark)]">
-                <Star aria-hidden="true" size={12} />
-                Direkomendasikan
-              </span>
-            ) : null}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div>
         <PreviewBox title="Balasan akhir lengkap" value={finalResponse} />
-        <PreviewBox
-          title="Balasan awal untuk kasus lanjutan"
-          value={safeReply}
-        />
       </div>
 
       <div className="text-center">

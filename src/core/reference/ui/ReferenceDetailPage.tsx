@@ -31,6 +31,11 @@ import {
   type ReferenceOwnerCache,
 } from "../model/reference-owner-cache";
 import type { ReferenceItem } from "../model/types/reference.types";
+import {
+  closeReferenceWindow,
+  navigateReferenceWindow,
+  openPendingReferenceWindow,
+} from "./open-reference-window";
 
 type ReferenceDashboardRole = "agent" | "manager";
 
@@ -76,8 +81,14 @@ export function ReferenceDetailPage({
     }
 
     if (reference.displayType === "file") {
-      const fileUrl = await fileUrlMutation.mutateAsync(reference.id);
-      window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+      const pendingWindow = openPendingReferenceWindow();
+
+      try {
+        const fileUrl = await fileUrlMutation.mutateAsync(reference.id);
+        navigateReferenceWindow(pendingWindow, fileUrl.signedUrl);
+      } catch {
+        closeReferenceWindow(pendingWindow);
+      }
     }
   };
 

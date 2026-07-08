@@ -48,8 +48,12 @@ const rawReferenceSourceSchema = z
     fileMimeType: nullableStringSchema,
     fileName: nullableStringSchema,
     fileUrl: nullableStringSchema,
+    file_mime_type: nullableStringSchema,
+    file_name: nullableStringSchema,
+    file_url: nullableStringSchema,
     id: idSchema,
-    sourceType: referenceSourceTypeSchema,
+    sourceType: referenceSourceTypeSchema.optional(),
+    source_type: referenceSourceTypeSchema.optional(),
     status: z.string().nullable().optional(),
     tags: z.array(z.string()).default([]),
     title: z.string().optional(),
@@ -83,11 +87,17 @@ export const rawActionRequestReferenceSchema = z
       value.referenceSourceId ??
       value.reference_source_id ??
       referenceSource?.id;
-    const sourceType = referenceSource?.sourceType ?? "internal_note";
+    const sourceType =
+      referenceSource?.sourceType ??
+      referenceSource?.source_type ??
+      "internal_note";
     const url = referenceSource?.url ?? null;
-    const fileName = referenceSource?.fileName ?? null;
-    const fileUrl = referenceSource?.fileUrl ?? null;
-    const mimeType = referenceSource?.fileMimeType ?? null;
+    const fileName =
+      referenceSource?.fileName ?? referenceSource?.file_name ?? null;
+    const fileUrl =
+      referenceSource?.fileUrl ?? referenceSource?.file_url ?? null;
+    const mimeType =
+      referenceSource?.fileMimeType ?? referenceSource?.file_mime_type ?? null;
     const snapshotText = value.snapshotText ?? value.snapshot_text ?? null;
 
     return {

@@ -48,6 +48,11 @@ import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-u
 import { useReferences } from "@/core/reference/hooks/use-references";
 import type { ReferenceItem } from "@/core/reference/model/types/reference.types";
 import type { ActionRequestReferenceUsageType } from "@/core/reference/model/types/reference-attachment.types";
+import {
+  closeReferenceWindow,
+  navigateReferenceWindow,
+  openPendingReferenceWindow,
+} from "@/core/reference/ui/open-reference-window";
 
 const MANAGER_NAME = "Mgr. Dina";
 
@@ -350,12 +355,19 @@ export function ManagerActionQueue() {
     }
 
     if (reference.type === "file") {
+      const pendingWindow = openPendingReferenceWindow();
+
       try {
         const fileUrl = await fileUrlMutation.mutateAsync(
           reference.referenceSourceId,
         );
-        window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+        if (!navigateReferenceWindow(pendingWindow, fileUrl.signedUrl)) {
+          setReferenceFeedback(
+            "Browser memblokir tab referensi. Izinkan pop-up lalu coba lagi.",
+          );
+        }
       } catch {
+        closeReferenceWindow(pendingWindow);
         setReferenceFeedback(
           "Gagal membuka file referensi. Silakan coba lagi.",
         );

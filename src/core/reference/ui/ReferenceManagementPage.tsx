@@ -62,6 +62,11 @@ import type {
   ReferenceItem,
   ReferenceSourceType,
 } from "../model/types/reference.types";
+import {
+  closeReferenceWindow,
+  navigateReferenceWindow,
+  openPendingReferenceWindow,
+} from "./open-reference-window";
 
 type ReferenceDashboardRole = "agent" | "manager";
 type ModalState =
@@ -223,10 +228,17 @@ export function ReferenceManagementPage({
     }
 
     if (reference.displayType === "file") {
+      const pendingWindow = openPendingReferenceWindow();
+
       try {
         const fileUrl = await fileUrlMutation.mutateAsync(reference.id);
-        window.open(fileUrl.signedUrl, "_blank", "noopener,noreferrer");
+        if (!navigateReferenceWindow(pendingWindow, fileUrl.signedUrl)) {
+          setFeedback(
+            "Browser memblokir tab referensi. Izinkan pop-up lalu coba lagi.",
+          );
+        }
       } catch {
+        closeReferenceWindow(pendingWindow);
         setFeedback("Gagal membuka file referensi. Silakan coba lagi.");
       }
       return;

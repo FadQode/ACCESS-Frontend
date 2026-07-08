@@ -57,11 +57,12 @@ export const rawReferenceSchema = z
   .object({
     category: referenceCategorySchema.nullable().optional(),
     content: nullableStringSchema,
-    createdAt: z.string(),
+    createdAt: z.string().optional(),
     createdBy: z.string().nullable().optional(),
     createdByEmail: nullableStringSchema,
     createdByName: nullableStringSchema,
     createdByUser: rawReferenceUserSchema,
+    created_at: z.string().optional(),
     created_by: z.string().nullable().optional(),
     created_by_email: nullableStringSchema,
     created_by_name: nullableStringSchema,
@@ -70,12 +71,18 @@ export const rawReferenceSchema = z
     fileName: nullableStringSchema,
     fileSize: z.number().nullable().optional(),
     fileUrl: nullableStringSchema,
+    file_mime_type: nullableStringSchema,
+    file_name: nullableStringSchema,
+    file_size: z.number().nullable().optional(),
+    file_url: nullableStringSchema,
     id: z.string(),
-    sourceType: referenceSourceTypeSchema,
-    status: referenceStatusSchema,
+    sourceType: referenceSourceTypeSchema.optional(),
+    source_type: referenceSourceTypeSchema.optional(),
+    status: referenceStatusSchema.optional(),
     tags: z.array(z.string()).default([]),
     title: z.string(),
-    updatedAt: z.string(),
+    updatedAt: z.string().optional(),
+    updated_at: z.string().optional(),
     url: nullableStringSchema,
     uploadedBy: rawReferenceUserSchema,
     uploadedByEmail: nullableStringSchema,
@@ -110,28 +117,33 @@ export const rawReferenceSchema = z
       value.created_by_email ??
       null;
     const creatorId = creator?.id ?? createdBy;
+    const fileMimeType = value.fileMimeType ?? value.file_mime_type ?? null;
+    const fileName = value.fileName ?? value.file_name ?? null;
+    const fileSize = value.fileSize ?? value.file_size ?? null;
+    const fileUrl = value.fileUrl ?? value.file_url ?? null;
+    const sourceType = value.sourceType ?? value.source_type ?? "internal_note";
 
     return {
       category: value.category ?? null,
-      createdAt: value.createdAt,
+      createdAt: value.createdAt ?? value.created_at ?? "",
       createdBy,
       description: value.content ?? null,
-      displayType: getReferenceDisplayType(value.sourceType, {
-        fileName: value.fileName,
-        fileUrl: value.fileUrl,
-        mimeType: value.fileMimeType,
+      displayType: getReferenceDisplayType(sourceType, {
+        fileName,
+        fileUrl,
+        mimeType: fileMimeType,
         url: value.url,
       }),
-      fileName: value.fileName ?? null,
-      fileSize: value.fileSize ?? null,
-      fileUrl: value.fileUrl ?? null,
+      fileName,
+      fileSize,
+      fileUrl,
       id: value.id,
-      mimeType: value.fileMimeType ?? null,
-      sourceType: value.sourceType,
-      status: value.status,
+      mimeType: fileMimeType,
+      sourceType,
+      status: value.status ?? "active",
       tags: dedupeTags(value.tags),
       title: value.title,
-      updatedAt: value.updatedAt,
+      updatedAt: value.updatedAt ?? value.updated_at ?? "",
       uploadedBy: creatorId
         ? {
             email: creatorEmail,
@@ -171,10 +183,27 @@ export const referenceResponseSchema = z
 
 export const referenceFileUrlResponseSchema = z
   .object({
-    expiresIn: z.number(),
-    signedUrl: z.string().url(),
+    expiresIn: z.number().optional(),
+    expires_in: z.number().optional(),
+    signedUrl: z.string().url().optional(),
+    signed_url: z.string().url().optional(),
   })
-  .transform<ReferenceFileUrl>((value) => value);
+  .transform<ReferenceFileUrl>((value, context) => {
+    const signedUrl = value.signedUrl ?? value.signed_url;
+
+    if (!signedUrl) {
+      context.addIssue({
+        code: "custom",
+        message: "Signed URL referensi tidak tersedia.",
+      });
+      return z.NEVER;
+    }
+
+    return {
+      expiresIn: value.expiresIn ?? value.expires_in ?? 0,
+      signedUrl,
+    };
+  });
 
 export const referenceTagsResponseSchema = z.object({
   tags: z.array(
