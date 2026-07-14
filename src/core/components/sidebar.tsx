@@ -49,7 +49,7 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
       icon: MessageSquareText,
       label: "Quick Response",
     },
-    { href: "/agent/tickets", icon: Inbox, label: "Tickets" },
+    { href: "/agent/tickets", icon: Inbox, label: "Escalated" },
     { href: "/agent/complaints", icon: ClipboardCheck, label: "Complaints" },
     { href: "/agent/reports", icon: BarChart3, label: "Reports" },
     // { href: "/agent/knowledge", icon: BookOpen, label: "Knowledge" },
