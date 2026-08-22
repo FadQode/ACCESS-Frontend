@@ -6,11 +6,13 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   Copy,
   Info,
   Link2,
   MessageSquareText,
+  PanelLeftClose,
   RefreshCcw,
   ShieldCheck,
   Sparkles,
@@ -58,6 +60,7 @@ type ResponseTarget =
 type OutcomeId = "resolved" | "ticket";
 type CompletionState = "saved" | "resolved" | "follow-up";
 type BuilderKey = "hear" | "empathize" | "apologize" | "takeAction";
+type BuilderMode = "heat-parts" | "full-heat";
 type QuickResponseFieldErrors = Partial<
   Record<
     "category" | "complaintText" | "sourceUrl" | "finalResponse" | "permission",
@@ -85,6 +88,13 @@ interface BuilderOptions {
   empathize: SentenceOption[];
   apologize: SentenceOption[];
   takeAction: SentenceOption[];
+}
+
+interface FullHeatOption {
+  id: string;
+  title: string;
+  description: string;
+  response: string;
 }
 
 type PreviewContext = {
@@ -147,6 +157,65 @@ const emptyPreviewContext: PreviewContext = {
   similarResolvedCases: [],
 };
 
+const externalSituationCards = [
+  {
+    label: "Banjir",
+    status: "Waspada",
+    description:
+      "Beberapa area tujuan mengalami peningkatan genangan. Validasi estimasi perjalanan sebelum memberi kepastian.",
+    updatedAt: "Update operasional pagi ini",
+  },
+  {
+    label: "Libur Panjang",
+    status: "Aktif",
+    description:
+      "Periode libur panjang memicu volume pelanggan lebih tinggi dan potensi antrean layanan.",
+    updatedAt: "Pantauan volume layanan",
+  },
+];
+
+const latestComplaintPreviews = [
+  {
+    source: "Twitter / X",
+    user: "@ariaputra",
+    time: "12 menit lalu",
+    complaint:
+      "Tiket sudah dibayar tapi status booking belum berubah di aplikasi.",
+    tags: ["Pembayaran", "Booking"],
+  },
+  {
+    source: "Instagram",
+    user: "@nadinetravel",
+    time: "28 menit lalu",
+    complaint:
+      "Aplikasi sulit dibuka saat mau cek jadwal keberangkatan sore ini.",
+    tags: ["App Error", "Jadwal"],
+  },
+  {
+    source: "Google Play",
+    user: "Raka",
+    time: "41 menit lalu",
+    complaint:
+      "OTP login tidak masuk, padahal perlu akses tiket untuk check-in.",
+    tags: ["Login", "OTP"],
+  },
+  {
+    source: "Facebook",
+    user: "Maya S.",
+    time: "1 jam lalu",
+    complaint:
+      "Refund pembatalan masih belum ada kabar setelah menghubungi CS.",
+    tags: ["Refund", "CS"],
+  },
+  {
+    source: "App Store",
+    user: "Dimas",
+    time: "2 jam lalu",
+    complaint: "Update aplikasi membuat riwayat pesanan lama tidak tampil.",
+    tags: ["Update", "Riwayat"],
+  },
+];
+
 export function QuickResponse() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
   const sessionUser = useSessionUser();
@@ -176,6 +245,9 @@ export function QuickResponse() {
   const [selectedEmpathize, setSelectedEmpathize] = useState("");
   const [selectedApologize, setSelectedApologize] = useState("");
   const [selectedTakeAction, setSelectedTakeAction] = useState("");
+  const [builderMode, setBuilderMode] = useState<BuilderMode>("heat-parts");
+  const [selectedFullHeatId, setSelectedFullHeatId] = useState("");
+  const [contextPaneCollapsed, setContextPaneCollapsed] = useState(false);
   const [finalResponse, setFinalResponse] = useState("");
   const [safeReply, setSafeReply] = useState("");
   const [isFinalResponseManuallyEdited, setIsFinalResponseManuallyEdited] =
@@ -221,6 +293,11 @@ export function QuickResponse() {
       takeAction: selectedTakeAction,
     }),
     [selectedApologize, selectedEmpathize, selectedHear, selectedTakeAction],
+  );
+
+  const fullHeatOptions = useMemo(
+    () => (builderOptions ? createFullHeatOptions(builderOptions) : []),
+    [builderOptions],
   );
 
   const outcomeOptions = useMemo(
@@ -306,6 +383,8 @@ export function QuickResponse() {
       setSelectedEmpathize(defaults.empathize);
       setSelectedApologize(defaults.apologize);
       setSelectedTakeAction(defaults.takeAction);
+      setBuilderMode("heat-parts");
+      setSelectedFullHeatId("");
       setSafeReply(buildSafeReply(defaults));
 
       if (isFinalResponseManuallyEdited) {
@@ -347,6 +426,17 @@ export function QuickResponse() {
     }
 
     setSafeReply(buildSafeReply(nextSelected));
+    setSelectedFullHeatId("");
+    setCompletionState(null);
+    setCreatedResult(null);
+    setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
+  };
+
+  const handleSelectFullHeat = (option: FullHeatOption) => {
+    setSelectedFullHeatId(option.id);
+    setFinalResponse(option.response);
+    setIsFinalResponseManuallyEdited(false);
+    setManualPreservedNotice("");
     setCompletionState(null);
     setCreatedResult(null);
     setFieldErrors((current) => ({ ...current, finalResponse: undefined }));
@@ -537,6 +627,8 @@ export function QuickResponse() {
     setSelectedEmpathize("");
     setSelectedApologize("");
     setSelectedTakeAction("");
+    setBuilderMode("heat-parts");
+    setSelectedFullHeatId("");
     setFinalResponse("");
     setSafeReply("");
     setIsFinalResponseManuallyEdited(false);
@@ -625,204 +717,368 @@ export function QuickResponse() {
               </div>
             </header>
 
-            <div className="flex w-full flex-col gap-3 p-4 sm:p-5 lg:p-6">
-              <Stepper currentStep={currentStep} />
+            <div
+              className={`grid w-full gap-4 p-4 sm:p-5 lg:p-6 ${
+                contextPaneCollapsed
+                  ? "xl:grid-cols-[56px_minmax(0,1fr)]"
+                  : "xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[360px_minmax(0,1fr)]"
+              }`}
+            >
+              <ContextReferencePane
+                collapsed={contextPaneCollapsed}
+                onToggle={() => setContextPaneCollapsed((current) => !current)}
+              />
 
-              <StepCard
-                isActive={currentStep === 1 || inputExpanded}
-                isComplete={!inputExpanded && complaintText.trim().length > 0}
-                meta={
-                  complaintText.trim() ? sourceLabel : "Menunggu input keluhan"
-                }
-                number={1}
-                title="Input"
-                collapsedContent={
-                  !inputExpanded && complaintText.trim().length > 0 ? (
-                    <CollapsedComplaintPreview
+              <div className="min-w-0 space-y-4">
+                <div className="flex flex-col gap-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--signal-blue)]">
+                      Quick Response
+                    </p>
+                    <h2 className="mt-1 text-xl font-semibold text-[var(--rail-ink)]">
+                      Complaint Handling & HEAT Response
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
+                      Input manual tetap menjadi sumber utama. Gunakan builder
+                      HEAT untuk menyusun balasan, review, lalu pilih outcome.
+                    </p>
+                  </div>
+                  <MetricPill label="Platform" value={sourceLabel} />
+                </div>
+
+                <Stepper currentStep={currentStep} />
+
+                <StepCard
+                  isActive={currentStep === 1 || inputExpanded}
+                  isComplete={!inputExpanded && complaintText.trim().length > 0}
+                  meta={
+                    complaintText.trim()
+                      ? sourceLabel
+                      : "Menunggu input keluhan"
+                  }
+                  number={1}
+                  title="Input"
+                  collapsedContent={
+                    !inputExpanded && complaintText.trim().length > 0 ? (
+                      <CollapsedComplaintPreview
+                        category={categoryLabel}
+                        complaintText={complaintText}
+                        source={sourceLabel}
+                        username={username}
+                      />
+                    ) : null
+                  }
+                  action={
+                    !inputExpanded && complaintText.trim().length > 0 ? (
+                      <button
+                        className={secondaryButtonClass}
+                        onClick={() => setInputExpanded(true)}
+                        type="button"
+                      >
+                        <RefreshCcw aria-hidden="true" size={13} />
+                        Ubah
+                      </button>
+                    ) : null
+                  }
+                >
+                  {inputExpanded || currentStep === 1 ? (
+                    <ComplaintInputForm
+                      canGenerate={canGenerate}
+                      category={category}
+                      complaintText={complaintText}
+                      externalUrl={externalUrl}
+                      fieldErrors={fieldErrors}
+                      inputDirty={inputDirty}
+                      isGenerating={isGenerating}
+                      isReviewSource={isReviewSource}
+                      onCancel={() => {
+                        setInputExpanded(false);
+                        setInputDirty(false);
+                      }}
+                      onCategoryChange={handleCategoryChange}
+                      onComplaintTextChange={(value) => {
+                        setComplaintText(value);
+                        markInputDirty();
+                      }}
+                      onExternalUrlChange={(value) => {
+                        setExternalUrl(value);
+                        markInputDirty();
+                      }}
+                      onGenerate={handleGenerate}
+                      onRatingChange={(value) => {
+                        setRating(value);
+                        markInputDirty();
+                      }}
+                      onSourceChange={handleSourceChange}
+                      onUsernameChange={(value) => {
+                        setUsername(value);
+                        markInputDirty();
+                      }}
+                      hasPreviewSuggestions={hasPreviewSuggestions}
+                      rating={rating}
+                      source={source}
+                      username={username}
+                    />
+                  ) : (
+                    <InputSummary
                       category={categoryLabel}
                       complaintText={complaintText}
                       source={sourceLabel}
                       username={username}
                     />
-                  ) : null
-                }
-                action={
-                  !inputExpanded && complaintText.trim().length > 0 ? (
-                    <button
-                      className={secondaryButtonClass}
-                      onClick={() => setInputExpanded(true)}
-                      type="button"
-                    >
-                      <RefreshCcw aria-hidden="true" size={13} />
-                      Ubah
-                    </button>
-                  ) : null
-                }
-              >
-                {inputExpanded || currentStep === 1 ? (
-                  <ComplaintInputForm
-                    canGenerate={canGenerate}
-                    category={category}
-                    complaintText={complaintText}
-                    externalUrl={externalUrl}
-                    fieldErrors={fieldErrors}
-                    inputDirty={inputDirty}
-                    isGenerating={isGenerating}
-                    isReviewSource={isReviewSource}
-                    onCancel={() => {
-                      setInputExpanded(false);
-                      setInputDirty(false);
-                    }}
-                    onCategoryChange={handleCategoryChange}
-                    onComplaintTextChange={(value) => {
-                      setComplaintText(value);
-                      markInputDirty();
-                    }}
-                    onExternalUrlChange={(value) => {
-                      setExternalUrl(value);
-                      markInputDirty();
-                    }}
-                    onGenerate={handleGenerate}
-                    onRatingChange={(value) => {
-                      setRating(value);
-                      markInputDirty();
-                    }}
-                    onSourceChange={handleSourceChange}
-                    onUsernameChange={(value) => {
-                      setUsername(value);
-                      markInputDirty();
-                    }}
-                    hasPreviewSuggestions={hasPreviewSuggestions}
-                    rating={rating}
-                    source={source}
-                    username={username}
-                  />
-                ) : (
-                  <InputSummary
-                    category={categoryLabel}
-                    complaintText={complaintText}
+                  )}
+                </StepCard>
+
+                <StepCard
+                  isActive={currentStep === 2 && !flowLocked}
+                  isComplete={currentStep > 2 && !flowLocked}
+                  isLocked={flowLocked || currentStep < 2}
+                  meta={
+                    isGenerating
+                      ? "Generate suggestion"
+                      : currentStep > 2
+                        ? "Suggestion siap"
+                        : "Buat dari input keluhan"
+                  }
+                  number={2}
+                  title="Build Response"
+                  action={
+                    currentStep >= 2 && !flowLocked ? (
+                      <ContextBadge>
+                        {isGenerating
+                          ? "Generating"
+                          : suggestionSource === "fallback"
+                            ? "Fallback suggestion"
+                            : suggestionSource === "ai"
+                              ? "AI suggestion"
+                              : "Preview"}
+                      </ContextBadge>
+                    ) : null
+                  }
+                >
+                  {isGenerating ? (
+                    <BuildResponseSkeleton />
+                  ) : previewError ? (
+                    <PreviewErrorState
+                      message={previewError}
+                      onRetry={handleGenerate}
+                    />
+                  ) : builderOptions ? (
+                    <ResponseBuilder
+                      builderMode={builderMode}
+                      builderOptions={builderOptions}
+                      flowLocked={flowLocked}
+                      fullHeatOptions={fullHeatOptions}
+                      isFinalResponseManuallyEdited={
+                        isFinalResponseManuallyEdited
+                      }
+                      manualPreservedNotice={manualPreservedNotice}
+                      onApplySelectedToFinalResponse={
+                        handleUpdateFinalResponseFromSelected
+                      }
+                      onContinue={() => setCurrentStep(3)}
+                      onOpenReferenceFile={handleOpenReferenceFile}
+                      onRegenerate={handleGenerate}
+                      onSelectBuilderMode={setBuilderMode}
+                      onSelectFullHeat={handleSelectFullHeat}
+                      onSelectSentence={handleSelectSentence}
+                      openingReferenceId={openingReferenceId}
+                      previewContext={previewContext}
+                      referenceOpenError={referenceOpenError}
+                      selectedFullHeatId={selectedFullHeatId}
+                      selectedMap={selectedMap}
+                      suggestionSource={suggestionSource}
+                    />
+                  ) : (
+                    <PreviewEmptyState />
+                  )}
+                </StepCard>
+
+                <StepCard
+                  isActive={currentStep === 3}
+                  isComplete={currentStep > 3 && !flowLocked}
+                  isLocked={currentStep < 3 || flowLocked}
+                  meta={
+                    currentStep > 3
+                      ? "Balasan ditinjau"
+                      : "Tinjau sebelum salin"
+                  }
+                  number={3}
+                  title="Review"
+                >
+                  <ReviewStep
+                    copiedLabel={copiedLabel}
+                    finalResponseError={fieldErrors.finalResponse}
+                    finalResponse={finalResponse}
+                    managerApprovalRequired={managerApprovalRequired}
+                    onBack={() => setCurrentStep(2)}
+                    onChangeFinalResponse={handleFinalResponseChange}
+                    onContinue={() => setCurrentStep(4)}
+                    onCopy={handleCopyReview}
                     source={sourceLabel}
+                  />
+                </StepCard>
+
+                <StepCard
+                  isActive={currentStep === 4}
+                  isLocked={currentStep < 4 || flowLocked}
+                  isComplete={completionState !== null}
+                  meta={
+                    completionState
+                      ? "Hasil dicatat"
+                      : "Simpan, selesaikan, atau request action"
+                  }
+                  number={4}
+                  title="Outcome"
+                >
+                  <OutcomeStep
+                    createdResult={createdResult}
+                    completionState={completionState}
+                    finalResponse={finalResponse}
+                    isManager={isManager}
+                    isSubmitting={isSubmitting}
+                    managerApprovalRequired={managerApprovalRequired}
+                    onBack={() => setCurrentStep(3)}
+                    onOutcome={handleOutcome}
+                    onReset={handleReset}
+                    options={outcomeOptions}
+                    permissionError={fieldErrors.permission}
+                    selectedOutcome={selectedOutcome}
                     username={username}
                   />
-                )}
-              </StepCard>
-
-              <StepCard
-                isActive={currentStep === 2 && !flowLocked}
-                isComplete={currentStep > 2 && !flowLocked}
-                isLocked={flowLocked || currentStep < 2}
-                meta={
-                  isGenerating
-                    ? "Generate suggestion"
-                    : currentStep > 2
-                      ? "Suggestion siap"
-                      : "Buat dari input keluhan"
-                }
-                number={2}
-                title="Build Response"
-                action={
-                  currentStep >= 2 && !flowLocked ? (
-                    <ContextBadge>
-                      {isGenerating
-                        ? "Generating"
-                        : suggestionSource === "fallback"
-                          ? "Fallback suggestion"
-                          : suggestionSource === "ai"
-                            ? "AI suggestion"
-                            : "Preview"}
-                    </ContextBadge>
-                  ) : null
-                }
-              >
-                {isGenerating ? (
-                  <BuildResponseSkeleton />
-                ) : previewError ? (
-                  <PreviewErrorState
-                    message={previewError}
-                    onRetry={handleGenerate}
-                  />
-                ) : builderOptions ? (
-                  <ResponseBuilder
-                    builderOptions={builderOptions}
-                    flowLocked={flowLocked}
-                    isFinalResponseManuallyEdited={
-                      isFinalResponseManuallyEdited
-                    }
-                    manualPreservedNotice={manualPreservedNotice}
-                    onApplySelectedToFinalResponse={
-                      handleUpdateFinalResponseFromSelected
-                    }
-                    onContinue={() => setCurrentStep(3)}
-                    onOpenReferenceFile={handleOpenReferenceFile}
-                    onRegenerate={handleGenerate}
-                    onSelectSentence={handleSelectSentence}
-                    openingReferenceId={openingReferenceId}
-                    previewContext={previewContext}
-                    referenceOpenError={referenceOpenError}
-                    selectedMap={selectedMap}
-                    suggestionSource={suggestionSource}
-                  />
-                ) : (
-                  <PreviewEmptyState />
-                )}
-              </StepCard>
-
-              <StepCard
-                isActive={currentStep === 3}
-                isComplete={currentStep > 3 && !flowLocked}
-                isLocked={currentStep < 3 || flowLocked}
-                meta={
-                  currentStep > 3 ? "Balasan ditinjau" : "Tinjau sebelum salin"
-                }
-                number={3}
-                title="Review"
-              >
-                <ReviewStep
-                  copiedLabel={copiedLabel}
-                  finalResponseError={fieldErrors.finalResponse}
-                  finalResponse={finalResponse}
-                  managerApprovalRequired={managerApprovalRequired}
-                  onBack={() => setCurrentStep(2)}
-                  onChangeFinalResponse={handleFinalResponseChange}
-                  onContinue={() => setCurrentStep(4)}
-                  onCopy={handleCopyReview}
-                  source={sourceLabel}
-                />
-              </StepCard>
-
-              <StepCard
-                isActive={currentStep === 4}
-                isLocked={currentStep < 4 || flowLocked}
-                isComplete={completionState !== null}
-                meta={
-                  completionState
-                    ? "Hasil dicatat"
-                    : "Simpan, selesaikan, atau request action"
-                }
-                number={4}
-                title="Outcome"
-              >
-                <OutcomeStep
-                  createdResult={createdResult}
-                  completionState={completionState}
-                  finalResponse={finalResponse}
-                  isManager={isManager}
-                  isSubmitting={isSubmitting}
-                  managerApprovalRequired={managerApprovalRequired}
-                  onBack={() => setCurrentStep(3)}
-                  onOutcome={handleOutcome}
-                  onReset={handleReset}
-                  options={outcomeOptions}
-                  permissionError={fieldErrors.permission}
-                  selectedOutcome={selectedOutcome}
-                  username={username}
-                />
-              </StepCard>
+                </StepCard>
+              </div>
             </div>
           </section>
         </section>
       </div>
     </main>
+  );
+}
+
+function ContextReferencePane({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  if (collapsed) {
+    return (
+      <aside className="relative hidden min-h-[520px] rounded-lg border border-[var(--rail-border)] bg-[var(--background)] xl:block">
+        <button
+          aria-label="Buka panel Context & Reference"
+          className="absolute left-1/2 top-5 inline-flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--signal-blue)] shadow-[var(--shadow-soft)] transition hover:border-[var(--signal-blue)]"
+          onClick={onToggle}
+          type="button"
+        >
+          <ChevronRight aria-hidden="true" size={18} />
+        </button>
+        <div className="flex h-full items-center justify-center px-2">
+          <p className="-rotate-90 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+            Context & Reference
+          </p>
+        </div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="relative rounded-lg border border-[var(--rail-border)] bg-[var(--background)]">
+      <button
+        aria-label="Ciutkan panel Context & Reference"
+        className="absolute -right-4 top-5 z-10 hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] shadow-[var(--shadow-soft)] transition hover:border-[var(--signal-blue)] hover:text-[var(--signal-blue)] xl:inline-flex"
+        onClick={onToggle}
+        type="button"
+      >
+        <PanelLeftClose aria-hidden="true" size={15} />
+      </button>
+
+      <div className="border-b border-[var(--rail-border)] p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--signal-blue)]">
+          Context & Reference
+        </p>
+        <h2 className="mt-1 text-lg font-semibold text-[var(--rail-ink)]">
+          Informasi pendukung untuk agent
+        </h2>
+      </div>
+
+      <div className="space-y-4 p-4">
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+              Kondisi Eksternal
+            </h3>
+            <ContextBadge>Mock static</ContextBadge>
+          </div>
+          <div className="space-y-3">
+            {externalSituationCards.map((item) => (
+              <article
+                className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3"
+                key={item.label}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--rail-ink)]">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                      {item.description}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-[var(--signal-amber)] bg-[var(--signal-amber-soft)] px-2 py-1 text-[10px] font-semibold text-[var(--signal-amber-dark)]">
+                    {item.status}
+                  </span>
+                </div>
+                <p className="mt-3 text-[11px] font-medium text-[var(--text-tertiary)]">
+                  {item.updatedAt}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+              Keluhan Terbaru
+            </h3>
+            <ContextBadge>Preview · 5 terbaru</ContextBadge>
+          </div>
+          <div className="space-y-3">
+            {latestComplaintPreviews.map((complaint) => (
+              <article
+                className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3"
+                key={`${complaint.source}-${complaint.user}-${complaint.time}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <ContextBadge>{complaint.source}</ContextBadge>
+                  <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
+                    {complaint.time}
+                  </span>
+                </div>
+                <p className="mt-3 text-xs font-semibold text-[var(--rail-ink)]">
+                  {complaint.user}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                  {complaint.complaint}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {complaint.tags.map((tag) => (
+                    <span
+                      className="rounded-full border border-[var(--rail-border)] px-2 py-1 text-[10px] font-semibold text-[var(--text-tertiary)]"
+                      key={tag}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    </aside>
   );
 }
 
@@ -991,8 +1247,8 @@ function ComplaintInputForm({
           {isGenerating
             ? "Generating..."
             : hasPreviewSuggestions
-              ? "Regenerate Suggestion"
-              : "Generate Suggestion"}
+              ? "Reuse Complaint"
+              : "Use Complaint"}
         </button>
       </div>
     </div>
@@ -1055,33 +1311,43 @@ function CollapsedComplaintPreview({
 }
 
 function ResponseBuilder({
+  builderMode,
   builderOptions,
   flowLocked,
+  fullHeatOptions,
   isFinalResponseManuallyEdited,
   manualPreservedNotice,
   onApplySelectedToFinalResponse,
   onContinue,
   onOpenReferenceFile,
   onRegenerate,
+  onSelectBuilderMode,
+  onSelectFullHeat,
   onSelectSentence,
   openingReferenceId,
   previewContext,
   referenceOpenError,
+  selectedFullHeatId,
   selectedMap,
   suggestionSource,
 }: {
+  builderMode: BuilderMode;
   builderOptions: BuilderOptions;
   flowLocked: boolean;
+  fullHeatOptions: FullHeatOption[];
   isFinalResponseManuallyEdited: boolean;
   manualPreservedNotice: string;
   onApplySelectedToFinalResponse: () => void;
   onContinue: () => void;
   onOpenReferenceFile: (referenceId: string) => void;
   onRegenerate: () => void;
+  onSelectBuilderMode: (mode: BuilderMode) => void;
+  onSelectFullHeat: (option: FullHeatOption) => void;
   onSelectSentence: (key: BuilderKey, optionText: string) => void;
   openingReferenceId: string | null;
   previewContext: PreviewContext;
   referenceOpenError: string;
+  selectedFullHeatId: string;
   selectedMap: Record<BuilderKey, string>;
   suggestionSource: QuickResponseSuggestionSource | null;
 }) {
@@ -1122,24 +1388,56 @@ function ResponseBuilder({
       />
 
       <section>
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-          Penyusun balasan - pilih satu kalimat per bagian
-        </p>
-        <div className="space-y-4">
-          {builderSections.map((section) => (
-            <SentenceChoiceGroup
-              description={section.description}
-              disabled={flowLocked}
-              key={section.key}
-              label={section.label}
-              onSelect={(optionText) =>
-                onSelectSentence(section.key, optionText)
-              }
-              options={builderOptions[section.key]}
-              selectedText={selectedMap[section.key]}
-            />
-          ))}
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+            Mode penyusun balasan
+          </p>
+          <div className="inline-flex w-fit rounded-lg border border-[var(--rail-border)] bg-[var(--surface-muted)] p-1">
+            {[
+              { label: "H/E/A/T", value: "heat-parts" as const },
+              { label: "Full HEAT", value: "full-heat" as const },
+            ].map((mode) => (
+              <button
+                className={`min-h-8 rounded-md px-3 text-xs font-semibold transition ${
+                  builderMode === mode.value
+                    ? "bg-[var(--surface-panel)] text-[var(--signal-blue)] shadow-[var(--shadow-soft)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--rail-ink)]"
+                }`}
+                disabled={flowLocked}
+                key={mode.value}
+                onClick={() => onSelectBuilderMode(mode.value)}
+                type="button"
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {builderMode === "heat-parts" ? (
+          <div className="space-y-4">
+            {builderSections.map((section) => (
+              <SentenceChoiceGroup
+                description={section.description}
+                disabled={flowLocked}
+                key={section.key}
+                label={section.label}
+                onSelect={(optionText) =>
+                  onSelectSentence(section.key, optionText)
+                }
+                options={builderOptions[section.key]}
+                selectedText={selectedMap[section.key]}
+              />
+            ))}
+          </div>
+        ) : (
+          <FullHeatChoiceGroup
+            disabled={flowLocked}
+            onSelect={onSelectFullHeat}
+            options={fullHeatOptions}
+            selectedId={selectedFullHeatId}
+          />
+        )}
       </section>
 
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
@@ -1883,6 +2181,52 @@ function SentenceChoiceGroup({
   );
 }
 
+function FullHeatChoiceGroup({
+  disabled,
+  onSelect,
+  options,
+  selectedId,
+}: {
+  disabled: boolean;
+  onSelect: (option: FullHeatOption) => void;
+  options: FullHeatOption[];
+  selectedId: string;
+}) {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      {options.map((option) => (
+        <button
+          className={`flex min-h-[190px] flex-col rounded-lg border p-3 text-left transition ${
+            selectedId === option.id
+              ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--rail-ink)]"
+              : "border-[var(--rail-border)] bg-[var(--background)] text-[var(--text-muted)] hover:border-[var(--signal-blue)] hover:text-[var(--rail-ink)]"
+          }`}
+          disabled={disabled}
+          key={option.id}
+          onClick={() => onSelect(option)}
+          type="button"
+        >
+          <span className="text-sm font-semibold text-[var(--rail-ink)]">
+            {option.title}
+          </span>
+          <span className="mt-1 text-xs leading-5 text-[var(--text-tertiary)]">
+            {option.description}
+          </span>
+          <span className="mt-3 line-clamp-5 text-sm leading-6">
+            {option.response}
+          </span>
+          {selectedId === option.id ? (
+            <span className="mt-auto inline-flex w-fit items-center gap-2 pt-3 text-xs font-semibold text-[var(--signal-blue)]">
+              <Check aria-hidden="true" size={13} />
+              Selected response
+            </span>
+          ) : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PreviewBox({
   isClamped = true,
   title,
@@ -2067,6 +2411,60 @@ function toSentenceOptions(key: BuilderKey, values: string[]) {
     id: `${key}-${index + 1}`,
     text,
   }));
+}
+
+function createFullHeatOptions(options: BuilderOptions): FullHeatOption[] {
+  const first = getDefaultSelections(options);
+  const second = pickSelectionsByIndex(options, 1);
+  const third = pickSelectionsByIndex(options, 2);
+  const concise = {
+    apologize: first.apologize,
+    empathize: "",
+    hear: first.hear,
+    takeAction: first.takeAction,
+  };
+
+  return [
+    {
+      description: "Balanced default untuk mayoritas balasan publik.",
+      id: "balanced",
+      response: buildFinalResponse(first),
+      title: "Balanced HEAT",
+    },
+    {
+      description: "Lebih hangat saat pelanggan terlihat kecewa atau lelah.",
+      id: "empathetic",
+      response: buildFinalResponse(second),
+      title: "Empathy First",
+    },
+    {
+      description: "Lebih langsung untuk kasus yang butuh arahan berikutnya.",
+      id: "action-led",
+      response: buildFinalResponse(third),
+      title: "Action Led",
+    },
+    {
+      description: "Versi pendek untuk kanal sosial yang perlu ringkas.",
+      id: "concise",
+      response: buildFinalResponse(concise),
+      title: "Concise Public Reply",
+    },
+  ].filter((option) => option.response.trim().length > 0);
+}
+
+function pickSelectionsByIndex(
+  options: BuilderOptions,
+  index: number,
+): Record<BuilderKey, string> {
+  return {
+    apologize:
+      options.apologize[index]?.text ?? options.apologize[0]?.text ?? "",
+    empathize:
+      options.empathize[index]?.text ?? options.empathize[0]?.text ?? "",
+    hear: options.hear[index]?.text ?? options.hear[0]?.text ?? "",
+    takeAction:
+      options.takeAction[index]?.text ?? options.takeAction[0]?.text ?? "",
+  };
 }
 
 function getDefaultSelections(
