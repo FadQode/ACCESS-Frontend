@@ -3,6 +3,7 @@
 import {
   BarChart3,
   BookOpen,
+  CalendarDays,
   ClipboardCheck,
   Gauge,
   Inbox,
@@ -48,6 +49,11 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
       href: "/agent/quick-response",
       icon: MessageSquareText,
       label: "Quick Response",
+    },
+    {
+      href: "/agent/holiday-report",
+      icon: CalendarDays,
+      label: "Holiday Report",
     },
     { href: "/agent/tickets", icon: Inbox, label: "Escalated" },
     { href: "/agent/complaints", icon: ClipboardCheck, label: "Complaints" },
