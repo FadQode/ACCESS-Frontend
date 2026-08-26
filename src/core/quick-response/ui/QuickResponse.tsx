@@ -31,6 +31,7 @@ import { useCreateQuickResponse } from "@/core/dashboard/hooks/use-create-quick-
 import { useEscalateTicket } from "@/core/dashboard/hooks/use-escalate-ticket";
 import { useQuickResponsePreview } from "@/core/dashboard/hooks/use-quick-response-preview";
 import { createQuickResponseSchema } from "@/core/dashboard/model/schemas/quick-response.schema";
+import type { Complaint } from "@/core/dashboard/model/types/complaint.types";
 import type {
   CreateQuickResponseResponse,
   QuickResponseCategory,
@@ -40,10 +41,15 @@ import type {
   RelevantReference,
   SimilarResolvedCase,
 } from "@/core/dashboard/model/types/quick-response.types";
+import { formatRelativeTimeId } from "@/core/dashboard/model/utils/date.utils";
 import {
   mapQuickResponseToCreateRequest,
   targetToBackendMap,
 } from "@/core/dashboard/quick-response/quick-response.mapper";
+import { useHolidayReport } from "@/core/holiday-report/hooks/use-holiday-report";
+import { formatRelativeDay } from "@/core/holiday-report/model/holiday-monitoring";
+import type { HolidayReportModel } from "@/core/holiday-report/model/holiday-report.types";
+import { useLatestComplaints } from "@/core/quick-response/hooks/use-latest-complaints";
 import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
 import {
   closeReferenceWindow,
@@ -164,55 +170,6 @@ const externalSituationCards = [
     description:
       "Beberapa area tujuan mengalami peningkatan genangan. Validasi estimasi perjalanan sebelum memberi kepastian.",
     updatedAt: "Update operasional pagi ini",
-  },
-  {
-    label: "Libur Panjang",
-    status: "Aktif",
-    description:
-      "Periode libur panjang memicu volume pelanggan lebih tinggi dan potensi antrean layanan.",
-    updatedAt: "Pantauan volume layanan",
-  },
-];
-
-const latestComplaintPreviews = [
-  {
-    source: "Twitter / X",
-    user: "@ariaputra",
-    time: "12 menit lalu",
-    complaint:
-      "Tiket sudah dibayar tapi status booking belum berubah di aplikasi.",
-    tags: ["Pembayaran", "Booking"],
-  },
-  {
-    source: "Instagram",
-    user: "@nadinetravel",
-    time: "28 menit lalu",
-    complaint:
-      "Aplikasi sulit dibuka saat mau cek jadwal keberangkatan sore ini.",
-    tags: ["App Error", "Jadwal"],
-  },
-  {
-    source: "Google Play",
-    user: "Raka",
-    time: "41 menit lalu",
-    complaint:
-      "OTP login tidak masuk, padahal perlu akses tiket untuk check-in.",
-    tags: ["Login", "OTP"],
-  },
-  {
-    source: "Facebook",
-    user: "Maya S.",
-    time: "1 jam lalu",
-    complaint:
-      "Refund pembatalan masih belum ada kabar setelah menghubungi CS.",
-    tags: ["Refund", "CS"],
-  },
-  {
-    source: "App Store",
-    user: "Dimas",
-    time: "2 jam lalu",
-    complaint: "Update aplikasi membuat riwayat pesanan lama tidak tampil.",
-    tags: ["Update", "Riwayat"],
   },
 ];
 
@@ -963,6 +920,9 @@ function ContextReferencePane({
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  const latest = useLatestComplaints();
+  const holiday = useHolidayReport();
+
   if (collapsed) {
     return (
       <aside className="relative hidden min-h-[520px] rounded-lg border border-[var(--rail-border)] bg-[var(--background)] xl:block">
@@ -1004,6 +964,14 @@ function ContextReferencePane({
       </div>
 
       <div className="space-y-4 p-4">
+        <StatusSaatIniSection
+          isError={holiday.isError}
+          isLoading={holiday.isLoading}
+          model={holiday.data}
+        />
+
+        <LatestComplaintsSection latest={latest} />
+
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
@@ -1037,48 +1005,202 @@ function ContextReferencePane({
             ))}
           </div>
         </section>
-
-        <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-              Keluhan Terbaru
-            </h3>
-            <ContextBadge>Preview · 5 terbaru</ContextBadge>
-          </div>
-          <div className="space-y-3">
-            {latestComplaintPreviews.map((complaint) => (
-              <article
-                className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3"
-                key={`${complaint.source}-${complaint.user}-${complaint.time}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <ContextBadge>{complaint.source}</ContextBadge>
-                  <span className="text-[11px] font-medium text-[var(--text-tertiary)]">
-                    {complaint.time}
-                  </span>
-                </div>
-                <p className="mt-3 text-xs font-semibold text-[var(--rail-ink)]">
-                  {complaint.user}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                  {complaint.complaint}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {complaint.tags.map((tag) => (
-                    <span
-                      className="rounded-full border border-[var(--rail-border)] px-2 py-1 text-[10px] font-semibold text-[var(--text-tertiary)]"
-                      key={tag}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
       </div>
     </aside>
+  );
+}
+
+const sourceLabels: Record<string, string> = {
+  app_store: "App Store",
+  facebook: "Facebook",
+  google_play: "Google Play",
+  instagram: "Instagram",
+  other: "Lainnya",
+  twitter: "Twitter / X",
+  web_form: "Form Web",
+};
+
+const shortRangeFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+});
+
+type QuickResponseStatus = {
+  color: string;
+  detail: string;
+  label: string;
+};
+
+function getQuickResponseStatus(
+  model: HolidayReportModel,
+): QuickResponseStatus {
+  if (model.status.kind === "active") {
+    const relativeDay = model.status.relativeDay ?? 0;
+    const subject =
+      model.status.activeHoliday?.name ??
+      model.nextHoliday?.name ??
+      "periode libur";
+
+    return relativeDay === 0
+      ? {
+          color: "bg-[var(--signal-amber)]",
+          detail: `${subject} · Hari H`,
+          label: "Hari Libur",
+        }
+      : {
+          color: "bg-[var(--signal-amber)]",
+          detail: `${subject} · ${formatRelativeDay(relativeDay)}`,
+          label: "Monitoring",
+        };
+  }
+
+  return {
+    color: "bg-[var(--signal-green)]",
+    detail: "Tidak berada dalam periode monitoring libur panjang.",
+    label: "Normal",
+  };
+}
+
+function StatusSaatIniSection({
+  isError,
+  isLoading,
+  model,
+}: {
+  isError: boolean;
+  isLoading: boolean;
+  model?: HolidayReportModel;
+}) {
+  const status = model ? getQuickResponseStatus(model) : undefined;
+
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+          Status Saat Ini
+        </h3>
+        <ContextBadge>{isLoading ? "Memuat…" : "Live"}</ContextBadge>
+      </div>
+
+      {isError ? (
+        <p className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--surface-panel)] p-3 text-xs leading-5 text-[var(--text-muted)]">
+          Status operasional tidak dapat dimuat.
+        </p>
+      ) : !model || !status ? (
+        <div className="skeleton-sheen h-24 rounded-lg" />
+      ) : (
+        <>
+          <article className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3">
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${status.color}`}
+              />
+              <p className="text-sm font-semibold text-[var(--rail-ink)]">
+                {status.label}
+              </p>
+            </div>
+            <p className="mt-1 pl-[18px] text-xs leading-5 text-[var(--text-muted)]">
+              {status.detail}
+            </p>
+          </article>
+
+          {model.nextHoliday && model.nextPeriod ? (
+            <article className="mt-3 rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                Periode berikutnya
+              </p>
+              <p className="mt-1 text-sm font-semibold text-[var(--rail-ink)]">
+                {model.nextHoliday.name}
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                {shortRangeFormatter.format(model.nextPeriod.start)} —{" "}
+                {shortRangeFormatter.format(model.nextPeriod.end)}
+              </p>
+            </article>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+function LatestComplaintsSection({
+  latest,
+}: {
+  latest: ReturnType<typeof useLatestComplaints>;
+}) {
+  const { complaints, isEmpty, isError, isLoading, refetch } = latest;
+
+  return (
+    <section>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
+          Keluhan Terbaru
+        </h3>
+        <ContextBadge>
+          {isLoading || !complaints
+            ? "Memuat…"
+            : `${complaints.length} terbaru`}
+        </ContextBadge>
+      </div>
+
+      {isError ? (
+        <div className="rounded-lg border border-dashed border-[var(--signal-red-soft)] bg-[var(--surface-panel)] p-4 text-center">
+          <p className="text-xs leading-5 text-[var(--text-muted)]">
+            Tidak dapat memuat keluhan terbaru.
+          </p>
+          <button
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-[var(--rail-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--signal-blue)] transition hover:border-[var(--signal-blue)]"
+            onClick={() => void refetch()}
+            type="button"
+          >
+            <RefreshCcw aria-hidden="true" size={12} />
+            Coba lagi
+          </button>
+        </div>
+      ) : isLoading || !complaints ? (
+        <div className="space-y-3">
+          <div className="skeleton-sheen h-24 rounded-lg" />
+          <div className="skeleton-sheen h-24 rounded-lg" />
+          <div className="skeleton-sheen h-24 rounded-lg" />
+        </div>
+      ) : isEmpty ? (
+        <p className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--surface-panel)] p-3 text-xs leading-5 text-[var(--text-muted)]">
+          Belum ada keluhan terbaru.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {complaints.map((complaint) => (
+            <LatestComplaintCard complaint={complaint} key={complaint.id} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LatestComplaintCard({ complaint }: { complaint: Complaint }) {
+  return (
+    <article className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="truncate text-xs font-semibold text-[var(--rail-ink)]">
+          {complaint.sourceHandle ?? complaint.referenceNo}
+        </span>
+        <ContextBadge>
+          {sourceLabels[complaint.source] ?? complaint.source}
+        </ContextBadge>
+      </div>
+      {complaint.sourceHandle ? (
+        <p className="mt-1 text-[11px] font-medium text-[var(--text-tertiary)]">
+          {complaint.referenceNo}
+        </p>
+      ) : null}
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">
+        “{complaint.complaintText}”
+      </p>
+      <p className="mt-3 text-[11px] font-medium text-[var(--text-tertiary)]">
+        {formatRelativeTimeId(complaint.createdAt ?? complaint.submittedAt)}
+      </p>
+    </article>
   );
 }
 

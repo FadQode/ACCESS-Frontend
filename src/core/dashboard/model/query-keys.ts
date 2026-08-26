@@ -6,6 +6,7 @@ export const queryKeys = {
   complaints: {
     all: ["complaints"] as const,
     detail: (id: string) => ["complaints", "detail", id] as const,
+    latest: ["complaints", "latest"] as const,
     list: (filters: unknown) => ["complaints", "list", filters] as const,
   },
   actionRequests: {
@@ -26,5 +27,11 @@ export const queryKeys = {
     fileUrl: (id: string) => ["references", "file-url", id] as const,
     list: (filters: unknown) => ["references", "list", filters] as const,
     tags: ["references", "tags"] as const,
+  },
+  holidays: {
+    all: ["holidays"] as const,
+    calendar: (start: string, end: string) =>
+      ["holidays", "calendar", start, end] as const,
+    overview: ["holidays", "overview"] as const,
   },
 };

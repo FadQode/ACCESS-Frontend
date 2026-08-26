@@ -2,10 +2,10 @@
 
 import {
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
   CalendarDays,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Info,
   RotateCcw,
@@ -14,16 +14,16 @@ import { type ReactNode, useState } from "react";
 import { DashboardNavbar } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
-import { useHolidayReport } from "../hooks/use-holiday-report";
 import {
-  formatRelativeDay,
-  getMonitoringPeriod,
-  getRelativeDay,
-  getRuleByType,
-  parseDate,
-} from "../model/holiday-monitoring";
+  type HolidayDaysByDate,
+  useHolidayCalendar,
+} from "../hooks/use-holiday-calendar";
+import { useHolidayReport } from "../hooks/use-holiday-report";
+import { toDateString } from "../mapper/holiday-report.mapper";
+import { formatRelativeDay, parseDate } from "../model/holiday-monitoring";
 import type {
   HolidayReportModel,
+  HolidayStatus,
   LongHoliday,
   MonitoringPeriod,
   MonitoringRule,
@@ -41,21 +41,21 @@ const weekdayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 export function HolidayReportPage() {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
-  const { data, isEmpty, isError, isLoading } = useHolidayReport();
+  const { data, isEmpty, isError, isLoading, refetch } = useHolidayReport();
 
   const sidebarStats = [
     {
       label: "Status",
       value:
-        data.status.kind === "active"
+        data?.status.kind === "active"
           ? "Aktif"
-          : data.status.kind === "empty"
+          : data?.status.kind === "empty"
             ? "Kosong"
             : "Normal",
     },
     {
       label: "Berikutnya",
-      value: data.nextHoliday?.name ?? "-",
+      value: data?.nextHoliday?.name ?? "-",
     },
   ];
 
@@ -72,10 +72,12 @@ export function HolidayReportPage() {
         <section className="min-w-0 flex-1 rounded-[22px] bg-[var(--surface-muted)] p-3 sm:p-5">
           <DashboardNavbar
             controls={
-              <span className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)]">
-                <Clock3 aria-hidden="true" size={15} />
-                Updated {formatDateTime(data.updatedAt)}
-              </span>
+              data ? (
+                <span className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--rail-border)] bg-[var(--surface-panel)] px-3 text-xs font-semibold text-[var(--text-muted)]">
+                  <Clock3 aria-hidden="true" size={15} />
+                  Updated {formatDateTime(data.updatedAt)}
+                </span>
+              ) : null
             }
             dashboardRole="agent"
             isSidebarOpen={sidebarOpen}
@@ -84,14 +86,14 @@ export function HolidayReportPage() {
           />
 
           {isError ? (
-            <HolidayErrorState />
+            <HolidayErrorState onRetry={() => void refetch()} />
           ) : isLoading ? (
             <HolidayLoadingState />
           ) : isEmpty ? (
             <HolidayEmptyState />
-          ) : (
+          ) : data ? (
             <HolidayReportContent model={data} />
-          )}
+          ) : null}
         </section>
       </div>
     </main>
@@ -99,11 +101,8 @@ export function HolidayReportPage() {
 }
 
 function HolidayReportContent({ model }: { model: HolidayReportModel }) {
-  const calendarHoliday = model.nextHoliday;
-  const calendarPeriod = model.nextPeriod;
-  const [calendarMonth, setCalendarMonth] = useState(
-    calendarPeriod?.holidayDate ?? model.currentDate,
-  );
+  const [calendarMonth, setCalendarMonth] = useState(model.currentDate);
+  const calendar = useHolidayCalendar(calendarMonth);
 
   return (
     <div className="grid gap-4">
@@ -112,19 +111,22 @@ function HolidayReportContent({ model }: { model: HolidayReportModel }) {
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.75fr)]">
         <MonitoringRules
-          currentDate={model.currentDate}
           holidays={model.holidays}
           rules={model.rules}
+          status={model.status}
         />
-        <NextHolidaySummary holiday={model.nextHoliday} period={model.nextPeriod} />
+        <NextHolidaySummary
+          holiday={model.nextHoliday}
+          period={model.nextPeriod}
+        />
       </section>
 
       <MonitoringCalendar
         currentDate={model.currentDate}
-        holiday={calendarHoliday}
+        daysByDate={calendar.data}
+        isFetching={calendar.isFetching}
         month={calendarMonth}
         onMonthChange={setCalendarMonth}
-        period={calendarPeriod}
       />
     </div>
   );
@@ -154,7 +156,9 @@ function PageHero({ model }: { model: HolidayReportModel }) {
           <MetricPill
             label="Tanggal hari H"
             value={
-              model.nextPeriod ? dateFormatter.format(model.nextPeriod.holidayDate) : "-"
+              model.nextPeriod?.holidayDate
+                ? dateFormatter.format(model.nextPeriod.holidayDate)
+                : "-"
             }
           />
         </div>
@@ -165,13 +169,10 @@ function PageHero({ model }: { model: HolidayReportModel }) {
 
 function CurrentHolidayStatus({ model }: { model: HolidayReportModel }) {
   const isActive = model.status.kind === "active";
-  const period = model.status.activeHoliday
-    ? getMonitoringPeriod(
-        model.status.activeHoliday,
-        getRuleByType(model.rules, model.status.activeHoliday.ruleType),
-      )
-    : model.nextPeriod;
-  const progress = period ? getMonitoringProgress(model.currentDate, period) : 0;
+  const period = model.currentPeriod ?? model.nextPeriod;
+  const progress = period
+    ? getMonitoringProgress(model.currentDate, period)
+    : 0;
 
   return (
     <section className="rounded-xl border border-[var(--rail-border)] bg-[var(--surface-panel)] p-4 shadow-[var(--shadow-soft)] sm:p-5">
@@ -188,7 +189,9 @@ function CurrentHolidayStatus({ model }: { model: HolidayReportModel }) {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
             {isActive && model.status.activeHoliday
               ? `${model.status.activeHoliday.name} sedang berada pada ${formatRelativeDay(model.status.relativeDay ?? 0)}.`
-              : "Saat ini tidak ada periode monitoring khusus yang sedang aktif."}
+              : isActive
+                ? "Sedang berada dalam window monitoring libur panjang."
+                : "Saat ini tidak ada periode monitoring khusus yang sedang aktif."}
           </p>
         </div>
         <span
@@ -216,17 +219,19 @@ function CurrentHolidayStatus({ model }: { model: HolidayReportModel }) {
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <DateFact
           label={isActive ? "Periode aktif" : "Periode berikutnya"}
-          value={model.status.activeHoliday?.name ?? model.nextHoliday?.name ?? "-"}
+          value={
+            model.status.activeHoliday?.name ?? model.nextHoliday?.name ?? "-"
+          }
         />
         <DateFact
+          helper={period ? `H-${period.before}` : undefined}
           label="Mulai monitoring"
           value={period ? dateFormatter.format(period.start) : "-"}
-          helper={model.nextHoliday ? `H-${getRuleByType(model.rules, model.nextHoliday.ruleType).before}` : undefined}
         />
         <DateFact
+          helper={period ? `H+${period.after}` : undefined}
           label="Berakhir"
           value={period ? dateFormatter.format(period.end) : "-"}
-          helper={model.nextHoliday ? `H+${getRuleByType(model.rules, model.nextHoliday.ruleType).after}` : undefined}
         />
       </div>
     </section>
@@ -234,13 +239,13 @@ function CurrentHolidayStatus({ model }: { model: HolidayReportModel }) {
 }
 
 function MonitoringRules({
-  currentDate,
   holidays,
   rules,
+  status,
 }: {
-  currentDate: Date;
   holidays: LongHoliday[];
   rules: MonitoringRule[];
+  status: HolidayStatus;
 }) {
   return (
     <Panel
@@ -249,42 +254,31 @@ function MonitoringRules({
       title="Periode Libur & Aturan Monitoring"
     >
       <div className="grid gap-3 md:grid-cols-2">
-        {rules.map((rule) => {
-          const sampleHoliday =
-            holidays.find((holiday) => holiday.ruleType === rule.type) ??
-            holidays[0];
-          const period = sampleHoliday
-            ? getMonitoringPeriod(sampleHoliday, rule)
-            : undefined;
-          const isActive = period
-            ? getMonitoringProgress(currentDate, period) > 0 &&
-              currentDate.getTime() <= period.end.getTime()
-            : false;
-
-          return (
-            <HolidayRuleCard
-              holiday={sampleHoliday}
-              isActive={isActive}
-              key={rule.type}
-              period={period}
-              rule={rule}
-            />
-          );
-        })}
+        {rules.map((rule) => (
+          <HolidayRuleCard
+            isActive={
+              status.kind === "active" &&
+              status.activeHoliday?.category === rule.category
+            }
+            key={rule.category}
+            knownHoliday={holidays.find(
+              (holiday) => holiday.category === rule.category,
+            )}
+            rule={rule}
+          />
+        ))}
       </div>
     </Panel>
   );
 }
 
 function HolidayRuleCard({
-  holiday,
   isActive,
-  period,
+  knownHoliday,
   rule,
 }: {
-  holiday?: LongHoliday;
   isActive: boolean;
-  period?: MonitoringPeriod;
+  knownHoliday?: LongHoliday;
   rule: MonitoringRule;
 }) {
   return (
@@ -304,8 +298,8 @@ function HolidayRuleCard({
         H-{rule.before} sampai H+{rule.after}
       </p>
       <p className="mt-1 text-xs text-[var(--text-muted)]">
-        {period
-          ? `${dateFormatter.format(period.start)} - ${dateFormatter.format(period.end)}`
+        {knownHoliday
+          ? `${knownHoliday.name} · ${dateFormatter.format(parseDate(knownHoliday.date))}`
           : "Belum ada contoh periode."}
       </p>
       <div className="mt-4 flex items-center gap-2">
@@ -316,9 +310,7 @@ function HolidayRuleCard({
         <TimelineDot />
       </div>
       <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-[var(--rail-border)] pt-3 text-[11px] text-[var(--text-muted)]">
-        <span>
-          Hari H: {holiday ? dateFormatter.format(parseDate(holiday.date)) : "-"}
-        </span>
+        <span>Sumber aturan: ACCESS Backend</span>
         <span>{isActive ? "Aktif" : "Configured"}</span>
       </div>
     </article>
@@ -345,23 +337,30 @@ function NextHolidaySummary({
               {holiday.name}
             </h3>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Hari H · {dateFormatter.format(period.holidayDate)}
+              Hari H ·{" "}
+              {period.holidayDate
+                ? dateFormatter.format(period.holidayDate)
+                : dateFormatter.format(parseDate(holiday.date))}
             </p>
           </div>
 
           <div className="space-y-3">
             <SummaryRow
-              helper={`H${getRelativeDay(period.start, period.holidayDate)}`}
+              helper={`H-${period.before}`}
               label="Mulai monitoring"
               value={dateFormatter.format(period.start)}
             />
             <SummaryRow
               helper="Hari H"
               label="Hari H"
-              value={dateFormatter.format(period.holidayDate)}
+              value={
+                period.holidayDate
+                  ? dateFormatter.format(period.holidayDate)
+                  : dateFormatter.format(parseDate(holiday.date))
+              }
             />
             <SummaryRow
-              helper={`H+${getRelativeDay(period.end, period.holidayDate)}`}
+              helper={`H+${period.after}`}
               label="Akhir monitoring"
               value={dateFormatter.format(period.end)}
             />
@@ -382,11 +381,6 @@ function NextHolidaySummary({
               </span>
             </div>
           </div>
-
-          <p className="rounded-lg bg-[var(--signal-blue-soft)] p-3 text-xs leading-5 text-[var(--signal-blue)]">
-            Source: {holiday.sourceLabel}. Data ini masih mock dan siap diganti
-            melalui data layer saat backend tersedia.
-          </p>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-6 text-sm leading-6 text-[var(--text-muted)]">
@@ -399,19 +393,18 @@ function NextHolidaySummary({
 
 function MonitoringCalendar({
   currentDate,
-  holiday,
+  daysByDate,
+  isFetching,
   month,
   onMonthChange,
-  period,
 }: {
   currentDate: Date;
-  holiday?: LongHoliday;
+  daysByDate?: HolidayDaysByDate;
+  isFetching: boolean;
   month: Date;
   onMonthChange: (month: Date) => void;
-  period?: MonitoringPeriod;
 }) {
-  const monthEntries = buildCalendarEntries({ currentDate, month, period });
-  const holidayLabel = holiday?.name;
+  const monthEntries = buildCalendarEntries({ currentDate, daysByDate, month });
 
   return (
     <Panel
@@ -447,7 +440,11 @@ function MonitoringCalendar({
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div
+          className={`grid grid-cols-7 gap-2 transition-opacity ${
+            isFetching ? "opacity-60" : "opacity-100"
+          }`}
+        >
           {weekdayLabels.map((label) => (
             <div
               className="pb-1 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]"
@@ -458,7 +455,7 @@ function MonitoringCalendar({
           ))}
 
           {monthEntries.map((entry) => (
-            <CalendarDateCell entry={entry} holidayLabel={holidayLabel} key={entry.key} />
+            <CalendarDateCell entry={entry} key={entry.key} />
           ))}
         </div>
       </div>
@@ -477,24 +474,11 @@ function MonitoringCalendar({
           label="Today"
         />
       </div>
-
-      {holiday ? (
-        <p className="mt-3 text-xs leading-5 text-[var(--text-tertiary)]">
-          Kalender mengikuti {holiday.name}. Tanggal bersifat informatif dan
-          tidak dapat dipilih.
-        </p>
-      ) : null}
     </Panel>
   );
 }
 
-function CalendarDateCell({
-  entry,
-  holidayLabel,
-}: {
-  entry: CalendarEntry;
-  holidayLabel?: string;
-}) {
+function CalendarDateCell({ entry }: { entry: CalendarEntry }) {
   return (
     <article
       className={`min-h-[110px] rounded-lg border p-2.5 transition sm:min-h-[124px] ${
@@ -531,7 +515,7 @@ function CalendarDateCell({
               Hari H
             </span>
             <p className="text-xs font-semibold leading-5">
-              {holidayLabel ?? entry.holidayName}
+              {entry.holidayName}
             </p>
           </>
         ) : entry.condition === "monitoring" ? (
@@ -603,7 +587,7 @@ function HolidayEmptyState() {
   );
 }
 
-function HolidayErrorState() {
+function HolidayErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <section className="rounded-xl border border-[var(--signal-red-soft)] bg-[var(--surface-panel)] p-8 text-center shadow-[var(--shadow-soft)]">
       <AlertCircle
@@ -619,7 +603,7 @@ function HolidayErrorState() {
       </p>
       <button
         className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--rail-ink)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--signal-blue)]"
-        onClick={() => window.location.reload()}
+        onClick={onRetry}
         type="button"
       >
         <RotateCcw aria-hidden="true" size={15} />
@@ -772,12 +756,12 @@ type CalendarEntry = {
 
 function buildCalendarEntries({
   currentDate,
+  daysByDate,
   month,
-  period,
 }: {
   currentDate: Date;
+  daysByDate?: HolidayDaysByDate;
   month: Date;
-  period?: MonitoringPeriod;
 }): CalendarEntry[] {
   const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
   const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
@@ -792,25 +776,27 @@ function buildCalendarEntries({
     cursor.getTime() <= end.getTime();
     cursor = addDays(cursor, 1)
   ) {
-    const relativeDay = period
-      ? getRelativeDay(cursor, period.holidayDate)
-      : undefined;
-    const isHoliday = period ? isSameDate(cursor, period.holidayDate) : false;
-    const isMonitoring = period ? isDateWithinRange(cursor, period) : false;
+    const day = daysByDate?.get(toDateString(cursor));
+    const condition = day?.holiday
+      ? ("holiday" as const)
+      : day?.isMonitoring
+        ? ("monitoring" as const)
+        : ("normal" as const);
+    const relativeDay = day?.relativeDay ?? null;
 
     entries.push({
-      condition: isHoliday ? "holiday" : isMonitoring ? "monitoring" : "normal",
+      condition,
       dayNumber: cursor.getDate(),
-      holidayName: isHoliday ? "Hari libur" : undefined,
+      holidayName: day?.holiday?.name,
       isOutsideMonth: cursor.getMonth() !== month.getMonth(),
       isToday: isSameDate(cursor, currentDate),
-      key: cursor.toISOString(),
+      key: toDateString(cursor),
       relativeLabel:
-        isHoliday || isMonitoring
-          ? relativeDay === 0
+        relativeDay === null
+          ? undefined
+          : relativeDay === 0
             ? "H"
-            : formatRelativeDay(relativeDay ?? 0)
-          : undefined,
+            : formatRelativeDay(relativeDay),
     });
   }
 
@@ -829,13 +815,6 @@ function addMonths(date: Date, months: number) {
   nextDate.setMonth(nextDate.getMonth() + months);
 
   return nextDate;
-}
-
-function isDateWithinRange(date: Date, period: MonitoringPeriod) {
-  return (
-    date.getTime() >= stripTime(period.start).getTime() &&
-    date.getTime() <= stripTime(period.end).getTime()
-  );
 }
 
 function isSameDate(left: Date, right: Date) {
