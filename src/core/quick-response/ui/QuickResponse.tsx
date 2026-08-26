@@ -936,7 +936,7 @@ function ContextReferencePane({
         </button>
         <div className="flex h-full items-center justify-center px-2">
           <p className="-rotate-90 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-            Context & Reference
+            Condition & Complaints
           </p>
         </div>
       </aside>
@@ -956,7 +956,7 @@ function ContextReferencePane({
 
       <div className="border-b border-[var(--rail-border)] p-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--signal-blue)]">
-          Context & Reference
+          Condition & Complaints
         </p>
         <h2 className="mt-1 text-lg font-semibold text-[var(--rail-ink)]">
           Informasi pendukung untuk agent

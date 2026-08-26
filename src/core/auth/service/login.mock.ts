@@ -16,6 +16,8 @@ export const loginBrandContent = {
 export const loginFormContent = {
   title: "Masuk",
   subtitle: "Masukkan kredensial Anda untuk melanjutkan",
+  demoTitle: "Akses demo",
+  demoPasswordLabel: "Kata sandi bersama",
   emailLabel: "Email",
   emailPlaceholder: "nama@perusahaan.com",
   passwordLabel: "Kata Sandi",
@@ -27,14 +29,14 @@ export const loginFormContent = {
 
 export const dummyLoginAccounts: DummyLoginAccount[] = [
   {
-    email: "agent@company.com",
-    password: "agent123",
+    email: "agent3@access.test",
+    password: "password123",
     redirectPath: "/agent",
     role: "agent",
   },
   {
-    email: "manager@company.com",
-    password: "manager123",
+    email: "manager2@access.test",
+    password: "password123",
     redirectPath: "/manager",
     role: "manager",
   },
