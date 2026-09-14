@@ -32,6 +32,12 @@ export const queryKeys = {
     all: ["holidays"] as const,
     calendar: (start: string, end: string) =>
       ["holidays", "calendar", start, end] as const,
+    list: (filters: unknown) => ["holidays", "list", filters] as const,
     overview: ["holidays", "overview"] as const,
+  },
+  socialComplaints: {
+    all: ["social-complaints"] as const,
+    list: (source: string, page: number) =>
+      ["social-complaints", source, page] as const,
   },
 };

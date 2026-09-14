@@ -11,6 +11,7 @@ import {
   LogOut,
   MessageSquareText,
   Route,
+  ShieldCheck,
   Users,
   X,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { usePathname } from "next/navigation";
 import { type ComponentType, useEffect } from "react";
 import { useLogout } from "@/core/auth/hooks/useLogout";
 import type { DashboardRole } from "@/core/components/navbar";
+import { useDashboardRole } from "@/core/components/use-dashboard-role";
 
 export interface DashboardSidebarStat {
   label: string;
@@ -43,6 +45,35 @@ interface NavigationItem {
 }
 
 const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
+  admin: [
+    { href: "/admin", icon: ShieldCheck, label: "Admin Home" },
+    { href: "/manager", icon: LineChart, label: "Overview" },
+    {
+      href: "/manager/action-queue",
+      icon: ClipboardCheck,
+      label: "Action Queue",
+    },
+    {
+      href: "/manager/agents",
+      icon: Users,
+      label: "Agents",
+    },
+    {
+      href: "/manager/holiday-report",
+      icon: CalendarDays,
+      label: "Holiday Report",
+    },
+    { href: "/manager/complaints", icon: ClipboardCheck, label: "Complaints" },
+    { href: "/manager/references", icon: BookOpen, label: "References" },
+    { href: "/agent", icon: Gauge, label: "Agent Dashboard" },
+    {
+      href: "/agent/quick-response",
+      icon: MessageSquareText,
+      label: "Quick Response",
+    },
+    { href: "/agent/tickets", icon: Inbox, label: "Escalated" },
+    { href: "/agent/reports", icon: BarChart3, label: "Reports" },
+  ],
   agent: [
     { href: "/agent", icon: Gauge, label: "Dashboard" },
     {
@@ -67,6 +98,11 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
       icon: ClipboardCheck,
       label: "Action Queue",
     },
+    {
+      href: "/manager/holiday-report",
+      icon: CalendarDays,
+      label: "Holiday Report",
+    },
     { href: "/manager/references", icon: BookOpen, label: "References" },
     { href: "/manager/agents", icon: Users, label: "Agents" },
     { href: "/manager/complaints", icon: ClipboardCheck, label: "Complaints" },
@@ -76,6 +112,7 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
 };
 
 const ROLE_TITLE: Record<DashboardRole, string> = {
+  admin: "Admin console",
   agent: "Agent console",
   manager: "Manager console",
 };
@@ -87,7 +124,21 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const logout = useLogout();
-  const navigationItems = NAVIGATION[dashboardRole];
+  const resolvedRole = useDashboardRole(dashboardRole);
+  const navigationItems = NAVIGATION[resolvedRole];
+
+  // Only the most specific matching link is active, so parent entries such as
+  // "/manager" do not stay highlighted alongside "/manager/holiday-report".
+  const activeHref = navigationItems.reduce<string | null>((best, item) => {
+    const isMatch =
+      pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+    if (!isMatch) {
+      return best;
+    }
+
+    return !best || item.href.length > best.length ? item.href : best;
+  }, null);
 
   useEffect(() => {
     if (!isOpen || !window.matchMedia("(max-width: 1023px)").matches) {
@@ -140,7 +191,7 @@ export function DashboardSidebar({
                 Rail Support
               </p>
               <p className="text-[11px] text-[var(--text-muted)]">
-                {ROLE_TITLE[dashboardRole]}
+                {ROLE_TITLE[resolvedRole]}
               </p>
             </div>
           </div>
@@ -155,14 +206,11 @@ export function DashboardSidebar({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <nav aria-label={`${ROLE_TITLE[dashboardRole]} navigation`}>
+          <nav aria-label={`${ROLE_TITLE[resolvedRole]} navigation`}>
             <ul className="flex flex-col gap-2 pb-0">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== `/${dashboardRole}` &&
-                    pathname.startsWith(item.href));
+                const isActive = activeHref === item.href;
 
                 return (
                   <li className="shrink-0 lg:shrink" key={item.label}>

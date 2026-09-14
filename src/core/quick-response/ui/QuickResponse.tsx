@@ -31,7 +31,6 @@ import { useCreateQuickResponse } from "@/core/dashboard/hooks/use-create-quick-
 import { useEscalateTicket } from "@/core/dashboard/hooks/use-escalate-ticket";
 import { useQuickResponsePreview } from "@/core/dashboard/hooks/use-quick-response-preview";
 import { createQuickResponseSchema } from "@/core/dashboard/model/schemas/quick-response.schema";
-import type { Complaint } from "@/core/dashboard/model/types/complaint.types";
 import type {
   CreateQuickResponseResponse,
   QuickResponseCategory,
@@ -41,7 +40,6 @@ import type {
   RelevantReference,
   SimilarResolvedCase,
 } from "@/core/dashboard/model/types/quick-response.types";
-import { formatRelativeTimeId } from "@/core/dashboard/model/utils/date.utils";
 import {
   mapQuickResponseToCreateRequest,
   targetToBackendMap,
@@ -49,13 +47,16 @@ import {
 import { useHolidayReport } from "@/core/holiday-report/hooks/use-holiday-report";
 import { formatRelativeDay } from "@/core/holiday-report/model/holiday-monitoring";
 import type { HolidayReportModel } from "@/core/holiday-report/model/holiday-report.types";
-import { useLatestComplaints } from "@/core/quick-response/hooks/use-latest-complaints";
 import { useReferenceFileUrl } from "@/core/reference/hooks/use-reference-file-url";
 import {
   closeReferenceWindow,
   navigateReferenceWindow,
   openPendingReferenceWindow,
 } from "@/core/reference/ui/open-reference-window";
+import {
+  SocialComplaintsSection,
+  type UseSocialComplaintPayload,
+} from "@/core/social-complaints/ui/SocialComplaintsSection";
 
 type StepId = 1 | 2 | 3 | 4;
 type ResponseTarget =
@@ -187,6 +188,7 @@ export function QuickResponse() {
   const [rating, setRating] = useState("1");
   const [complaintText, setComplaintText] = useState("");
   const [category, setCategory] = useState("");
+  const [socialComplaintId, setSocialComplaintId] = useState("");
   const [responseTarget, setResponseTarget] =
     useState<ResponseTarget>("public-reply");
   const responseTone = "calm";
@@ -234,8 +236,11 @@ export function QuickResponse() {
   const isReviewSource = source === "google-play" || source === "app-store";
   const isManager = sessionUser?.role === "manager";
   const isGenerating = previewMutation.isPending;
+  const MIN_COMPLAINT_LENGTH = 10;
   const canGenerate =
-    complaintText.trim().length > 0 && !isGenerating && !isManager;
+    complaintText.trim().length >= MIN_COMPLAINT_LENGTH &&
+    !isGenerating &&
+    !isManager;
   const flowLocked = inputDirty;
   const isSubmitting =
     createQuickResponseMutation.isPending || escalateTicketMutation.isPending;
@@ -302,6 +307,36 @@ export function QuickResponse() {
     }
   };
 
+  const handleUseSocialComplaint = ({
+    content,
+    id,
+  }: UseSocialComplaintPayload) => {
+    setComplaintText(content);
+    setSocialComplaintId(id);
+    setCurrentStep(1);
+    setInputExpanded(true);
+    setInputDirty(false);
+    setCompletionState(null);
+    setCreatedResult(null);
+    setFieldErrors((current) => ({ ...current, complaintText: undefined }));
+    setFeedback(null);
+    previewMutation.reset();
+    setBuilderOptions(null);
+    setSuggestionSource(null);
+    setPreviewError("");
+    setPreviewContext(emptyPreviewContext);
+    setSelectedHear("");
+    setSelectedEmpathize("");
+    setSelectedApologize("");
+    setSelectedTakeAction("");
+    setBuilderMode("heat-parts");
+    setSelectedFullHeatId("");
+    setFinalResponse("");
+    setSafeReply("");
+    setIsFinalResponseManuallyEdited(false);
+    setManualPreservedNotice("");
+  };
+
   const handleGenerate = async () => {
     if (!canGenerate) {
       return;
@@ -324,7 +359,6 @@ export function QuickResponse() {
         complaintText,
         ...(category ? { category: category as QuickResponseCategory } : {}),
         responseTarget: targetToBackendMap[responseTarget],
-        responseTone,
       });
       const nextOptions = createBuilderOptions(preview);
       const defaults = getDefaultSelections(nextOptions);
@@ -483,6 +517,7 @@ export function QuickResponse() {
       source,
       sourceHandle: username,
       sourceUrl: externalUrl,
+      socialComplaintId,
       tone: responseTone,
     });
 
@@ -590,6 +625,7 @@ export function QuickResponse() {
     setSafeReply("");
     setIsFinalResponseManuallyEdited(false);
     setManualPreservedNotice("");
+    setSocialComplaintId("");
   };
 
   return (
@@ -684,8 +720,8 @@ export function QuickResponse() {
               <ContextReferencePane
                 collapsed={contextPaneCollapsed}
                 onToggle={() => setContextPaneCollapsed((current) => !current)}
+                onUseComplaint={handleUseSocialComplaint}
               />
-
               <div className="min-w-0 space-y-4">
                 <div className="flex flex-col gap-3 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
@@ -916,11 +952,12 @@ export function QuickResponse() {
 function ContextReferencePane({
   collapsed,
   onToggle,
+  onUseComplaint,
 }: {
   collapsed: boolean;
   onToggle: () => void;
+  onUseComplaint: (payload: UseSocialComplaintPayload) => void;
 }) {
-  const latest = useLatestComplaints();
   const holiday = useHolidayReport();
 
   if (collapsed) {
@@ -970,7 +1007,7 @@ function ContextReferencePane({
           model={holiday.data}
         />
 
-        <LatestComplaintsSection latest={latest} />
+        <SocialComplaintsSection onUseComplaint={onUseComplaint} />
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -1009,16 +1046,6 @@ function ContextReferencePane({
     </aside>
   );
 }
-
-const sourceLabels: Record<string, string> = {
-  app_store: "App Store",
-  facebook: "Facebook",
-  google_play: "Google Play",
-  instagram: "Instagram",
-  other: "Lainnya",
-  twitter: "Twitter / X",
-  web_form: "Form Web",
-};
 
 const shortRangeFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -1120,87 +1147,6 @@ function StatusSaatIniSection({
         </>
       )}
     </section>
-  );
-}
-
-function LatestComplaintsSection({
-  latest,
-}: {
-  latest: ReturnType<typeof useLatestComplaints>;
-}) {
-  const { complaints, isEmpty, isError, isLoading, refetch } = latest;
-
-  return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--rail-ink)]">
-          Keluhan Terbaru
-        </h3>
-        <ContextBadge>
-          {isLoading || !complaints
-            ? "Memuat…"
-            : `${complaints.length} terbaru`}
-        </ContextBadge>
-      </div>
-
-      {isError ? (
-        <div className="rounded-lg border border-dashed border-[var(--signal-red-soft)] bg-[var(--surface-panel)] p-4 text-center">
-          <p className="text-xs leading-5 text-[var(--text-muted)]">
-            Tidak dapat memuat keluhan terbaru.
-          </p>
-          <button
-            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-[var(--rail-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--signal-blue)] transition hover:border-[var(--signal-blue)]"
-            onClick={() => void refetch()}
-            type="button"
-          >
-            <RefreshCcw aria-hidden="true" size={12} />
-            Coba lagi
-          </button>
-        </div>
-      ) : isLoading || !complaints ? (
-        <div className="space-y-3">
-          <div className="skeleton-sheen h-24 rounded-lg" />
-          <div className="skeleton-sheen h-24 rounded-lg" />
-          <div className="skeleton-sheen h-24 rounded-lg" />
-        </div>
-      ) : isEmpty ? (
-        <p className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--surface-panel)] p-3 text-xs leading-5 text-[var(--text-muted)]">
-          Belum ada keluhan terbaru.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {complaints.map((complaint) => (
-            <LatestComplaintCard complaint={complaint} key={complaint.id} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function LatestComplaintCard({ complaint }: { complaint: Complaint }) {
-  return (
-    <article className="rounded-lg border border-[var(--rail-border)] bg-[var(--surface-panel)] p-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="truncate text-xs font-semibold text-[var(--rail-ink)]">
-          {complaint.sourceHandle ?? complaint.referenceNo}
-        </span>
-        <ContextBadge>
-          {sourceLabels[complaint.source] ?? complaint.source}
-        </ContextBadge>
-      </div>
-      {complaint.sourceHandle ? (
-        <p className="mt-1 text-[11px] font-medium text-[var(--text-tertiary)]">
-          {complaint.referenceNo}
-        </p>
-      ) : null}
-      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">
-        “{complaint.complaintText}”
-      </p>
-      <p className="mt-3 text-[11px] font-medium text-[var(--text-tertiary)]">
-        {formatRelativeTimeId(complaint.createdAt ?? complaint.submittedAt)}
-      </p>
-    </article>
   );
 }
 
@@ -2712,7 +2658,7 @@ function getPreviewErrorMessage(error: unknown) {
   }
 
   if (status === 422) {
-    return "Pastikan teks keluhan sudah diisi dan kategori valid.";
+    return "Pastikan teks keluhan minimal 10 karakter dan kategori valid.";
   }
 
   return "Gagal generate suggestion. Periksa koneksi lalu coba lagi.";

@@ -32,6 +32,7 @@ export type QuickResponseCategory =
   | "facility";
 
 export type CreateQuickResponseRequest = {
+  socialComplaintId?: string;
   complaint: {
     complaintText: string;
     source?: QuickResponseSource;

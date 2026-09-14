@@ -59,3 +59,55 @@ export interface HolidayCalendarResponse {
     duration: number;
   }[];
 }
+
+export type HolidayApiSource = "skb_3_menteri" | "manual";
+
+export interface HolidayApiEntity {
+  id: string;
+  name: string;
+  date: string;
+  category: HolidayApiCategory;
+  isJointLeave: boolean;
+  source: HolidayApiSource;
+  sourceReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HolidayListResponse {
+  holidays: HolidayApiEntity[];
+}
+
+export interface HolidayListFilters {
+  year?: number;
+  category?: HolidayApiCategory;
+  source?: HolidayApiSource;
+}
+
+export interface HolidayWriteRequest {
+  name: string;
+  date: string;
+  category: HolidayApiCategory;
+  isJointLeave?: boolean;
+  source?: HolidayApiSource;
+  sourceReference?: string | null;
+}
+
+export type HolidayUpdateRequest = Partial<HolidayWriteRequest>;
+
+export interface HolidayEntityResponse {
+  holiday: HolidayApiEntity;
+}
+
+export interface HolidayDeleteResponse {
+  deleted: boolean;
+}
+
+export interface HolidaySyncResponse {
+  year: number | string;
+  fetched: number | string;
+  created: number | string;
+  updated: number | string;
+  unchanged: number | string;
+  failed: number | string;
+}

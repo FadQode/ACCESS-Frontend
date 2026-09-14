@@ -195,7 +195,6 @@ export async function previewQuickResponse(
     complaintText: input.complaintText.trim(),
     ...(input.category ? { category: input.category } : {}),
     ...(input.responseTarget ? { responseTarget: input.responseTarget } : {}),
-    ...(input.responseTone ? { responseTone: input.responseTone } : {}),
   };
   const response = await apiClient.post<unknown>(
     "/quick-responses/preview",

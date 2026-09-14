@@ -24,9 +24,10 @@ export function proxy(request: NextRequest) {
   const roleValue = request.cookies.get(ROLE_COOKIE_NAME)?.value;
   const role = isUserRole(roleValue) ? roleValue : null;
   const isAuthRoute = pathname === "/login";
+  const isAdminRoute = pathname.startsWith("/admin");
   const isAgentRoute = pathname.startsWith("/agent");
   const isManagerRoute = pathname.startsWith("/manager");
-  const isProtectedRoute = isAgentRoute || isManagerRoute;
+  const isProtectedRoute = isAdminRoute || isAgentRoute || isManagerRoute;
 
   if (isAuthRoute && session && role) {
     return redirectTo(getDefaultRouteForRole(role), request);
@@ -44,11 +45,16 @@ export function proxy(request: NextRequest) {
     return redirectToLoginAndClearSession(request);
   }
 
+  if (isAdminRoute && role !== "admin") {
+    return redirectTo(getDefaultRouteForRole(role), request);
+  }
+
+  // Admin can reach every portal; agent/manager stay isolated from each other.
   if (isManagerRoute && role === "agent") {
     return redirectTo(getDefaultRouteForRole(role), request);
   }
 
-  if (isAgentRoute && (role === "manager" || role === "admin")) {
+  if (isAgentRoute && role === "manager") {
     return redirectTo(getDefaultRouteForRole(role), request);
   }
 
@@ -56,5 +62,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/agent/:path*", "/manager/:path*"],
+  matcher: ["/login", "/admin/:path*", "/agent/:path*", "/manager/:path*"],
 };

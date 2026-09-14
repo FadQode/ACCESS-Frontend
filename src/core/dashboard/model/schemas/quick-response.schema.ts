@@ -51,6 +51,7 @@ const sourceUrlSchema = z
   .optional();
 
 export const createQuickResponseSchema = z.object({
+  socialComplaintId: z.string().trim().min(1).optional(),
   complaint: z.object({
     category: quickResponseCategorySchema,
     complaintText: z.string().trim().min(10, "Keluhan minimal 10 karakter."),

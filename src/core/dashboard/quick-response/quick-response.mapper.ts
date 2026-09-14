@@ -45,6 +45,7 @@ export type QuickResponseMapperInput = {
   selectedEmpathize?: string | null;
   selectedHear?: string | null;
   selectedTakeAction?: string | null;
+  socialComplaintId?: string | null;
   source: QuickResponseUiSource | string;
   sourceHandle?: string | null;
   sourceUrl?: string | null;
@@ -112,14 +113,16 @@ export function mapQuickResponseToCreateRequest(
     backendOutcome === "sent_hea_action"
       ? input.safeReply
       : input.finalResponse;
+  const socialComplaintId = emptyToNull(input.socialComplaintId);
 
   return {
+    ...(socialComplaintId ? { socialComplaintId } : {}),
     complaint: {
       category: backendCategory,
       complaintText: input.complaintText.trim(),
       complainerContact: null,
       complainerName: null,
-      source: backendSource,
+      ...(socialComplaintId ? {} : { source: backendSource }),
       sourceHandle: emptyToNull(input.sourceHandle),
       sourceUrl: emptyToNull(input.sourceUrl),
     },

@@ -11,7 +11,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
-import { DashboardNavbar } from "@/core/components/navbar";
+import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
+import { DashboardNavbar, type DashboardRole } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import {
@@ -28,6 +29,7 @@ import type {
   MonitoringPeriod,
   MonitoringRule,
 } from "../model/holiday-report.types";
+import { AdminHolidayManagement } from "./AdminHolidayManagement";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
@@ -39,9 +41,16 @@ const monthFormatter = new Intl.DateTimeFormat("id-ID", {
 });
 const weekdayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
-export function HolidayReportPage() {
+export function HolidayReportPage({
+  dashboardRole,
+}: {
+  dashboardRole: DashboardRole;
+}) {
   const { closeSidebar, sidebarOpen, toggleSidebar } = useDashboardSidebar();
+  const sessionUser = useSessionUser();
   const { data, isEmpty, isError, isLoading, refetch } = useHolidayReport();
+
+  const isAdmin = sessionUser?.role === "admin";
 
   const sidebarStats = [
     {
@@ -63,7 +72,7 @@ export function HolidayReportPage() {
     <main className="min-h-screen bg-[var(--background)] p-3 text-[var(--foreground)] sm:p-5">
       <div className="mx-auto flex max-w-[1600px] flex-col gap-4 lg:flex-row">
         <DashboardSidebar
-          dashboardRole="agent"
+          dashboardRole={dashboardRole}
           isOpen={sidebarOpen}
           onClose={closeSidebar}
           stats={sidebarStats}
@@ -79,10 +88,10 @@ export function HolidayReportPage() {
                 </span>
               ) : null
             }
-            dashboardRole="agent"
+            dashboardRole={dashboardRole}
             isSidebarOpen={sidebarOpen}
             onSidebarToggle={toggleSidebar}
-            roleLabel="Holiday monitor"
+            roleLabel={isAdmin ? "Administrator" : "Holiday monitor"}
           />
 
           {isError ? (
@@ -92,7 +101,7 @@ export function HolidayReportPage() {
           ) : isEmpty ? (
             <HolidayEmptyState />
           ) : data ? (
-            <HolidayReportContent model={data} />
+            <HolidayReportContent isAdmin={isAdmin} model={data} />
           ) : null}
         </section>
       </div>
@@ -100,7 +109,13 @@ export function HolidayReportPage() {
   );
 }
 
-function HolidayReportContent({ model }: { model: HolidayReportModel }) {
+function HolidayReportContent({
+  isAdmin,
+  model,
+}: {
+  isAdmin: boolean;
+  model: HolidayReportModel;
+}) {
   const [calendarMonth, setCalendarMonth] = useState(model.currentDate);
   const calendar = useHolidayCalendar(calendarMonth);
 
@@ -109,17 +124,11 @@ function HolidayReportContent({ model }: { model: HolidayReportModel }) {
       <PageHero model={model} />
       <CurrentHolidayStatus model={model} />
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.75fr)]">
-        <MonitoringRules
-          holidays={model.holidays}
-          rules={model.rules}
-          status={model.status}
-        />
-        <NextHolidaySummary
-          holiday={model.nextHoliday}
-          period={model.nextPeriod}
-        />
-      </section>
+      <MonitoringRules
+        holidays={model.holidays}
+        rules={model.rules}
+        status={model.status}
+      />
 
       <MonitoringCalendar
         currentDate={model.currentDate}
@@ -128,6 +137,8 @@ function HolidayReportContent({ model }: { model: HolidayReportModel }) {
         month={calendarMonth}
         onMonthChange={setCalendarMonth}
       />
+
+      {isAdmin ? <AdminHolidayManagement /> : null}
     </div>
   );
 }
@@ -314,80 +325,6 @@ function HolidayRuleCard({
         <span>{isActive ? "Aktif" : "Configured"}</span>
       </div>
     </article>
-  );
-}
-
-function NextHolidaySummary({
-  holiday,
-  period,
-}: {
-  holiday?: LongHoliday;
-  period?: MonitoringPeriod;
-}) {
-  return (
-    <Panel
-      badge="Read only"
-      subtitle="Periode libur panjang yang akan dipantau berikutnya."
-      title="Detail Periode Berikutnya"
-    >
-      {holiday && period ? (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-xl font-semibold text-[var(--rail-ink)]">
-              {holiday.name}
-            </h3>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Hari H ·{" "}
-              {period.holidayDate
-                ? dateFormatter.format(period.holidayDate)
-                : dateFormatter.format(parseDate(holiday.date))}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <SummaryRow
-              helper={`H-${period.before}`}
-              label="Mulai monitoring"
-              value={dateFormatter.format(period.start)}
-            />
-            <SummaryRow
-              helper="Hari H"
-              label="Hari H"
-              value={
-                period.holidayDate
-                  ? dateFormatter.format(period.holidayDate)
-                  : dateFormatter.format(parseDate(holiday.date))
-              }
-            />
-            <SummaryRow
-              helper={`H+${period.after}`}
-              label="Akhir monitoring"
-              value={dateFormatter.format(period.end)}
-            />
-          </div>
-
-          <div className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-[var(--rail-ink)]">
-                  Penyesuaian Sabtu & Minggu
-                </p>
-                <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                  Akhir pekan ikut diperhitungkan dalam window monitoring.
-                </p>
-              </div>
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--signal-green-soft)] text-[var(--signal-green-dark)]">
-                <Check aria-hidden="true" size={16} />
-              </span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed border-[var(--rail-border)] bg-[var(--background)] p-6 text-sm leading-6 text-[var(--text-muted)]">
-          Belum tersedia informasi mengenai libur panjang mendatang.
-        </div>
-      )}
-    </Panel>
   );
 }
 
@@ -677,28 +614,6 @@ function DateFact({
           {helper}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-function SummaryRow({
-  helper,
-  label,
-  value,
-}: {
-  helper: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-[var(--rail-border)] pb-3 last:border-b-0 last:pb-0">
-      <div>
-        <p className="text-xs font-semibold text-[var(--rail-ink)]">{label}</p>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">{helper}</p>
-      </div>
-      <p className="text-right text-sm font-semibold text-[var(--rail-ink)]">
-        {value}
-      </p>
     </div>
   );
 }

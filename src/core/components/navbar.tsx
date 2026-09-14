@@ -4,9 +4,10 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useSessionUser } from "@/core/auth/hooks/useSessionUser";
 import { ProfileMenu } from "@/core/auth/profile-menu";
+import { useDashboardRole } from "@/core/components/use-dashboard-role";
 import { useCurrentUser } from "@/core/dashboard/hooks/use-current-user";
 
-export type DashboardRole = "agent" | "manager";
+export type DashboardRole = "agent" | "manager" | "admin";
 
 export interface DashboardNavbarProps {
   controls?: ReactNode;
@@ -18,6 +19,10 @@ export interface DashboardNavbarProps {
 }
 
 const ROLE_COPY: Record<DashboardRole, { title: string; subtitle: string }> = {
+  admin: {
+    title: "Admin console",
+    subtitle: "KAI Support · admin portal",
+  },
   agent: {
     title: "Dashboard",
     subtitle: "KAI Support · agent portal",
@@ -32,6 +37,10 @@ const FALLBACK_PROFILE: Record<
   DashboardRole,
   { name: string; roleLabel: string }
 > = {
+  admin: {
+    name: "Admin 1",
+    roleLabel: "Administrator",
+  },
   agent: {
     name: "Agent 1",
     roleLabel: "Customer Support",
@@ -48,12 +57,13 @@ export function DashboardNavbar({
   isSidebarOpen = true,
   onSidebarToggle,
 }: DashboardNavbarProps) {
-  const copy = ROLE_COPY[dashboardRole];
+  const resolvedRole = useDashboardRole(dashboardRole);
+  const copy = ROLE_COPY[resolvedRole];
   const currentUser = useCurrentUser();
   const sessionUser = useSessionUser();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const fallbackProfile = FALLBACK_PROFILE[dashboardRole];
+  const fallbackProfile = FALLBACK_PROFILE[resolvedRole];
   const profileUser = currentUser.data ?? sessionUser;
   const resolvedRoleLabel =
     profileUser?.role === "agent"
@@ -61,7 +71,7 @@ export function DashboardNavbar({
       : profileUser?.role === "manager"
         ? "Operations Manager"
         : profileUser?.role === "admin"
-          ? "Admin"
+          ? "Administrator"
           : fallbackProfile.roleLabel;
   const resolvedUserName = profileUser?.name || fallbackProfile.name;
 

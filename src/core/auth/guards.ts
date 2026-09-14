@@ -9,7 +9,7 @@ export function getDefaultRouteForRole(role: UserRole): string {
     return process.env.NEXT_PUBLIC_MANAGER_DEFAULT_ROUTE ?? "/manager";
   }
 
-  return process.env.NEXT_PUBLIC_ADMIN_DEFAULT_ROUTE ?? "/manager";
+  return process.env.NEXT_PUBLIC_ADMIN_DEFAULT_ROUTE ?? "/admin";
 }
 
 export function isUserRole(
