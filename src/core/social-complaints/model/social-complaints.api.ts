@@ -117,6 +117,13 @@ export async function getSocialComplaints(
 
 const numericSchema = z.union([z.number(), z.string()]);
 
+/**
+ * Ingestion calls Apify and routinely takes 25-30s for Google Play/Facebook,
+ * which exceeds the API client's 15s default. Matches the proxy route's own
+ * 45s budget so the browser does not abort before the backend responds.
+ */
+const SOCIAL_COMPLAINT_SYNC_TIMEOUT_MS = 45_000;
+
 const socialComplaintSyncSchema = z
   .object({
     created: numericSchema,
@@ -130,9 +137,11 @@ const socialComplaintSyncSchema = z
 export async function syncSocialComplaints(
   source: SocialComplaintSource,
 ): Promise<SocialComplaintSyncResult> {
-  const response = await apiClient.post<unknown>("/social-complaints/sync", {
-    source,
-  });
+  const response = await apiClient.post<unknown>(
+    "/social-complaints/sync",
+    { source },
+    { timeout: SOCIAL_COMPLAINT_SYNC_TIMEOUT_MS },
+  );
 
   return socialComplaintSyncSchema.parse(response);
 }

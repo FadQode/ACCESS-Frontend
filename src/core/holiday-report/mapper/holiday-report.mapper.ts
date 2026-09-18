@@ -97,6 +97,32 @@ export function getCalendarGridRange(month: Date): {
   };
 }
 
+/**
+ * Max leading/trailing cells a Monday-first grid can show outside its month.
+ * 7 days of padding therefore covers every month grid belonging to a year
+ * (including December's spill into January and January's spill into December).
+ */
+const CALENDAR_RANGE_PADDING_DAYS = 7;
+
+/**
+ * Padded fetch window covering every month grid of `year`.
+ *
+ * Fetching by year (rather than by visible month) keeps month navigation a
+ * cache hit, so switching months never renders a partially loaded grid.
+ */
+export function getCalendarYearRange(year: number): {
+  end: string;
+  start: string;
+} {
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31);
+
+  return {
+    end: toDateString(addDays(yearEnd, CALENDAR_RANGE_PADDING_DAYS)),
+    start: toDateString(addDays(yearStart, -CALENDAR_RANGE_PADDING_DAYS)),
+  };
+}
+
 export function toDateString(date: Date): string {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");

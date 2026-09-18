@@ -16,8 +16,9 @@ import { DashboardNavbar, type DashboardRole } from "@/core/components/navbar";
 import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import {
-  type HolidayDaysByDate,
+  type HolidayCalendarData,
   useHolidayCalendar,
+  usePrefetchHolidayCalendar,
 } from "../hooks/use-holiday-calendar";
 import { useHolidayReport } from "../hooks/use-holiday-report";
 import { toDateString } from "../mapper/holiday-report.mapper";
@@ -118,6 +119,7 @@ function HolidayReportContent({
 }) {
   const [calendarMonth, setCalendarMonth] = useState(model.currentDate);
   const calendar = useHolidayCalendar(calendarMonth);
+  usePrefetchHolidayCalendar(calendarMonth.getFullYear());
 
   return (
     <div className="grid gap-4">
@@ -131,11 +133,13 @@ function HolidayReportContent({
       />
 
       <MonitoringCalendar
+        calendarData={calendar.data}
         currentDate={model.currentDate}
-        daysByDate={calendar.data}
+        isError={calendar.isError}
         isFetching={calendar.isFetching}
         month={calendarMonth}
         onMonthChange={setCalendarMonth}
+        onRetry={() => void calendar.refetch()}
       />
 
       {isAdmin ? <AdminHolidayManagement /> : null}
@@ -329,19 +333,29 @@ function HolidayRuleCard({
 }
 
 function MonitoringCalendar({
+  calendarData,
   currentDate,
-  daysByDate,
+  isError,
   isFetching,
   month,
   onMonthChange,
+  onRetry,
 }: {
+  calendarData?: HolidayCalendarData;
   currentDate: Date;
-  daysByDate?: HolidayDaysByDate;
+  isError: boolean;
   isFetching: boolean;
   month: Date;
   onMonthChange: (month: Date) => void;
+  onRetry: () => void;
 }) {
-  const monthEntries = buildCalendarEntries({ currentDate, daysByDate, month });
+  const monthEntries = buildCalendarEntries({
+    calendarData,
+    currentDate,
+    month,
+  });
+  const isLoadingMore =
+    !isError && monthEntries.some((entry) => entry.condition === "loading");
 
   return (
     <Panel
@@ -356,8 +370,11 @@ function MonitoringCalendar({
               {monthFormatter.format(month)}
             </p>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Kondisi tiap tanggal ditampilkan berdasarkan periode monitoring
-              dan hari libur utama.
+              {isError
+                ? "Kondisi tiap tanggal tidak dapat dimuat."
+                : isLoadingMore
+                  ? "Memuat kondisi tiap tanggal…"
+                  : "Kondisi tiap tanggal ditampilkan berdasarkan periode monitoring dan hari libur utama."}
             </p>
           </div>
 
@@ -377,45 +394,84 @@ function MonitoringCalendar({
           </div>
         </div>
 
-        <div
-          className={`grid grid-cols-7 gap-2 transition-opacity ${
-            isFetching ? "opacity-60" : "opacity-100"
-          }`}
-        >
-          {weekdayLabels.map((label) => (
-            <div
-              className="pb-1 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]"
-              key={label}
+        {isError ? (
+          <div className="rounded-lg border border-dashed border-[var(--signal-red-soft)] bg-[var(--surface-panel)] p-6 text-center">
+            <AlertCircle
+              aria-hidden="true"
+              className="mx-auto text-[var(--signal-red-dark)]"
+              size={22}
+            />
+            <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
+              Data kalender monitoring gagal dimuat. Periode libur dan aturan
+              monitoring di atas tetap tersedia.
+            </p>
+            <button
+              className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--rail-border)] bg-[var(--background)] px-3 text-xs font-semibold text-[var(--signal-blue)] transition hover:border-[var(--signal-blue)]"
+              onClick={onRetry}
+              type="button"
             >
-              {label}
-            </div>
-          ))}
+              <RotateCcw aria-hidden="true" size={13} />
+              Coba lagi
+            </button>
+          </div>
+        ) : (
+          <div
+            className={`grid grid-cols-7 gap-2 transition-opacity ${
+              isFetching || isLoadingMore ? "opacity-60" : "opacity-100"
+            }`}
+          >
+            {weekdayLabels.map((label) => (
+              <div
+                className="pb-1 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]"
+                key={label}
+              >
+                {label}
+              </div>
+            ))}
 
-          {monthEntries.map((entry) => (
-            <CalendarDateCell entry={entry} key={entry.key} />
-          ))}
+            {monthEntries.map((entry) => (
+              <CalendarDateCell entry={entry} key={entry.key} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {isError ? null : (
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--text-muted)]">
+          <LegendSwatch
+            className="bg-[var(--signal-green-soft)]"
+            label="Monitoring period"
+          />
+          <LegendSwatch
+            className="bg-[var(--signal-amber-soft)]"
+            label="Hari H"
+          />
+          <LegendSwatch
+            className="ring-2 ring-[var(--signal-blue)]"
+            label="Today"
+          />
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--text-muted)]">
-        <LegendSwatch
-          className="bg-[var(--signal-green-soft)]"
-          label="Monitoring period"
-        />
-        <LegendSwatch
-          className="bg-[var(--signal-amber-soft)]"
-          label="Hari H"
-        />
-        <LegendSwatch
-          className="ring-2 ring-[var(--signal-blue)]"
-          label="Today"
-        />
-      </div>
+      )}
     </Panel>
   );
 }
 
 function CalendarDateCell({ entry }: { entry: CalendarEntry }) {
+  if (entry.condition === "loading") {
+    return (
+      <div
+        className={`skeleton-sheen min-h-[110px] rounded-lg p-2.5 sm:min-h-[124px] ${
+          entry.isOutsideMonth ? "opacity-55" : ""
+        }`}
+      >
+        <span className="text-sm font-semibold text-[var(--text-tertiary)]">
+          {entry.dayNumber}
+        </span>
+        <span className="sr-only">Memuat kondisi tanggal</span>
+      </div>
+    );
+  }
+
   return (
     <article
       className={`min-h-[110px] rounded-lg border p-2.5 transition sm:min-h-[124px] ${
@@ -660,7 +716,7 @@ function LegendSwatch({
 }
 
 type CalendarEntry = {
-  condition: "holiday" | "monitoring" | "normal";
+  condition: "holiday" | "monitoring" | "normal" | "loading";
   dayNumber: number;
   holidayName?: string;
   isOutsideMonth: boolean;
@@ -671,11 +727,11 @@ type CalendarEntry = {
 
 function buildCalendarEntries({
   currentDate,
-  daysByDate,
+  calendarData,
   month,
 }: {
   currentDate: Date;
-  daysByDate?: HolidayDaysByDate;
+  calendarData?: HolidayCalendarData;
   month: Date;
 }): CalendarEntry[] {
   const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -685,18 +741,26 @@ function buildCalendarEntries({
   const start = addDays(monthStart, -leadingDays);
   const end = addDays(monthEnd, trailingDays);
   const entries: CalendarEntry[] = [];
+  const period = calendarData?.period;
 
   for (
     let cursor = new Date(start);
     cursor.getTime() <= end.getTime();
     cursor = addDays(cursor, 1)
   ) {
-    const day = daysByDate?.get(toDateString(cursor));
-    const condition = day?.holiday
-      ? ("holiday" as const)
-      : day?.isMonitoring
-        ? ("monitoring" as const)
-        : ("normal" as const);
+    const dateKey = toDateString(cursor);
+    const day = calendarData?.daysByDate.get(dateKey);
+    // A date outside the loaded window is unknown, not "normal": rendering it
+    // as normal would claim "no monitoring" before the data has arrived.
+    const isLoaded =
+      period !== undefined && dateKey >= period.start && dateKey <= period.end;
+    const condition = !isLoaded
+      ? ("loading" as const)
+      : day?.holiday
+        ? ("holiday" as const)
+        : day?.isMonitoring
+          ? ("monitoring" as const)
+          : ("normal" as const);
     const relativeDay = day?.relativeDay ?? null;
 
     entries.push({
@@ -705,7 +769,7 @@ function buildCalendarEntries({
       holidayName: day?.holiday?.name,
       isOutsideMonth: cursor.getMonth() !== month.getMonth(),
       isToday: isSameDate(cursor, currentDate),
-      key: toDateString(cursor),
+      key: dateKey,
       relativeLabel:
         relativeDay === null
           ? undefined

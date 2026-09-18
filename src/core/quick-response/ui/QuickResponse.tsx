@@ -308,17 +308,27 @@ export function QuickResponse() {
   };
 
   const handleUseSocialComplaint = ({
+    author,
     content,
     id,
+    sourceUrl,
   }: UseSocialComplaintPayload) => {
     setComplaintText(content);
     setSocialComplaintId(id);
+    // Carry the social complaint's origin through so the agent does not have to
+    // retype the handle or paste the post link.
+    setUsername(author);
+    setExternalUrl(sourceUrl ?? "");
     setCurrentStep(1);
     setInputExpanded(true);
     setInputDirty(false);
     setCompletionState(null);
     setCreatedResult(null);
-    setFieldErrors((current) => ({ ...current, complaintText: undefined }));
+    setFieldErrors((current) => ({
+      ...current,
+      complaintText: undefined,
+      sourceUrl: undefined,
+    }));
     setFeedback(null);
     previewMutation.reset();
     setBuilderOptions(null);

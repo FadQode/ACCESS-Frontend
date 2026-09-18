@@ -65,14 +65,12 @@ const NAVIGATION: Record<DashboardRole, NavigationItem[]> = {
     },
     { href: "/manager/complaints", icon: ClipboardCheck, label: "Complaints" },
     { href: "/manager/references", icon: BookOpen, label: "References" },
-    { href: "/agent", icon: Gauge, label: "Agent Dashboard" },
     {
       href: "/agent/quick-response",
       icon: MessageSquareText,
       label: "Quick Response",
     },
     { href: "/agent/tickets", icon: Inbox, label: "Escalated" },
-    { href: "/agent/reports", icon: BarChart3, label: "Reports" },
   ],
   agent: [
     { href: "/agent", icon: Gauge, label: "Dashboard" },

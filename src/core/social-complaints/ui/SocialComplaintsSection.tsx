@@ -17,6 +17,10 @@ import type {
 export type UseSocialComplaintPayload = {
   id: string;
   content: string;
+  /** Complainer display name, used to prefill the Quick Response handle. */
+  author: string;
+  /** Link to the original post/comment, when the source provides one. */
+  sourceUrl: string | null;
 };
 
 export type SocialComplaintsSectionProps = {
@@ -182,10 +186,6 @@ function SocialComplaintCard({
         <SocialBadge>{sourceLabels[complaint.source]}</SocialBadge>
       </div>
 
-      <p className="mt-2 text-[11px] font-medium text-[var(--text-tertiary)]">
-        {complaint.sourceReference}
-      </p>
-
       <p className="mt-2 line-clamp-3 text-xs leading-5 text-[var(--text-muted)]">
         “{complaint.content}”
       </p>
@@ -212,8 +212,10 @@ function SocialComplaintCard({
         disabled={!onUseComplaint}
         onClick={() =>
           onUseComplaint?.({
+            author: complaint.author,
             content: complaint.content,
             id: complaint.id,
+            sourceUrl: complaint.sourceUrl,
           })
         }
         type="button"

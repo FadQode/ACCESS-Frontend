@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test";
 import type { HolidayOverviewResponse } from "../model/holiday-api.types";
 import {
   getCalendarGridRange,
+  getCalendarYearRange,
   mapOverviewToReportModel,
 } from "./holiday-report.mapper";
 
@@ -140,5 +141,37 @@ describe("getCalendarGridRange", () => {
   test("handles months starting on monday", () => {
     // September 2026 starts on a Tuesday; June 2026 starts on a Monday.
     expect(getCalendarGridRange(new Date(2026, 5, 9)).start).toBe("2026-06-01");
+  });
+});
+
+describe("getCalendarYearRange", () => {
+  test("pads the year so adjacent-month grids are included", () => {
+    expect(getCalendarYearRange(2026)).toEqual({
+      end: "2027-01-07",
+      start: "2025-12-25",
+    });
+  });
+
+  test("contains every month grid of the year", () => {
+    const window = getCalendarYearRange(2026);
+
+    for (let month = 0; month < 12; month += 1) {
+      const grid = getCalendarGridRange(new Date(2026, month, 1));
+
+      expect(grid.start >= window.start).toBe(true);
+      expect(grid.end <= window.end).toBe(true);
+    }
+  });
+
+  test("keeps December and January grids in their own year windows", () => {
+    // December 2025's grid spills into January, and vice versa. Both must be
+    // covered by their own year window so navigation is never partly loaded.
+    const december = getCalendarGridRange(new Date(2025, 11, 1));
+    const january = getCalendarGridRange(new Date(2026, 0, 1));
+
+    expect(december.start >= getCalendarYearRange(2025).start).toBe(true);
+    expect(december.end <= getCalendarYearRange(2025).end).toBe(true);
+    expect(january.start >= getCalendarYearRange(2026).start).toBe(true);
+    expect(january.end <= getCalendarYearRange(2026).end).toBe(true);
   });
 });

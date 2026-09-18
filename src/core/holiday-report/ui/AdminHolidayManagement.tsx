@@ -10,7 +10,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ApiClientError } from "@/core/dashboard/model/api/client";
 import {
   useCreateHoliday,
@@ -49,6 +50,10 @@ type FormState = {
   name: string;
   source: HolidayApiSource;
   sourceReference: string;
+  /** "auto" follows the backend rule; "custom" sends an explicit window. */
+  monitoringMode: "auto" | "custom";
+  monitoringBefore: string;
+  monitoringAfter: string;
 };
 
 type EditorState =
@@ -61,6 +66,9 @@ function emptyForm(currentYear: number): FormState {
     category: "regular_holiday",
     date: `${currentYear}-01-01`,
     isJointLeave: false,
+    monitoringAfter: "",
+    monitoringBefore: "",
+    monitoringMode: "auto",
     name: "",
     source: "manual",
     sourceReference: "",
@@ -68,14 +76,36 @@ function emptyForm(currentYear: number): FormState {
 }
 
 function formFromHoliday(holiday: HolidayApiEntity): FormState {
+  const hasOverride =
+    holiday.monitoringBefore !== null && holiday.monitoringAfter !== null;
+
   return {
     category: holiday.category,
     date: holiday.date,
     isJointLeave: holiday.isJointLeave,
+    monitoringAfter: hasOverride ? String(holiday.monitoringAfter) : "",
+    monitoringBefore: hasOverride ? String(holiday.monitoringBefore) : "",
+    monitoringMode: hasOverride ? "custom" : "auto",
     name: holiday.name,
     source: holiday.source,
     sourceReference: holiday.sourceReference ?? "",
   };
+}
+
+const MONITORING_MAX_DAYS = 180;
+
+function parseMonitoringDays(value: string): number | null {
+  if (value.trim() === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > MONITORING_MAX_DAYS) {
+    return null;
+  }
+
+  return parsed;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -144,6 +174,16 @@ export function AdminHolidayManagement() {
   const handleSubmit = async (form: FormState) => {
     setFeedback(null);
 
+    // "auto" sends nulls, which clears any override and restores the
+    // backend's computed window. "custom" always sends both sides together.
+    const monitoring =
+      form.monitoringMode === "custom"
+        ? {
+            monitoringAfter: parseMonitoringDays(form.monitoringAfter),
+            monitoringBefore: parseMonitoringDays(form.monitoringBefore),
+          }
+        : { monitoringAfter: null, monitoringBefore: null };
+
     const payload = {
       category: form.category,
       date: form.date,
@@ -151,6 +191,7 @@ export function AdminHolidayManagement() {
       name: form.name.trim(),
       source: form.source,
       sourceReference: form.sourceReference.trim() || null,
+      ...monitoring,
     };
 
     try {
@@ -298,6 +339,7 @@ export function AdminHolidayManagement() {
                   <th className="px-3 py-2">Nama</th>
                   <th className="px-3 py-2">Tanggal</th>
                   <th className="px-3 py-2">Kategori</th>
+                  <th className="px-3 py-2">Monitoring</th>
                   <th className="px-3 py-2">Cuti Bersama</th>
                   <th className="px-3 py-2">Sumber</th>
                   <th className="px-3 py-2 text-right">Aksi</th>
@@ -317,6 +359,9 @@ export function AdminHolidayManagement() {
                     </td>
                     <td className="px-3 py-2.5 text-[var(--text-muted)]">
                       {CATEGORY_LABELS[holiday.category] ?? holiday.category}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <MonitoringCell holiday={holiday} />
                     </td>
                     <td className="px-3 py-2.5">
                       {holiday.isJointLeave ? (
@@ -387,6 +432,135 @@ export function AdminHolidayManagement() {
   );
 }
 
+/**
+ * Shows the window actually in force. `holiday.monitoring` is resolved by the
+ * backend, so the UI never recomputes category or weekend-adjacency rules.
+ */
+function MonitoringCell({ holiday }: { holiday: HolidayApiEntity }) {
+  const { before, after, isOverride } = holiday.monitoring;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="font-semibold text-[var(--rail-ink)]">
+        {`H-${before} → H+${after}`}
+      </span>
+      <span
+        className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+          isOverride
+            ? "bg-[var(--signal-amber-soft)] text-[var(--signal-amber-dark)]"
+            : "bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]"
+        }`}
+      >
+        {isOverride ? "Kustom" : "Otomatis"}
+      </span>
+    </div>
+  );
+}
+
+function MonitoringFieldset({
+  form,
+  setForm,
+}: {
+  form: FormState;
+  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+}) {
+  const isCustom = form.monitoringMode === "custom";
+  const beforeValue = parseMonitoringDays(form.monitoringBefore);
+  const afterValue = parseMonitoringDays(form.monitoringAfter);
+  const isInvalid =
+    isCustom &&
+    (beforeValue === null ||
+      afterValue === null ||
+      form.monitoringBefore.trim() === "" ||
+      form.monitoringAfter.trim() === "");
+
+  return (
+    <fieldset className="rounded-lg border border-[var(--rail-border)] bg-[var(--background)] p-3">
+      <legend className="px-1 text-xs font-semibold text-[var(--rail-ink)]">
+        Window Monitoring
+      </legend>
+
+      <div className="flex gap-1.5">
+        {(["auto", "custom"] as const).map((mode) => {
+          const isActive = form.monitoringMode === mode;
+
+          return (
+            <button
+              aria-pressed={isActive}
+              className={`inline-flex h-8 flex-1 items-center justify-center rounded-lg border px-2.5 text-[11px] font-semibold transition ${
+                isActive
+                  ? "border-[var(--signal-blue)] bg-[var(--signal-blue-soft)] text-[var(--signal-blue)]"
+                  : "border-[var(--rail-border)] bg-[var(--surface-panel)] text-[var(--text-muted)] hover:border-[var(--signal-blue)]"
+              }`}
+              key={mode}
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  monitoringMode: mode,
+                }))
+              }
+              type="button"
+            >
+              {mode === "auto" ? "Otomatis" : "Kustom"}
+            </button>
+          );
+        })}
+      </div>
+
+      {isCustom ? (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-[var(--rail-ink)]">
+            H- sebelum (hari)
+            <input
+              className={inputClass}
+              inputMode="numeric"
+              max={MONITORING_MAX_DAYS}
+              min={0}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  monitoringBefore: event.target.value,
+                }))
+              }
+              type="number"
+              value={form.monitoringBefore}
+            />
+          </label>
+          <label className="text-xs font-semibold text-[var(--rail-ink)]">
+            H+ sesudah (hari)
+            <input
+              className={inputClass}
+              inputMode="numeric"
+              max={MONITORING_MAX_DAYS}
+              min={0}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  monitoringAfter: event.target.value,
+                }))
+              }
+              type="number"
+              value={form.monitoringAfter}
+            />
+          </label>
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] leading-5 text-[var(--text-muted)]">
+          Mengikuti aturan backend: kategori hari libur, diperlebar menjadi H-7
+          sampai H+7 bila tanggalnya berdekatan dengan akhir pekan.
+        </p>
+      )}
+
+      {isInvalid ? (
+        <p className="mt-2 text-[11px] leading-5 text-[var(--signal-red-dark)]">
+          Isi kedua sisi dengan angka bulat 0–{MONITORING_MAX_DAYS}. Keduanya
+          harus diisi bersama.
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
 function HolidayEditorModal({
   initial,
   isSaving,
@@ -402,8 +576,17 @@ function HolidayEditorModal({
 }) {
   const [form, setForm] = useState<FormState>(initial);
 
+  const hasValidWindow =
+    form.monitoringMode === "auto" ||
+    (form.monitoringBefore.trim() !== "" &&
+      form.monitoringAfter.trim() !== "" &&
+      parseMonitoringDays(form.monitoringBefore) !== null &&
+      parseMonitoringDays(form.monitoringAfter) !== null);
+
   const isValid =
-    form.name.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(form.date);
+    form.name.trim().length > 0 &&
+    /^\d{4}-\d{2}-\d{2}$/.test(form.date) &&
+    hasValidWindow;
 
   return (
     <ModalShell
@@ -459,6 +642,8 @@ function HolidayEditorModal({
             ))}
           </select>
         </Field>
+
+        <MonitoringFieldset form={form} setForm={setForm} />
 
         <Field label="Sumber" required>
           <select
@@ -603,12 +788,54 @@ function ModalShell({
   onClose: () => void;
   title: string;
 }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]"
-      role="presentation"
-    >
-      <section className="mx-auto my-8 max-w-lg rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]">
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    // The page behind the modal must not scroll while it is open.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  return createPortal(
+    // A portal keeps the overlay viewport-anchored: page wrappers such as
+    // `template.tsx` apply a transform, which would otherwise become the
+    // containing block for a fixed child and pin the modal to the page top.
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(19,35,31,0.42)] p-4 backdrop-blur-[2px]">
+      {/* The backdrop is its own labelled control so pointer dismissal stays
+          keyboard- and screen-reader-visible without wrapping the dialog. */}
+      <button
+        aria-label="Tutup modal"
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+        tabIndex={-1}
+        type="button"
+      />
+      <section
+        aria-label={title}
+        aria-modal="true"
+        className="relative my-auto max-h-[calc(100dvh-32px)] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--rail-border)] bg-white shadow-[var(--shadow-soft)]"
+        role="dialog"
+      >
         <header className="flex items-center justify-between gap-3 border-b border-[var(--rail-border)] px-4 py-3">
           <h2 className="text-sm font-semibold text-[var(--rail-ink)]">
             {title}
@@ -624,6 +851,7 @@ function ModalShell({
         </header>
         <div className="p-4">{children}</div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

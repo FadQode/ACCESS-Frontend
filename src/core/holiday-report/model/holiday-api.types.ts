@@ -62,6 +62,19 @@ export interface HolidayCalendarResponse {
 
 export type HolidayApiSource = "skb_3_menteri" | "manual";
 
+/**
+ * The monitoring window actually in force for a holiday. When `isOverride` is
+ * false the window comes from the category rule widened by the backend's
+ * weekend-adjacency rule, so the UI must display it rather than recompute it.
+ */
+export interface HolidayApiEffectiveMonitoring {
+  before: number;
+  after: number;
+  isOverride: boolean;
+  start: string;
+  end: string;
+}
+
 export interface HolidayApiEntity {
   id: string;
   name: string;
@@ -70,6 +83,10 @@ export interface HolidayApiEntity {
   isJointLeave: boolean;
   source: HolidayApiSource;
   sourceReference: string | null;
+  /** Raw admin override, or null when the automatic window applies. */
+  monitoringBefore: number | null;
+  monitoringAfter: number | null;
+  monitoring: HolidayApiEffectiveMonitoring;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,6 +108,12 @@ export interface HolidayWriteRequest {
   isJointLeave?: boolean;
   source?: HolidayApiSource;
   sourceReference?: string | null;
+  /**
+   * Admin override, in days. Both sides must be supplied together; `null` on
+   * both clears the override and restores the automatic window.
+   */
+  monitoringBefore?: number | null;
+  monitoringAfter?: number | null;
 }
 
 export type HolidayUpdateRequest = Partial<HolidayWriteRequest>;
