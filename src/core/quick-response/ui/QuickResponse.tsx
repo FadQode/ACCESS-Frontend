@@ -29,6 +29,7 @@ import { DashboardSidebar } from "@/core/components/sidebar";
 import { useDashboardSidebar } from "@/core/components/useDashboardSidebar";
 import { useCreateQuickResponse } from "@/core/dashboard/hooks/use-create-quick-response";
 import { useEscalateTicket } from "@/core/dashboard/hooks/use-escalate-ticket";
+import { useQuickResponseFullHeat } from "@/core/dashboard/hooks/use-quick-response-full-heat";
 import { useQuickResponsePreview } from "@/core/dashboard/hooks/use-quick-response-preview";
 import { createQuickResponseSchema } from "@/core/dashboard/model/schemas/quick-response.schema";
 import type {
@@ -181,6 +182,7 @@ export function QuickResponse() {
   const escalateTicketMutation = useEscalateTicket();
   const fileUrlMutation = useReferenceFileUrl();
   const previewMutation = useQuickResponsePreview();
+  const fullHeatMutation = useQuickResponseFullHeat();
   const [currentStep, setCurrentStep] = useState<StepId>(1);
   const [source, setSource] = useState("twitter");
   const [username, setUsername] = useState("");
@@ -206,6 +208,10 @@ export function QuickResponse() {
   const [selectedTakeAction, setSelectedTakeAction] = useState("");
   const [builderMode, setBuilderMode] = useState<BuilderMode>("heat-parts");
   const [selectedFullHeatId, setSelectedFullHeatId] = useState("");
+  const [fullHeatOptions, setFullHeatOptions] = useState<FullHeatOption[]>([]);
+  const [fullHeatSource, setFullHeatSource] =
+    useState<QuickResponseSuggestionSource | null>(null);
+  const [fullHeatError, setFullHeatError] = useState("");
   const [contextPaneCollapsed, setContextPaneCollapsed] = useState(false);
   const [finalResponse, setFinalResponse] = useState("");
   const [safeReply, setSafeReply] = useState("");
@@ -257,10 +263,54 @@ export function QuickResponse() {
     [selectedApologize, selectedEmpathize, selectedHear, selectedTakeAction],
   );
 
-  const fullHeatOptions = useMemo(
-    () => (builderOptions ? createFullHeatOptions(builderOptions) : []),
-    [builderOptions],
-  );
+  const isFullHeatGenerating = fullHeatMutation.isPending;
+
+  const handleSelectBuilderMode = async (mode: BuilderMode) => {
+    setBuilderMode(mode);
+
+    if (mode !== "full-heat") {
+      return;
+    }
+
+    // Full HEAT comes from its own endpoint. Fetch once per generated preview;
+    // switching back and forth must not spend another AI call.
+    if (fullHeatOptions.length > 0 || fullHeatMutation.isPending) {
+      return;
+    }
+
+    setFullHeatError("");
+    setFullHeatSource(null);
+
+    try {
+      const result = await fullHeatMutation.mutateAsync({
+        complaintText,
+        ...(category ? { category: category as QuickResponseCategory } : {}),
+        responseTarget: targetToBackendMap[responseTarget],
+      });
+
+      setFullHeatOptions(result.options);
+      setFullHeatSource(result.suggestionSource);
+      setPreviewContext((current) => ({
+        relevantReferences:
+          result.relevantReferences.length > 0
+            ? result.relevantReferences
+            : current.relevantReferences,
+        similarResolvedCases:
+          result.similarResolvedCases.length > 0
+            ? result.similarResolvedCases
+            : current.similarResolvedCases,
+      }));
+    } catch (error) {
+      setFullHeatOptions([]);
+      setFullHeatSource(null);
+      setFullHeatError(getPreviewErrorMessage(error));
+    }
+  };
+
+  const handleRetryFullHeat = () => {
+    setFullHeatOptions([]);
+    void handleSelectBuilderMode("full-heat");
+  };
 
   const outcomeOptions = useMemo(
     () => [
@@ -341,6 +391,9 @@ export function QuickResponse() {
     setSelectedTakeAction("");
     setBuilderMode("heat-parts");
     setSelectedFullHeatId("");
+    setFullHeatOptions([]);
+    setFullHeatSource(null);
+    setFullHeatError("");
     setFinalResponse("");
     setSafeReply("");
     setIsFinalResponseManuallyEdited(false);
@@ -363,6 +416,11 @@ export function QuickResponse() {
     setPreviewContext(emptyPreviewContext);
     setReferenceOpenError("");
     setManualPreservedNotice("");
+    // A new preview invalidates any previously fetched full HEAT options.
+    fullHeatMutation.reset();
+    setFullHeatOptions([]);
+    setFullHeatSource(null);
+    setFullHeatError("");
 
     try {
       const preview = await previewMutation.mutateAsync({
@@ -631,6 +689,9 @@ export function QuickResponse() {
     setSelectedTakeAction("");
     setBuilderMode("heat-parts");
     setSelectedFullHeatId("");
+    setFullHeatOptions([]);
+    setFullHeatSource(null);
+    setFullHeatError("");
     setFinalResponse("");
     setSafeReply("");
     setIsFinalResponseManuallyEdited(false);
@@ -871,7 +932,10 @@ export function QuickResponse() {
                       builderMode={builderMode}
                       builderOptions={builderOptions}
                       flowLocked={flowLocked}
+                      fullHeatError={fullHeatError}
                       fullHeatOptions={fullHeatOptions}
+                      fullHeatSource={fullHeatSource}
+                      isFullHeatGenerating={isFullHeatGenerating}
                       isFinalResponseManuallyEdited={
                         isFinalResponseManuallyEdited
                       }
@@ -882,7 +946,8 @@ export function QuickResponse() {
                       onContinue={() => setCurrentStep(3)}
                       onOpenReferenceFile={handleOpenReferenceFile}
                       onRegenerate={handleGenerate}
-                      onSelectBuilderMode={setBuilderMode}
+                      onRetryFullHeat={handleRetryFullHeat}
+                      onSelectBuilderMode={handleSelectBuilderMode}
                       onSelectFullHeat={handleSelectFullHeat}
                       onSelectSentence={handleSelectSentence}
                       openingReferenceId={openingReferenceId}
@@ -1392,13 +1457,17 @@ function ResponseBuilder({
   builderMode,
   builderOptions,
   flowLocked,
+  fullHeatError,
   fullHeatOptions,
+  fullHeatSource,
+  isFullHeatGenerating,
   isFinalResponseManuallyEdited,
   manualPreservedNotice,
   onApplySelectedToFinalResponse,
   onContinue,
   onOpenReferenceFile,
   onRegenerate,
+  onRetryFullHeat,
   onSelectBuilderMode,
   onSelectFullHeat,
   onSelectSentence,
@@ -1412,13 +1481,17 @@ function ResponseBuilder({
   builderMode: BuilderMode;
   builderOptions: BuilderOptions;
   flowLocked: boolean;
+  fullHeatError: string;
   fullHeatOptions: FullHeatOption[];
+  fullHeatSource: QuickResponseSuggestionSource | null;
+  isFullHeatGenerating: boolean;
   isFinalResponseManuallyEdited: boolean;
   manualPreservedNotice: string;
   onApplySelectedToFinalResponse: () => void;
   onContinue: () => void;
   onOpenReferenceFile: (referenceId: string) => void;
   onRegenerate: () => void;
+  onRetryFullHeat: () => void;
   onSelectBuilderMode: (mode: BuilderMode) => void;
   onSelectFullHeat: (option: FullHeatOption) => void;
   onSelectSentence: (key: BuilderKey, optionText: string) => void;
@@ -1483,7 +1556,9 @@ function ResponseBuilder({
                 }`}
                 disabled={flowLocked}
                 key={mode.value}
-                onClick={() => onSelectBuilderMode(mode.value)}
+                onClick={() => {
+                  void onSelectBuilderMode(mode.value);
+                }}
                 type="button"
               >
                 {mode.label}
@@ -1508,13 +1583,31 @@ function ResponseBuilder({
               />
             ))}
           </div>
-        ) : (
-          <FullHeatChoiceGroup
-            disabled={flowLocked}
-            onSelect={onSelectFullHeat}
-            options={fullHeatOptions}
-            selectedId={selectedFullHeatId}
+        ) : isFullHeatGenerating ? (
+          <BuildResponseSkeleton />
+        ) : fullHeatError ? (
+          <PreviewErrorState
+            message={fullHeatError}
+            onRetry={onRetryFullHeat}
           />
+        ) : fullHeatOptions.length > 0 ? (
+          <div className="space-y-3">
+            {fullHeatSource ? (
+              <span className="inline-flex min-h-7 w-fit items-center rounded-full border border-[var(--signal-blue-soft)] bg-[var(--signal-blue-soft)] px-3 text-xs font-semibold text-[var(--signal-blue)]">
+                {fullHeatSource === "fallback"
+                  ? "Fallback full HEAT"
+                  : "AI full HEAT"}
+              </span>
+            ) : null}
+            <FullHeatChoiceGroup
+              disabled={flowLocked}
+              onSelect={onSelectFullHeat}
+              options={fullHeatOptions}
+              selectedId={selectedFullHeatId}
+            />
+          </div>
+        ) : (
+          <PreviewEmptyState />
         )}
       </section>
 
@@ -2489,60 +2582,6 @@ function toSentenceOptions(key: BuilderKey, values: string[]) {
     id: `${key}-${index + 1}`,
     text,
   }));
-}
-
-function createFullHeatOptions(options: BuilderOptions): FullHeatOption[] {
-  const first = getDefaultSelections(options);
-  const second = pickSelectionsByIndex(options, 1);
-  const third = pickSelectionsByIndex(options, 2);
-  const concise = {
-    apologize: first.apologize,
-    empathize: "",
-    hear: first.hear,
-    takeAction: first.takeAction,
-  };
-
-  return [
-    {
-      description: "Balanced default untuk mayoritas balasan publik.",
-      id: "balanced",
-      response: buildFinalResponse(first),
-      title: "Balanced HEAT",
-    },
-    {
-      description: "Lebih hangat saat pelanggan terlihat kecewa atau lelah.",
-      id: "empathetic",
-      response: buildFinalResponse(second),
-      title: "Empathy First",
-    },
-    {
-      description: "Lebih langsung untuk kasus yang butuh arahan berikutnya.",
-      id: "action-led",
-      response: buildFinalResponse(third),
-      title: "Action Led",
-    },
-    {
-      description: "Versi pendek untuk kanal sosial yang perlu ringkas.",
-      id: "concise",
-      response: buildFinalResponse(concise),
-      title: "Concise Public Reply",
-    },
-  ].filter((option) => option.response.trim().length > 0);
-}
-
-function pickSelectionsByIndex(
-  options: BuilderOptions,
-  index: number,
-): Record<BuilderKey, string> {
-  return {
-    apologize:
-      options.apologize[index]?.text ?? options.apologize[0]?.text ?? "",
-    empathize:
-      options.empathize[index]?.text ?? options.empathize[0]?.text ?? "",
-    hear: options.hear[index]?.text ?? options.hear[0]?.text ?? "",
-    takeAction:
-      options.takeAction[index]?.text ?? options.takeAction[0]?.text ?? "",
-  };
 }
 
 function getDefaultSelections(

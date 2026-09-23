@@ -10,6 +10,8 @@ import type {
   CreateQuickResponseRequest,
   CreateQuickResponseResponse,
   QuickResponseCategory,
+  QuickResponseFullHeatData,
+  QuickResponseFullHeatOption,
   QuickResponseOutcome,
   QuickResponsePreviewData,
   QuickResponsePreviewRequest,
@@ -120,6 +122,29 @@ const quickResponsePreviewSchema = z
     suggestions: value.suggestions as QuickResponsePreviewSuggestions,
   }));
 
+const fullHeatOptionSchema = z
+  .object({
+    description: z.string(),
+    id: z.string(),
+    response: z.string(),
+    title: z.string(),
+  })
+  .transform<QuickResponseFullHeatOption>((value) => value);
+
+const quickResponseFullHeatSchema = z
+  .object({
+    options: z.array(fullHeatOptionSchema).min(1),
+    relevantReferences: z.array(relevantReferenceSchema).default([]),
+    similarResolvedCases: z.array(similarResolvedCaseSchema).default([]),
+    suggestionSource: z.enum(["ai", "fallback"]),
+  })
+  .transform<QuickResponseFullHeatData>((value) => ({
+    options: value.options,
+    relevantReferences: value.relevantReferences,
+    similarResolvedCases: value.similarResolvedCases,
+    suggestionSource: value.suggestionSource,
+  }));
+
 const finalClosureResponseSchema = z
   .object({
     complaint: z.object({
@@ -203,6 +228,23 @@ export async function previewQuickResponse(
   );
 
   return quickResponsePreviewSchema.parse(response);
+}
+
+export async function generateFullHeatResponse(
+  input: QuickResponsePreviewRequest,
+): Promise<QuickResponseFullHeatData> {
+  const payload = {
+    complaintText: input.complaintText.trim(),
+    ...(input.category ? { category: input.category } : {}),
+    ...(input.responseTarget ? { responseTarget: input.responseTarget } : {}),
+  };
+  const response = await apiClient.post<unknown>(
+    "/quick-responses/full-heat",
+    payload,
+    { timeout: QUICK_RESPONSE_PREVIEW_TIMEOUT_MS },
+  );
+
+  return quickResponseFullHeatSchema.parse(response);
 }
 
 export async function createComplaintQuickResponse(

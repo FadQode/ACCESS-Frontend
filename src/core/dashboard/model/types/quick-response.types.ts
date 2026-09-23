@@ -99,6 +99,26 @@ export type QuickResponsePreviewResponse = {
   data: QuickResponsePreviewData;
 };
 
+export type QuickResponseFullHeatOption = {
+  id: string;
+  title: string;
+  description: string;
+  response: string;
+};
+
+export type QuickResponseFullHeatData = {
+  relevantReferences: RelevantReference[];
+  similarResolvedCases: SimilarResolvedCase[];
+  suggestionSource: QuickResponseSuggestionSource;
+  options: QuickResponseFullHeatOption[];
+};
+
+export type QuickResponseFullHeatResponse = {
+  success: true;
+  message: string;
+  data: QuickResponseFullHeatData;
+};
+
 export type SelectedHeat = {
   selectedHear: string;
   selectedEmpathize: string;
