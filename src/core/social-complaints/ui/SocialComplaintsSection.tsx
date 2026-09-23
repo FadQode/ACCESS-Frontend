@@ -21,6 +21,8 @@ export type UseSocialComplaintPayload = {
   author: string;
   /** Link to the original post/comment, when the source provides one. */
   sourceUrl: string | null;
+  /** Platform the complaint came from, mapped to the Quick Response source. */
+  source: SocialComplaintSource;
 };
 
 export type SocialComplaintsSectionProps = {
@@ -215,6 +217,7 @@ function SocialComplaintCard({
             author: complaint.author,
             content: complaint.content,
             id: complaint.id,
+            source: complaint.source,
             sourceUrl: complaint.sourceUrl,
           })
         }

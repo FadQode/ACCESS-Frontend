@@ -54,6 +54,7 @@ import {
   navigateReferenceWindow,
   openPendingReferenceWindow,
 } from "@/core/reference/ui/open-reference-window";
+import type { SocialComplaintSource } from "@/core/social-complaints/model/social-complaints.types";
 import {
   SocialComplaintsSection,
   type UseSocialComplaintPayload,
@@ -118,6 +119,13 @@ const sourceOptions: Option[] = [
   { value: "app-store", label: "App Store" },
   { value: "other", label: "Lainnya" },
 ];
+
+/** Platform name as ingested -> the platform option used by this form. */
+const socialSourceToUiSource: Record<SocialComplaintSource, string> = {
+  facebook: "facebook",
+  google_play: "google-play",
+  x: "twitter",
+};
 
 const categoryOptions: Option[] = [
   { value: "ticket_booking", label: "Tiket / Booking" },
@@ -361,10 +369,19 @@ export function QuickResponse() {
     author,
     content,
     id,
+    source: socialSource,
     sourceUrl,
   }: UseSocialComplaintPayload) => {
+    const mappedSource = socialSourceToUiSource[socialSource];
+    const isStoreSource =
+      mappedSource === "google-play" || mappedSource === "app-store";
+
     setComplaintText(content);
     setSocialComplaintId(id);
+    // Map the whole origin, not just the text: platform drives the source
+    // field and the response target used when the response is saved.
+    setSource(mappedSource);
+    setResponseTarget(isStoreSource ? "app-review" : "public-reply");
     // Carry the social complaint's origin through so the agent does not have to
     // retype the handle or paste the post link.
     setUsername(author);
